@@ -284,7 +284,9 @@ function DirectionsSection({
                         }
                         return (
                           <optgroup key={root.code} label={root.libelle}>
-                            <option value={root.libelle}>{root.libelle}</option>
+                            {/* Le titre de groupe (gras) n'est jamais cliquable en HTML natif :
+                                cette option explicite permet quand même de choisir la direction elle-même. */}
+                            <option value={root.libelle}>— {root.libelle} (la direction) —</option>
                             {items.map(({ entry, depth }) => (
                               <option key={entry.code} value={entry.libelle}>
                                 {'  '.repeat(depth)}
