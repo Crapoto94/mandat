@@ -2,19 +2,24 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api, apiErrorMessage } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
-import type { Engagement, Etat } from '../types'
+import type { Engagement, Etat, Groupe, Meteo } from '../types'
+import { axeList } from '../lib/axeColors'
 import EtatBadge from '../components/EtatBadge'
 import AxeTag from '../components/AxeTag'
 import RichTextEditor from '../components/RichTextEditor'
 import RolesSection from '../components/RolesSection'
 import StepsTimeline from '../components/StepsTimeline'
-import { ArrowLeft, Star, Send, Clock, MessageSquare } from 'lucide-react'
+import AttachmentsSection from '../components/AttachmentsSection'
+import MeteoPicker from '../components/MeteoPicker'
+import { ArrowLeft, Star, Send, Clock, MessageSquare, Pencil, X } from 'lucide-react'
 
 export default function EngagementDetailPage() {
   const { id } = useParams()
   const { user } = useAuth()
   const [engagement, setEngagement] = useState<Engagement | null>(null)
   const [etats, setEtats] = useState<Etat[]>([])
+  const [meteos, setMeteos] = useState<Meteo[]>([])
+  const [groupes, setGroupes] = useState<Groupe[]>([])
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -37,6 +42,8 @@ export default function EngagementDetailPage() {
   useEffect(() => {
     load()
     api.get('/etats').then((res) => setEtats(res.data))
+    api.get('/meteos').then((res) => setMeteos(res.data))
+    api.get('/groupes').then((res) => setGroupes(res.data))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
@@ -53,6 +60,15 @@ export default function EngagementDetailPage() {
       setError(apiErrorMessage(err, 'Sauvegarde impossible'))
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function setMeteo(code: string | null) {
+    try {
+      await api.patch(`/engagements/${id}`, { meteo_code: code })
+      load()
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Impossible de mettre à jour la météo'))
     }
   }
 
@@ -99,24 +115,7 @@ export default function EngagementDetailPage() {
         <ArrowLeft size={15} /> Retour à la liste
       </Link>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-6">
-        <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Engagement n°{engagement.numero}</p>
-            <h1 className="mt-1 text-lg font-semibold text-slate-900">{engagement.contenu}</h1>
-            <AxeTag axe={engagement.axe} className="mt-2" />
-          </div>
-          <EtatBadge libelle={engagement.etat_libelle} couleur={engagement.etat_couleur} />
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 border-t border-slate-100 pt-4 text-sm sm:grid-cols-3">
-          <Info label="Pilotage" value={engagement.pilotage} />
-          <Info label="Contribution — élaboration du projet" value={engagement.contribution_elaboration} />
-          <Info label="Contribution — directions/fonctions impactées" value={engagement.contribution_impactees} />
-          <Info label="Échéance" value={engagement.echeance} />
-          <Info label="Groupe de travail" value={engagement.groupe_code ? `${engagement.groupe_code} — ${engagement.groupe_nom}` : 'Hors groupe'} />
-        </div>
-      </div>
+      <BaseInfoCard engagement={engagement} groupes={groupes} onSaved={load} />
 
       {/* Marquage prioritaire plénière */}
       <div className={`rounded-xl border p-5 ${engagement.prioritaire_plenaire ? 'border-amber-300 bg-amber-50' : 'border-slate-200 bg-white'}`}>
@@ -158,23 +157,29 @@ export default function EngagementDetailPage() {
       <div className="rounded-xl border border-slate-200 bg-white p-5">
         <h2 className="mb-4 text-sm font-semibold text-slate-800">Point d'avancement</h2>
         <div className="space-y-4">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">État d'avancement</label>
-            <select
-              value={etatCode}
-              onChange={(e) => setEtatCode(e.target.value)}
-              className="w-full max-w-xs rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-ville-blue focus:outline-none"
-            >
-              {etats.map((e) => (
-                <option key={e.code} value={e.code}>
-                  {e.libelle}
-                </option>
-              ))}
-            </select>
+          <div className="flex flex-wrap items-end gap-6">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-500">État d'avancement</label>
+              <select
+                value={etatCode}
+                onChange={(e) => setEtatCode(e.target.value)}
+                className="w-full max-w-xs rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-ville-blue focus:outline-none"
+              >
+                {etats.map((e) => (
+                  <option key={e.code} value={e.code}>
+                    {e.libelle}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-500">Météo</label>
+              <MeteoPicker meteos={meteos} value={engagement.meteo_code} onChange={setMeteo} />
+            </div>
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-slate-500">Description — point atteint</label>
-            <RichTextEditor value={description} onChange={setDescription} />
+            <RichTextEditor value={description} onChange={setDescription} engagementId={engagement.id} />
           </div>
         </div>
         <div className="mt-4 flex items-center gap-3">
@@ -199,6 +204,8 @@ export default function EngagementDetailPage() {
       <RolesSection engagementId={engagement.id} roles={engagement.roles || []} onChange={load} />
 
       <StepsTimeline engagementId={engagement.id} steps={engagement.steps || []} onChange={load} />
+
+      <AttachmentsSection engagementId={engagement.id} attachments={engagement.attachments || []} onChange={load} />
 
       {/* Commentaires */}
       <div className="rounded-xl border border-slate-200 bg-white p-5">
@@ -255,6 +262,195 @@ export default function EngagementDetailPage() {
   )
 }
 
+/** Carte d'en-tête : infos de base, en lecture par défaut, éditables via le bouton crayon. */
+function BaseInfoCard({
+  engagement,
+  groupes,
+  onSaved,
+}: {
+  engagement: Engagement
+  groupes: Groupe[]
+  onSaved: () => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const [form, setForm] = useState({
+    contenu: engagement.contenu,
+    axe: engagement.axe,
+    groupe_id: engagement.groupe_id,
+    pilotage: engagement.pilotage || '',
+    contribution_elaboration: engagement.contribution_elaboration || '',
+    contribution_impactees: engagement.contribution_impactees || '',
+    echeance: engagement.echeance || '',
+  })
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  function startEditing() {
+    setForm({
+      contenu: engagement.contenu,
+      axe: engagement.axe,
+      groupe_id: engagement.groupe_id,
+      pilotage: engagement.pilotage || '',
+      contribution_elaboration: engagement.contribution_elaboration || '',
+      contribution_impactees: engagement.contribution_impactees || '',
+      echeance: engagement.echeance || '',
+    })
+    setError(null)
+    setEditing(true)
+  }
+
+  async function submit(e: FormEvent) {
+    e.preventDefault()
+    setSaving(true)
+    setError(null)
+    try {
+      await api.patch(`/engagements/${engagement.id}`, form)
+      setEditing(false)
+      onSaved()
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Sauvegarde impossible'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (!editing) {
+    return (
+      <div className="rounded-xl border border-slate-200 bg-white p-6">
+        <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Engagement n°{engagement.numero}</p>
+            <h1 className="mt-1 text-lg font-semibold text-slate-900">{engagement.contenu}</h1>
+            <AxeTag axe={engagement.axe} className="mt-2" />
+          </div>
+          <div className="flex items-center gap-2">
+            <EtatBadge libelle={engagement.etat_libelle} couleur={engagement.etat_couleur} />
+            <button
+              onClick={startEditing}
+              className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-ville-blue"
+              title="Modifier les infos de base"
+            >
+              <Pencil size={15} />
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 border-t border-slate-100 pt-4 text-sm sm:grid-cols-3">
+          <Info label="Pilotage" value={engagement.pilotage} />
+          <Info label="Contribution — élaboration du projet" value={engagement.contribution_elaboration} />
+          <Info label="Contribution — directions/fonctions impactées" value={engagement.contribution_impactees} />
+          <Info label="Échéance" value={engagement.echeance} />
+          <Info label="Groupe de travail" value={engagement.groupe_code ? `${engagement.groupe_code} — ${engagement.groupe_nom}` : 'Hors groupe'} />
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <form onSubmit={submit} className="space-y-4 rounded-xl border border-ville-blue/40 bg-white p-6">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+          Engagement n°{engagement.numero} — infos de base
+        </p>
+        <button type="button" onClick={() => setEditing(false)} className="text-slate-400 hover:text-slate-700">
+          <X size={16} />
+        </button>
+      </div>
+
+      <div>
+        <label className="mb-1 block text-xs font-medium text-slate-500">Nom de l'engagement</label>
+        <input
+          value={form.contenu}
+          onChange={(e) => setForm({ ...form, contenu: e.target.value })}
+          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-ville-blue focus:outline-none"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div>
+          <label className="mb-1 block text-xs font-medium text-slate-500">Axe du projet</label>
+          <select
+            value={form.axe}
+            onChange={(e) => setForm({ ...form, axe: e.target.value })}
+            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-ville-blue focus:outline-none"
+          >
+            {axeList().map((a) => (
+              <option key={a} value={a}>
+                {a}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-slate-500">Groupe de travail</label>
+          <select
+            value={form.groupe_id ?? ''}
+            onChange={(e) => setForm({ ...form, groupe_id: e.target.value ? Number(e.target.value) : null })}
+            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-ville-blue focus:outline-none"
+          >
+            <option value="">Hors groupe</option>
+            {groupes.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.code} — {g.nom}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-slate-500">Pilotage</label>
+          <input
+            value={form.pilotage}
+            onChange={(e) => setForm({ ...form, pilotage: e.target.value })}
+            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-ville-blue focus:outline-none"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-slate-500">Échéance</label>
+          <input
+            value={form.echeance}
+            onChange={(e) => setForm({ ...form, echeance: e.target.value })}
+            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-ville-blue focus:outline-none"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-slate-500">Contribution — élaboration du projet</label>
+          <input
+            value={form.contribution_elaboration}
+            onChange={(e) => setForm({ ...form, contribution_elaboration: e.target.value })}
+            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-ville-blue focus:outline-none"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-slate-500">Contribution — directions/fonctions impactées</label>
+          <input
+            value={form.contribution_impactees}
+            onChange={(e) => setForm({ ...form, contribution_impactees: e.target.value })}
+            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-ville-blue focus:outline-none"
+          />
+        </div>
+      </div>
+
+      {error && <p className="rounded-md bg-red-50 p-2 text-sm text-red-700">{error}</p>}
+      <div className="flex items-center gap-2">
+        <button
+          type="submit"
+          disabled={saving}
+          className="rounded-md bg-ville-blue px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60"
+        >
+          {saving ? 'Enregistrement…' : 'Enregistrer'}
+        </button>
+        <button
+          type="button"
+          onClick={() => setEditing(false)}
+          className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+        >
+          Annuler
+        </button>
+      </div>
+    </form>
+  )
+}
+
 function Info({ label, value }: { label: string; value?: string | null }) {
   return (
     <div>
@@ -266,15 +462,17 @@ function Info({ label, value }: { label: string; value?: string | null }) {
 
 const FIELD_LABELS: Record<string, string> = {
   etat_code: "l'état d'avancement",
+  meteo_code: 'la météo',
   description_avancement: 'la description du point atteint',
   prochaines_etapes: 'les prochaines étapes',
   roles_precises: 'les rôles précisés',
   axe: "l'axe du projet",
-  contenu: 'le contenu',
+  contenu: 'le nom de l’engagement',
   pilotage: 'le pilotage',
   contribution_elaboration: "la contribution à l'élaboration",
   contribution_impactees: 'les directions impactées',
   echeance: "l'échéance",
+  groupe_id: 'le groupe de travail',
   prioritaire_plenaire: 'le marquage prioritaire plénière',
 }
 

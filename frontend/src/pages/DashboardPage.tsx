@@ -44,6 +44,37 @@ export default function DashboardPage() {
         />
       </div>
 
+      <div className="rounded-xl border border-slate-200 bg-white p-5">
+        <h2 className="mb-1 text-sm font-semibold text-slate-800">Météo des engagements</h2>
+        <p className="mb-4 text-xs text-slate-400">Cliquer sur un indicateur pour lister les sujets concernés.</p>
+        <div className="flex flex-wrap gap-3">
+          {summary.parMeteo.map((m) => (
+            <Link
+              key={m.code}
+              to={`/engagements?meteo=${m.code}`}
+              className="flex items-center gap-2 rounded-lg border border-slate-100 px-3 py-2 transition-colors hover:border-ville-blue/40"
+              style={{ backgroundColor: `${m.couleur}0d` }}
+            >
+              <span className="text-xl">{m.emoji}</span>
+              <div>
+                <p className="text-sm font-semibold text-slate-800">{m.count}</p>
+                <p className="text-xs text-slate-500">{m.libelle}</p>
+              </div>
+            </Link>
+          ))}
+          <Link
+            to="/engagements?meteo=none"
+            className="flex items-center gap-2 rounded-lg border border-slate-100 px-3 py-2 transition-colors hover:border-ville-blue/40"
+          >
+            <span className="text-xl opacity-40">❔</span>
+            <div>
+              <p className="text-sm font-semibold text-slate-800">{summary.meteoNonRenseignee}</p>
+              <p className="text-xs text-slate-500">Non renseignée</p>
+            </div>
+          </Link>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div className="rounded-xl border border-slate-200 bg-white p-5">
           <h2 className="mb-4 text-sm font-semibold text-slate-800">Avancement par état</h2>

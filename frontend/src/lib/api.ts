@@ -44,3 +44,13 @@ export function apiErrorMessage(err: unknown, fallback = 'Une erreur est survenu
   }
   return fallback
 }
+
+/**
+ * URL d'un fichier joint, utilisable dans une balise <img> ou un lien de
+ * téléchargement direct : le jeton passe en query string car ces balises ne
+ * peuvent pas fixer d'en-tête Authorization (cf. requireAuthQueryOrHeader
+ * côté backend).
+ */
+export function attachmentFileUrl(id: number): string {
+  return `${backendOrigin}/api/attachments/${id}/file?token=${encodeURIComponent(getToken() || '')}`
+}

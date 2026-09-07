@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api, apiErrorMessage } from '../lib/api'
-import type { Engagement, Etat, Groupe } from '../types'
+import type { Engagement, Etat, Groupe, Meteo } from '../types'
 import EtatBadge from '../components/EtatBadge'
 import AxeTag from '../components/AxeTag'
+import { MeteoBadge } from '../components/MeteoPicker'
 import { getAxeColor, axeList } from '../lib/axeColors'
 import { Star, Search } from 'lucide-react'
 
@@ -12,12 +13,14 @@ export default function EngagementsPage() {
   const [engagements, setEngagements] = useState<Engagement[]>([])
   const [groupes, setGroupes] = useState<Groupe[]>([])
   const [etats, setEtats] = useState<Etat[]>([])
+  const [meteos, setMeteos] = useState<Meteo[]>([])
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [q, setQ] = useState(params.get('q') || '')
 
   const groupeId = params.get('groupe') || ''
   const etatCode = params.get('etat') || ''
+  const meteoCode = params.get('meteo') || ''
   const prioritaire = params.get('prioritaire') || ''
 
   useEffect(() => {
@@ -29,6 +32,10 @@ export default function EngagementsPage() {
       .get('/etats')
       .then((res) => setEtats(res.data))
       .catch(() => {})
+    api
+      .get('/meteos')
+      .then((res) => setMeteos(res.data))
+      .catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -36,6 +43,7 @@ export default function EngagementsPage() {
     const query: Record<string, string> = {}
     if (groupeId) query.groupe_id = groupeId
     if (etatCode) query.etat_code = etatCode
+    if (meteoCode) query.meteo_code = meteoCode
     if (prioritaire) query.prioritaire = prioritaire
     if (params.get('q')) query.q = params.get('q')!
 
@@ -44,7 +52,7 @@ export default function EngagementsPage() {
       .then((res) => setEngagements(res.data))
       .catch((err) => setError(apiErrorMessage(err, 'Impossible de charger les engagements')))
       .finally(() => setLoading(false))
-  }, [groupeId, etatCode, prioritaire, params])
+  }, [groupeId, etatCode, meteoCode, prioritaire, params])
 
   const groupTabs = useMemo(
     () => [{ id: '', label: 'Tous' }, ...groupes.map((g) => ({ id: String(g.id), label: g.code })), { id: 'none', label: 'Hors groupe' }],
@@ -116,6 +124,19 @@ export default function EngagementsPage() {
             </option>
           ))}
         </select>
+        <select
+          value={meteoCode}
+          onChange={(e) => updateParam('meteo', e.target.value)}
+          className="rounded-md border border-slate-300 px-2.5 py-1.5 text-sm"
+        >
+          <option value="">Toutes météos</option>
+          {meteos.map((m) => (
+            <option key={m.code} value={m.code}>
+              {m.emoji} {m.libelle}
+            </option>
+          ))}
+          <option value="none">❔ Non renseignée</option>
+        </select>
         <button
           onClick={() => updateParam('prioritaire', prioritaire === 'true' ? '' : 'true')}
           className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-sm font-medium ${
@@ -142,6 +163,7 @@ export default function EngagementsPage() {
                 <th className="px-4 py-3 font-medium">Pilotage</th>
                 <th className="px-4 py-3 font-medium">Groupe</th>
                 <th className="px-4 py-3 font-medium">État</th>
+                <th className="px-4 py-3 font-medium">Météo</th>
                 <th className="px-4 py-3 font-medium"></th>
               </tr>
             </thead>
@@ -164,6 +186,13 @@ export default function EngagementsPage() {
                   <td className="px-4 py-3 align-top">
                     <EtatBadge libelle={e.etat_libelle} couleur={e.etat_couleur} />
                   </td>
+                  <td className="px-4 py-3 align-top">
+                    {e.meteo_code ? (
+                      <MeteoBadge meteo={{ code: e.meteo_code, libelle: e.meteo_libelle || '', emoji: e.meteo_emoji || '', couleur: e.meteo_couleur || '#64748b', ordre: 0 }} />
+                    ) : (
+                      <span className="text-slate-300">—</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 align-top text-right">
                     {e.prioritaire_plenaire && <Star size={15} className="inline text-amber-500" fill="currentColor" />}
                   </td>
@@ -171,7 +200,7 @@ export default function EngagementsPage() {
               ))}
               {!engagements.length && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-sm text-slate-400">
+                  <td colSpan={7} className="px-4 py-10 text-center text-sm text-slate-400">
                     Aucun engagement ne correspond à ces filtres.
                   </td>
                 </tr>

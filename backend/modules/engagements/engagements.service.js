@@ -19,7 +19,7 @@ const EDITABLE_FIELDS = [
 
 const MAX_PRIORITAIRES_PAR_GROUPE = 3;
 
-function buildFilters({ groupe_id, etat_code, axe, prioritaire, q }) {
+function buildFilters({ groupe_id, etat_code, meteo_code, axe, prioritaire, q }) {
   const clauses = [];
   const params = [];
 
@@ -34,6 +34,14 @@ function buildFilters({ groupe_id, etat_code, axe, prioritaire, q }) {
   if (etat_code) {
     params.push(etat_code);
     clauses.push(`e.etat_code = $${params.length}`);
+  }
+  if (meteo_code) {
+    if (meteo_code === 'none') {
+      clauses.push('e.meteo_code IS NULL');
+    } else {
+      params.push(meteo_code);
+      clauses.push(`e.meteo_code = $${params.length}`);
+    }
   }
   if (axe) {
     params.push(`%${axe}%`);

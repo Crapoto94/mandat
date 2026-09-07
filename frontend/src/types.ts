@@ -37,6 +37,10 @@ export interface Engagement {
   etat_code: string
   etat_libelle?: string
   etat_couleur?: string
+  meteo_code: string | null
+  meteo_libelle?: string | null
+  meteo_emoji?: string | null
+  meteo_couleur?: string | null
   description_avancement: string | null
   prochaines_etapes: string | null
   roles_precises: string | null
@@ -53,6 +57,25 @@ export interface Engagement {
   coordinationTopics?: CoordinationTopic[]
   roles?: EngagementRole[]
   steps?: EngagementStep[]
+  attachments?: Attachment[]
+}
+
+export interface Meteo {
+  code: string
+  libelle: string
+  emoji: string
+  couleur: string
+  ordre: number
+}
+
+export interface Attachment {
+  id: number
+  engagement_id: number
+  original_name: string
+  mime_type: string | null
+  size_bytes: number | null
+  uploaded_by: string | null
+  created_at: string
 }
 
 export interface RoleDef {
@@ -146,4 +169,6 @@ export interface DashboardSummary {
   parEtat: Array<Etat & { count: number }>
   parAxe: Array<{ axe: string; count: number }>
   parGroupe: Array<{ code: string; nom: string; count: number }>
+  parMeteo: Array<Meteo & { count: number }>
+  meteoNonRenseignee: number
 }
