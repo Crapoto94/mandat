@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { api, apiErrorMessage } from '../lib/api'
-import type { Direction, RoleDef } from '../types'
-import { ShieldCheck, Upload, CheckCircle2, XCircle, RefreshCw, Tags, Trash2, Plus } from 'lucide-react'
+import type { Direction, Etat, HubdsiEntry, Meteo, RoleDef } from '../types'
+import { ShieldCheck, Upload, CheckCircle2, XCircle, RefreshCw, Tags, Trash2, Plus, List } from 'lucide-react'
 
 interface AdminAccount {
   id: number
@@ -103,10 +103,16 @@ export default function AdminPage() {
 
       <RolesCatalogSection onError={setError} />
 
+      <EtatsCatalogSection onError={setError} />
+
+      <MeteoCatalogSection onError={setError} />
+
       <ImportSection onDone={(msg) => setNotice(msg)} onError={(msg) => setError(msg)} />
     </div>
   )
 }
+
+const CUSTOM = '__custom__'
 
 function DirectionsSection({
   onNotice,
@@ -116,13 +122,23 @@ function DirectionsSection({
   onError: (m: string) => void
 }) {
   const [directions, setDirections] = useState<Direction[]>([])
+  const [hubdsiList, setHubdsiList] = useState<HubdsiEntry[]>([])
   const [drafts, setDrafts] = useState<Record<string, string>>({})
+  const [modes, setModes] = useState<Record<string, 'select' | typeof CUSTOM>>({})
   const [syncing, setSyncing] = useState(false)
 
   function load() {
-    api.get('/directions').then((res) => {
-      setDirections(res.data)
-      setDrafts(Object.fromEntries(res.data.map((d: Direction) => [d.code, d.libelle || ''])))
+    Promise.all([api.get('/directions'), api.get('/directions/hubdsi-referentiel')]).then(([dirsRes, hubRes]) => {
+      const dirs: Direction[] = dirsRes.data
+      const hub: HubdsiEntry[] = hubRes.data
+      setDirections(dirs)
+      setHubdsiList(hub)
+      setDrafts(Object.fromEntries(dirs.map((d) => [d.code, d.libelle || ''])))
+      setModes(
+        Object.fromEntries(
+          dirs.map((d) => [d.code, hub.some((h) => h.libelle === d.libelle) ? 'select' : CUSTOM])
+        )
+      )
     })
   }
 
@@ -142,7 +158,8 @@ function DirectionsSection({
     try {
       const res = await api.post('/directions/sync')
       onNotice(
-        `Synchronisation Hub DSI : ${res.data.synchronises} mis à jour, ${res.data.ignoresManuels} déjà saisis manuellement conservés (sur ${res.data.recuDuHub} reçus).`
+        `Synchronisation Hub DSI : ${res.data.recuDuHub} direction(s)/service(s) reçus, disponibles dans la liste déroulante ` +
+          `(${res.data.synchronises} sigle(s) pré-associés automatiquement, ${res.data.ignoresManuels} saisie(s) manuelle(s) conservée(s)).`
       )
       load()
     } catch (err) {
@@ -168,8 +185,9 @@ function DirectionsSection({
         </button>
       </div>
       <p className="mb-4 text-xs text-slate-500">
-        Sigles rencontrés dans les engagements (pilotage / contributions) — associez leur nom complet. La
-        synchronisation Hub DSI ne touche jamais un libellé déjà saisi manuellement ici.
+        Sigles rencontrés dans les engagements (pilotage / contributions) — affectez leur nom complet en le
+        choisissant dans la liste du Hub DSI ({hubdsiList.length ? `${hubdsiList.length} entrée(s) disponible(s)` : 'synchroniser pour la remplir'}),
+        ou en saisie libre si absent. La synchronisation ne touche jamais un libellé déjà associé manuellement.
       </p>
       <div className="max-h-96 overflow-y-auto">
         <table className="w-full text-sm">
@@ -184,20 +202,55 @@ function DirectionsSection({
           <tbody>
             {directions.map((d) => (
               <tr key={d.code} className="border-b border-slate-50 last:border-0">
-                <td className="py-1.5 pr-3 font-medium text-slate-700">{d.code}</td>
+                <td className="py-1.5 pr-3 align-top font-medium text-slate-700">{d.code}</td>
                 <td className="py-1.5 pr-3">
-                  <input
-                    value={drafts[d.code] ?? ''}
-                    onChange={(e) => setDrafts({ ...drafts, [d.code]: e.target.value })}
-                    placeholder="Nom complet de la direction"
-                    className="w-full rounded-md border border-slate-300 px-2 py-1 text-sm focus:border-ville-blue focus:outline-none"
-                  />
+                  {modes[d.code] === CUSTOM ? (
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        value={drafts[d.code] ?? ''}
+                        onChange={(e) => setDrafts({ ...drafts, [d.code]: e.target.value })}
+                        placeholder="Nom complet (saisie libre)"
+                        className="w-full rounded-md border border-slate-300 px-2 py-1 text-sm focus:border-ville-blue focus:outline-none"
+                      />
+                      {!!hubdsiList.length && (
+                        <button
+                          type="button"
+                          title="Choisir dans la liste Hub DSI"
+                          onClick={() => setModes({ ...modes, [d.code]: 'select' })}
+                          className="shrink-0 text-slate-400 hover:text-ville-blue"
+                        >
+                          <List size={14} />
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <select
+                      value={drafts[d.code] ?? ''}
+                      onChange={(e) => {
+                        if (e.target.value === CUSTOM) {
+                          setModes({ ...modes, [d.code]: CUSTOM })
+                          setDrafts({ ...drafts, [d.code]: '' })
+                        } else {
+                          setDrafts({ ...drafts, [d.code]: e.target.value })
+                        }
+                      }}
+                      className="w-full rounded-md border border-slate-300 px-2 py-1 text-sm focus:border-ville-blue focus:outline-none"
+                    >
+                      <option value="">— Choisir —</option>
+                      {hubdsiList.map((h) => (
+                        <option key={h.code} value={h.libelle}>
+                          {h.libelle}
+                        </option>
+                      ))}
+                      <option value={CUSTOM}>Autre (saisie libre)…</option>
+                    </select>
+                  )}
                 </td>
-                <td className="py-1.5 text-xs text-slate-400">{d.libelle_manuel ? 'Manuel' : 'Hub DSI / auto'}</td>
-                <td className="py-1.5 text-right">
+                <td className="py-1.5 align-top text-xs text-slate-400">{d.libelle_manuel ? 'Manuel' : 'Hub DSI / auto'}</td>
+                <td className="py-1.5 align-top text-right">
                   <button
                     onClick={() => saveLibelle(d.code)}
-                    disabled={(drafts[d.code] ?? '') === (d.libelle ?? '')}
+                    disabled={!drafts[d.code] || (drafts[d.code] ?? '') === (d.libelle ?? '')}
                     className="text-xs font-medium text-ville-blue hover:underline disabled:opacity-40"
                   >
                     Enregistrer
@@ -276,6 +329,235 @@ function RolesCatalogSection({ onError }: { onError: (m: string) => void }) {
         <button
           type="submit"
           className="flex items-center gap-1.5 rounded-md bg-ville-blue px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
+        >
+          <Plus size={14} /> Ajouter
+        </button>
+      </form>
+    </section>
+  )
+}
+
+function EtatsCatalogSection({ onError }: { onError: (m: string) => void }) {
+  const [etats, setEtats] = useState<Etat[]>([])
+  const [drafts, setDrafts] = useState<Record<string, { libelle: string; couleur: string }>>({})
+  const [newEtat, setNewEtat] = useState({ code: '', libelle: '', couleur: '#64748b' })
+
+  function load() {
+    api.get('/etats').then((res) => {
+      setEtats(res.data)
+      setDrafts(Object.fromEntries(res.data.map((e: Etat) => [e.code, { libelle: e.libelle, couleur: e.couleur }])))
+    })
+  }
+
+  useEffect(load, [])
+
+  async function save(code: string) {
+    try {
+      await api.patch(`/etats/${encodeURIComponent(code)}`, drafts[code])
+      load()
+    } catch (err) {
+      onError(apiErrorMessage(err, 'Sauvegarde impossible'))
+    }
+  }
+
+  async function add(e: FormEvent) {
+    e.preventDefault()
+    if (!newEtat.code.trim() || !newEtat.libelle.trim()) return
+    try {
+      await api.post('/etats', { ...newEtat, ordre: etats.length + 1 })
+      setNewEtat({ code: '', libelle: '', couleur: '#64748b' })
+      load()
+    } catch (err) {
+      onError(apiErrorMessage(err, 'Création impossible'))
+    }
+  }
+
+  async function remove(code: string) {
+    try {
+      await api.delete(`/etats/${encodeURIComponent(code)}`)
+      load()
+    } catch (err) {
+      onError(apiErrorMessage(err, 'Suppression impossible'))
+    }
+  }
+
+  return (
+    <section className="rounded-xl border border-slate-200 bg-white p-5">
+      <h2 className="mb-1 text-sm font-semibold text-slate-800">États d'avancement</h2>
+      <p className="mb-4 text-xs text-slate-500">
+        Liste et couleurs des états proposés sur chaque engagement et au tableau de bord.
+      </p>
+      <ul className="mb-4 space-y-1.5">
+        {etats.map((e) => {
+          const draft = drafts[e.code] || { libelle: e.libelle, couleur: e.couleur }
+          return (
+            <li key={e.code} className="flex items-center gap-2 rounded-md bg-slate-50 px-3 py-1.5 text-sm">
+              <input
+                type="color"
+                value={draft.couleur}
+                onChange={(ev) => setDrafts({ ...drafts, [e.code]: { ...draft, couleur: ev.target.value } })}
+                className="h-6 w-6 shrink-0 cursor-pointer rounded border-0 bg-transparent"
+              />
+              <input
+                value={draft.libelle}
+                onChange={(ev) => setDrafts({ ...drafts, [e.code]: { ...draft, libelle: ev.target.value } })}
+                className="flex-1 rounded-md border border-slate-300 bg-white px-2 py-1 text-sm focus:border-ville-blue focus:outline-none"
+              />
+              <button
+                onClick={() => save(e.code)}
+                disabled={draft.libelle === e.libelle && draft.couleur === e.couleur}
+                className="shrink-0 text-xs font-medium text-ville-blue hover:underline disabled:opacity-40"
+              >
+                Enregistrer
+              </button>
+              <button onClick={() => remove(e.code)} className="shrink-0 text-slate-400 hover:text-red-600" title="Supprimer">
+                <Trash2 size={14} />
+              </button>
+            </li>
+          )
+        })}
+      </ul>
+      <form onSubmit={add} className="flex items-center gap-2">
+        <input
+          type="color"
+          value={newEtat.couleur}
+          onChange={(e) => setNewEtat({ ...newEtat, couleur: e.target.value })}
+          className="h-8 w-8 shrink-0 cursor-pointer rounded border-0 bg-transparent"
+        />
+        <input
+          value={newEtat.code}
+          onChange={(e) => setNewEtat({ ...newEtat, code: e.target.value })}
+          placeholder="code (ex : suspendu)"
+          className="w-36 rounded-md border border-slate-300 px-2.5 py-1.5 text-sm focus:border-ville-blue focus:outline-none"
+        />
+        <input
+          value={newEtat.libelle}
+          onChange={(e) => setNewEtat({ ...newEtat, libelle: e.target.value })}
+          placeholder="Libellé affiché"
+          className="flex-1 rounded-md border border-slate-300 px-2.5 py-1.5 text-sm focus:border-ville-blue focus:outline-none"
+        />
+        <button
+          type="submit"
+          className="flex shrink-0 items-center gap-1.5 rounded-md bg-ville-blue px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
+        >
+          <Plus size={14} /> Ajouter
+        </button>
+      </form>
+    </section>
+  )
+}
+
+function MeteoCatalogSection({ onError }: { onError: (m: string) => void }) {
+  const [meteos, setMeteos] = useState<Meteo[]>([])
+  const [drafts, setDrafts] = useState<Record<string, { libelle: string; emoji: string; couleur: string }>>({})
+  const [newMeteo, setNewMeteo] = useState({ code: '', libelle: '', emoji: '', couleur: '#64748b' })
+
+  function load() {
+    api.get('/meteos').then((res) => {
+      setMeteos(res.data)
+      setDrafts(Object.fromEntries(res.data.map((m: Meteo) => [m.code, { libelle: m.libelle, emoji: m.emoji, couleur: m.couleur }])))
+    })
+  }
+
+  useEffect(load, [])
+
+  async function save(code: string) {
+    try {
+      await api.patch(`/meteos/${encodeURIComponent(code)}`, drafts[code])
+      load()
+    } catch (err) {
+      onError(apiErrorMessage(err, 'Sauvegarde impossible'))
+    }
+  }
+
+  async function add(e: FormEvent) {
+    e.preventDefault()
+    if (!newMeteo.code.trim() || !newMeteo.libelle.trim() || !newMeteo.emoji.trim()) return
+    try {
+      await api.post('/meteos', { ...newMeteo, ordre: meteos.length + 1 })
+      setNewMeteo({ code: '', libelle: '', emoji: '', couleur: '#64748b' })
+      load()
+    } catch (err) {
+      onError(apiErrorMessage(err, 'Création impossible'))
+    }
+  }
+
+  async function remove(code: string) {
+    try {
+      await api.delete(`/meteos/${encodeURIComponent(code)}`)
+      load()
+    } catch (err) {
+      onError(apiErrorMessage(err, 'Suppression impossible'))
+    }
+  }
+
+  return (
+    <section className="rounded-xl border border-slate-200 bg-white p-5">
+      <h2 className="mb-1 text-sm font-semibold text-slate-800">Météo des engagements</h2>
+      <p className="mb-4 text-xs text-slate-500">Niveaux de météo (santé/risque) proposés sur chaque engagement.</p>
+      <ul className="mb-4 space-y-1.5">
+        {meteos.map((m) => {
+          const draft = drafts[m.code] || { libelle: m.libelle, emoji: m.emoji, couleur: m.couleur }
+          return (
+            <li key={m.code} className="flex items-center gap-2 rounded-md bg-slate-50 px-3 py-1.5 text-sm">
+              <input
+                value={draft.emoji}
+                onChange={(ev) => setDrafts({ ...drafts, [m.code]: { ...draft, emoji: ev.target.value } })}
+                className="w-12 shrink-0 rounded-md border border-slate-300 bg-white px-2 py-1 text-center text-sm focus:border-ville-blue focus:outline-none"
+              />
+              <input
+                type="color"
+                value={draft.couleur}
+                onChange={(ev) => setDrafts({ ...drafts, [m.code]: { ...draft, couleur: ev.target.value } })}
+                className="h-6 w-6 shrink-0 cursor-pointer rounded border-0 bg-transparent"
+              />
+              <input
+                value={draft.libelle}
+                onChange={(ev) => setDrafts({ ...drafts, [m.code]: { ...draft, libelle: ev.target.value } })}
+                className="flex-1 rounded-md border border-slate-300 bg-white px-2 py-1 text-sm focus:border-ville-blue focus:outline-none"
+              />
+              <button
+                onClick={() => save(m.code)}
+                disabled={draft.libelle === m.libelle && draft.couleur === m.couleur && draft.emoji === m.emoji}
+                className="shrink-0 text-xs font-medium text-ville-blue hover:underline disabled:opacity-40"
+              >
+                Enregistrer
+              </button>
+              <button onClick={() => remove(m.code)} className="shrink-0 text-slate-400 hover:text-red-600" title="Supprimer">
+                <Trash2 size={14} />
+              </button>
+            </li>
+          )
+        })}
+      </ul>
+      <form onSubmit={add} className="flex items-center gap-2">
+        <input
+          value={newMeteo.emoji}
+          onChange={(e) => setNewMeteo({ ...newMeteo, emoji: e.target.value })}
+          placeholder="🌤️"
+          className="w-12 shrink-0 rounded-md border border-slate-300 px-2 py-1.5 text-center text-sm focus:border-ville-blue focus:outline-none"
+        />
+        <input
+          type="color"
+          value={newMeteo.couleur}
+          onChange={(e) => setNewMeteo({ ...newMeteo, couleur: e.target.value })}
+          className="h-8 w-8 shrink-0 cursor-pointer rounded border-0 bg-transparent"
+        />
+        <input
+          value={newMeteo.code}
+          onChange={(e) => setNewMeteo({ ...newMeteo, code: e.target.value })}
+          placeholder="code (ex : venteux)"
+          className="w-32 rounded-md border border-slate-300 px-2.5 py-1.5 text-sm focus:border-ville-blue focus:outline-none"
+        />
+        <input
+          value={newMeteo.libelle}
+          onChange={(e) => setNewMeteo({ ...newMeteo, libelle: e.target.value })}
+          placeholder="Libellé affiché"
+          className="flex-1 rounded-md border border-slate-300 px-2.5 py-1.5 text-sm focus:border-ville-blue focus:outline-none"
+        />
+        <button
+          type="submit"
+          className="flex shrink-0 items-center gap-1.5 rounded-md bg-ville-blue px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
         >
           <Plus size={14} /> Ajouter
         </button>

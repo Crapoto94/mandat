@@ -131,6 +131,12 @@ export interface Direction {
   updated_at: string
 }
 
+export interface HubdsiEntry {
+  code: string
+  libelle: string
+  synced_at: string
+}
+
 export interface EngagementHistoryEntry {
   id: number
   engagement_id: number

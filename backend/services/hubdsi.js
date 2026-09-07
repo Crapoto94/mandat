@@ -33,9 +33,25 @@ async function hub(path) {
   }
 }
 
+// Plusieurs endpoints possibles selon la version du Hub DSI / le scope de la
+// clé (le nom exact n'est pas garanti par la doc) : on essaie dans l'ordre
+// et on s'arrête au premier qui répond sans erreur.
+const DIRECTIONS_CANDIDATE_PATHS = [
+  '/api/directions-services',
+  '/api/admin/rh/organisation-chart',
+  '/api/admin/rh/services-tree',
+  '/api/admin/rh/hierarchy',
+];
+
 /** Organisation Ville (directions / services), lecture seule — maîtrisée par le Hub DSI. */
 async function getDirectionsServices() {
-  return hub('/api/directions-services');
+  let lastError = 'Aucun endpoint testé';
+  for (const path of DIRECTIONS_CANDIDATE_PATHS) {
+    const result = await hub(path);
+    if (!result.error) return result;
+    lastError = result.error;
+  }
+  return { error: lastError };
 }
 
 async function getElus() {
@@ -63,9 +79,17 @@ function normalizeDirections(raw) {
       return;
     }
 
-    const code = node.code || node.sigle || node.acronyme || node.abbreviation || node.short_name;
     const libelle = node.libelle || node.nom || node.name || node.designation || node.label;
-    if (code && libelle) {
+    // Une hiérarchie RH mélange souvent unités organisationnelles ET agents :
+    // on écarte tout nœud qui ressemble à une fiche personne (des directions
+    // n'ont pas de matricule/email/poste), pour ne garder que les directions
+    // et services.
+    const looksLikePerson = node.matricule || node.email || node.mail || node.poste || node.fonction || node.telephone;
+    // Une hiérarchie RH n'a pas forcément de sigle distinct du nom : à
+    // défaut, le nom sert aussi de clé (le champ "code" n'est ici qu'un
+    // identifiant unique pour le cache, pas censé matcher nos sigles).
+    const code = node.code || node.sigle || node.acronyme || node.abbreviation || node.short_name || libelle;
+    if (code && libelle && typeof libelle === 'string' && !looksLikePerson) {
       const key = String(code).trim().toUpperCase();
       if (!seen.has(key)) {
         seen.add(key);

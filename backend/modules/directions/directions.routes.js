@@ -10,6 +10,12 @@ router.get('/', requireAuth, async (req, res) => {
   res.json(rows);
 });
 
+/** Référentiel Hub DSI mis en cache (pour peupler la liste déroulante de concordance). */
+router.get('/hubdsi-referentiel', requireAuth, async (req, res) => {
+  const rows = await db.all(`SELECT * FROM hubdsi_referentiel ORDER BY libelle ASC`);
+  res.json(rows);
+});
+
 /** Table de concordance : assigner/corriger le nom complet d'un sigle de direction. */
 router.patch('/:code', requireAuth, requireAdmin, async (req, res) => {
   const { libelle } = req.body || {};
@@ -23,9 +29,11 @@ router.patch('/:code', requireAuth, requireAdmin, async (req, res) => {
 });
 
 /**
- * Synchronise les noms complets depuis le référentiel Hub DSI
- * (GET /api/directions-services). Ne touche pas aux libellés déjà corrigés
- * manuellement — la concordance manuelle a toujours priorité.
+ * Synchronise le référentiel Hub DSI (GET /api/directions-services) : met en
+ * cache la liste complète des directions/services (pour la liste déroulante
+ * de concordance), et pré-remplit automatiquement les sigles dont le code
+ * correspond exactement à une entrée du Hub DSI. Ne touche jamais un
+ * libellé déjà affecté manuellement — la concordance manuelle a priorité.
  */
 router.post('/sync', requireAuth, requireAdmin, async (req, res) => {
   const { data: raw, error } = await hubdsi.getDirectionsServices();
@@ -35,6 +43,17 @@ router.post('/sync', requireAuth, requireAdmin, async (req, res) => {
   const remote = hubdsi.normalizeDirections(raw);
   if (!remote.length) {
     return res.status(502).json({ error: "Réponse du Hub DSI vide ou dans un format inattendu — vérifier la doc Swagger (/api/docs)" });
+  }
+
+  // Rafraîchit le cache complet (remplacement, l'organigramme peut évoluer).
+  await db.run(`DELETE FROM hubdsi_referentiel`);
+  for (const { code, libelle } of remote) {
+    await db
+      .run(`INSERT INTO hubdsi_referentiel (code, libelle) VALUES ($1, $2) ON CONFLICT (code) DO UPDATE SET libelle = EXCLUDED.libelle, synced_at = now()`, [
+        code,
+        libelle,
+      ])
+      .catch(() => {}); // ignore un doublon de libellé improbable plutôt que d'interrompre la synchro
   }
 
   const existing = await db.all(`SELECT code, libelle_manuel FROM directions`);
