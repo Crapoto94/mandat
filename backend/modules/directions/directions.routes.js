@@ -63,23 +63,31 @@ router.post('/sync', requireAuth, requireAdmin, async (req, res) => {
       .catch(() => {}); // ignore un doublon de libellé improbable plutôt que d'interrompre la synchro
   }
 
+  // IMPORTANT : on ne crée jamais de nouveau sigle ici — `directions` ne doit
+  // contenir QUE les sigles rencontrés dans les engagements (pilotage /
+  // contributions de l'Excel importé), pas tous les codes du Hub DSI (qui
+  // incluent des codes budgétaires/services sans rapport, type "BB", "BB1"...).
+  // On met seulement à jour le libellé d'un sigle déjà existant et non
+  // saisi manuellement ; la liste déroulante `hubdsi_referentiel` reste,
+  // elle, alimentée avec tout le référentiel pour la saisie assistée.
   const existing = await db.all(`SELECT code, libelle_manuel FROM directions`);
   const manualCodes = new Set(existing.filter((d) => d.libelle_manuel).map((d) => d.code.toUpperCase()));
+  const remoteByCode = new Map(remote.map((r) => [r.code.toUpperCase(), r.libelle]));
 
   let synchronises = 0;
   let ignoresManuels = 0;
-  for (const { code, libelle } of remote) {
-    if (manualCodes.has(code.toUpperCase())) {
-      ignoresManuels += 1;
+  for (const d of existing) {
+    const key = d.code.toUpperCase();
+    if (manualCodes.has(key)) {
+      if (remoteByCode.has(key)) ignoresManuels += 1;
       continue; // priorité à la saisie manuelle
     }
-    const result = await db.run(
-      `INSERT INTO directions (code, libelle, libelle_manuel, updated_at)
-       VALUES ($1, $2, false, now())
-       ON CONFLICT (code) DO UPDATE SET libelle = EXCLUDED.libelle, updated_at = now()
-       WHERE directions.libelle_manuel = false`,
-      [code, libelle]
-    );
+    const libelle = remoteByCode.get(key);
+    if (!libelle) continue; // aucune correspondance Hub DSI pour ce sigle
+    const result = await db.run(`UPDATE directions SET libelle = $1, updated_at = now() WHERE code = $2`, [
+      libelle,
+      d.code,
+    ]);
     if (result.changes) synchronises += 1;
   }
 
