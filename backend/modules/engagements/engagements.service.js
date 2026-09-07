@@ -88,22 +88,61 @@ function normalizeForMatch(str) {
 }
 
 /**
- * Résout le nom brut d'une direction (tel que renvoyé par l'AD/l'APM, ou
- * saisi manuellement) vers ses sigles applicatifs, via la table de
- * concordance — comparaison insensible à la casse, aux espaces superflus et
- * aux accents (l'AD ne les saisit pas toujours). Une même direction peut
- * avoir été saisie sous plusieurs sigles distincts dans l'Excel source
- * (ex. DSPORT, DSPORTS, Dsports, SPORT tous concordés vers le même
- * libellé) : on renvoie donc TOUS les codes qui concordent, pas seulement
- * le premier trouvé, pour ne perdre aucun engagement. Renvoie un tableau
- * vide si aucune correspondance (direction non encore répertoriée dans la
- * concordance).
+ * L'AD renvoie le rattachement de l'agent tel que saisi côté RH, qui est
+ * parfois son SERVICE (ex. "Service Budget Comptabilité") plutôt que sa
+ * DIRECTION de rattachement (ex. "Direction des Services Financiers") —
+ * or les engagements ne sont suivis qu'au niveau direction. On remonte
+ * alors la hiérarchie Hub DSI mise en cache (`hubdsi_referentiel` :
+ * DGA > direction > service > secteur, via `parent_code`) d'un niveau à
+ * l'autre jusqu'à retomber sur un libellé déjà répertorié dans la table de
+ * concordance des directions (`directionLibelles`, déjà normalisés). Si le
+ * nom brut n'est pas dans le référentiel Hub DSI, ou si aucun ancêtre ne
+ * correspond à une direction connue, renvoie le nom brut tel quel (inchangé
+ * — resolveDirectionCodes retombera sur le comportement "non concordé").
+ */
+async function climbToKnownDirection(rawName, directionLibelles) {
+  const hubRows = await db.all(`SELECT code, libelle, parent_code FROM hubdsi_referentiel`);
+  if (!hubRows.length) return rawName;
+  const byCode = new Map(hubRows.map((r) => [r.code, r]));
+  const target = normalizeForMatch(rawName);
+
+  let node = hubRows.find((r) => normalizeForMatch(r.libelle) === target);
+  const seen = new Set();
+  while (node && !seen.has(node.code)) {
+    if (directionLibelles.has(normalizeForMatch(node.libelle))) return node.libelle;
+    seen.add(node.code);
+    node = node.parent_code ? byCode.get(node.parent_code) : null;
+  }
+  return rawName;
+}
+
+/**
+ * Résout le nom brut d'une direction ou d'un service (tel que renvoyé par
+ * l'AD/l'APM, ou saisi manuellement) vers ses sigles applicatifs, via la
+ * table de concordance — comparaison insensible à la casse, aux espaces
+ * superflus et aux accents (l'AD ne les saisit pas toujours). Deux cas :
+ *  - le nom brut correspond déjà à une direction connue ;
+ *  - sinon, c'est peut-être un service : on remonte vers sa direction de
+ *    rattachement via la hiérarchie Hub DSI (cf. climbToKnownDirection).
+ * Une même direction peut en outre avoir été saisie sous plusieurs sigles
+ * distincts dans l'Excel source (ex. DSPORT, DSPORTS, Dsports, SPORT tous
+ * concordés vers le même libellé) : on renvoie donc TOUS les codes qui
+ * concordent avec ce libellé, pas seulement le premier trouvé, pour ne
+ * perdre aucun engagement. Renvoie un tableau vide si aucune correspondance
+ * (direction non encore répertoriée dans la concordance).
  */
 async function resolveDirectionCodes(rawDirectionName) {
   if (!rawDirectionName || !rawDirectionName.trim()) return [];
-  const target = normalizeForMatch(rawDirectionName);
   const rows = await db.all(`SELECT code, libelle FROM directions WHERE libelle IS NOT NULL`);
-  return rows.filter((d) => normalizeForMatch(d.libelle) === target).map((d) => d.code);
+  const directionLibelles = new Set(rows.map((d) => normalizeForMatch(d.libelle)));
+
+  let target = normalizeForMatch(rawDirectionName);
+  if (!directionLibelles.has(target)) {
+    const climbed = await climbToKnownDirection(rawDirectionName, directionLibelles);
+    target = normalizeForMatch(climbed);
+  }
+
+  return [...new Set(rows.filter((d) => normalizeForMatch(d.libelle) === target).map((d) => d.code))];
 }
 
 /**
