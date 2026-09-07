@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+@theme {
+  /* Couleur institutionnelle Ville d'Ivry-sur-Seine (cf. guide, footer mail) */
+  --color-ville-blue: #0055a4;
+  --color-ville-blue-dark: #003d78;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  background: #f4f6f9;
+  color: #0f172a;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Scrollbars discrets pour les tableaux qui débordent horizontalement */
+.scroll-x {
+  overflow-x: auto;
+}

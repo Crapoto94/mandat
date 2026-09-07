@@ -1,0 +1,45 @@
+services:
+  # Postgres de développement local, avec le même schéma dédié `mandat` que
+  # celui utilisé sur le PostgreSQL partagé de la Ville en production.
+  # En prod, ce service n'est pas utilisé : POSTGRES_HOST pointe vers la base Ville.
+  db:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-ivry_admin}
+      - POSTGRES_USER=${POSTGRES_USER:-mandat_dev}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-mandat_dev}
+    ports: ["5433:5432"]
+    volumes:
+      - mandat_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mandat_dev}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: { context: ./backend }
+    restart: always
+    ports: ["5151:5151"]
+    env_file: ./backend/.env
+    environment:
+      - NODE_ENV=production
+      - PORT=5151
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        - VITE_API_URL=${APP_API_URL:-http://localhost:5151}
+    restart: always
+    ports: ["5150:80"]
+    depends_on: [backend]
+
+volumes:
+  mandat_pgdata:
