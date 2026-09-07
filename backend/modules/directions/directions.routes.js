@@ -36,23 +36,30 @@ router.patch('/:code', requireAuth, requireAdmin, async (req, res) => {
  * libellé déjà affecté manuellement — la concordance manuelle a priorité.
  */
 router.post('/sync', requireAuth, requireAdmin, async (req, res) => {
-  const { data: raw, error } = await hubdsi.getDirectionsServices();
+  const { data: raw, structured, error } = await hubdsi.getDirectionsServices();
   if (error) {
     return res.status(502).json({ error: `Hub DSI : ${error}` });
   }
-  const remote = hubdsi.normalizeDirections(raw);
+  // `structured` : déjà des paires {code, libelle, parentCode} dédoublonnées
+  // (API dédiée org-directions/org-services) ; sinon `raw` est la réponse
+  // brute d'un endpoint de repli, à aplatir nous-mêmes.
+  const remote = structured ? raw : hubdsi.normalizeDirections(raw).map((d) => ({ ...d, parentCode: null }));
   if (!remote.length) {
     return res.status(502).json({ error: "Réponse du Hub DSI vide ou dans un format inattendu — vérifier la doc Swagger (/api/docs)" });
   }
 
   // Rafraîchit le cache complet (remplacement, l'organigramme peut évoluer).
+  // Directions (sans parent) insérées avant leurs services, pour un rendu
+  // groupé cohérent même si parent_code n'est pas garanti côté lecture.
   await db.run(`DELETE FROM hubdsi_referentiel`);
-  for (const { code, libelle } of remote) {
+  const ordered = [...remote].sort((a, b) => (a.parentCode ? 1 : 0) - (b.parentCode ? 1 : 0));
+  for (const { code, libelle, parentCode } of ordered) {
     await db
-      .run(`INSERT INTO hubdsi_referentiel (code, libelle) VALUES ($1, $2) ON CONFLICT (code) DO UPDATE SET libelle = EXCLUDED.libelle, synced_at = now()`, [
-        code,
-        libelle,
-      ])
+      .run(
+        `INSERT INTO hubdsi_referentiel (code, libelle, parent_code) VALUES ($1, $2, $3)
+         ON CONFLICT (code) DO UPDATE SET libelle = EXCLUDED.libelle, parent_code = EXCLUDED.parent_code, synced_at = now()`,
+        [code, libelle, parentCode || null]
+      )
       .catch(() => {}); // ignore un doublon de libellé improbable plutôt que d'interrompre la synchro
   }
 

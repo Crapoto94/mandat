@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { api, apiErrorMessage } from '../lib/api'
 import type { Direction, Etat, HubdsiEntry, Meteo, RoleDef } from '../types'
 import { ShieldCheck, Upload, CheckCircle2, XCircle, RefreshCw, Tags, Trash2, Plus, List } from 'lucide-react'
@@ -144,6 +144,43 @@ function DirectionsSection({
 
   useEffect(load, [])
 
+  // Regroupe le référentiel par racine (direction, ou DGA si l'organigramme
+  // complet remonte plus haut) → tous ses descendants (services, secteurs...),
+  // aplatis avec profondeur pour un rendu indenté dans l'<optgroup> — un
+  // <select> HTML ne supporte qu'un seul niveau de groupe imbriqué.
+  const hubdsiGroups = useMemo(() => {
+    const byCode = new Map(hubdsiList.map((h) => [h.code, h]))
+    const childrenOf = new Map<string, HubdsiEntry[]>()
+    const roots: HubdsiEntry[] = []
+    const orphans: HubdsiEntry[] = []
+
+    for (const h of hubdsiList) {
+      if (!h.parent_code) {
+        roots.push(h)
+      } else if (byCode.has(h.parent_code)) {
+        if (!childrenOf.has(h.parent_code)) childrenOf.set(h.parent_code, [])
+        childrenOf.get(h.parent_code)!.push(h)
+      } else {
+        orphans.push(h) // parent référencé mais absent du référentiel (repli tel quel)
+      }
+    }
+
+    function flatten(node: HubdsiEntry, depth: number, out: { entry: HubdsiEntry; depth: number }[]) {
+      for (const child of childrenOf.get(node.code) || []) {
+        out.push({ entry: child, depth })
+        flatten(child, depth + 1, out)
+      }
+    }
+
+    const groups = roots.map((root) => {
+      const items: { entry: HubdsiEntry; depth: number }[] = []
+      flatten(root, 1, items)
+      return { root, items }
+    })
+
+    return { groups, orphans }
+  }, [hubdsiList])
+
   async function saveLibelle(code: string) {
     try {
       await api.patch(`/directions/${encodeURIComponent(code)}`, { libelle: drafts[code] })
@@ -237,11 +274,35 @@ function DirectionsSection({
                       className="w-full rounded-md border border-slate-300 px-2 py-1 text-sm focus:border-ville-blue focus:outline-none"
                     >
                       <option value="">— Choisir —</option>
-                      {hubdsiList.map((h) => (
-                        <option key={h.code} value={h.libelle}>
-                          {h.libelle}
-                        </option>
-                      ))}
+                      {hubdsiGroups.groups.map(({ root, items }) => {
+                        if (!items.length) {
+                          return (
+                            <option key={root.code} value={root.libelle}>
+                              {root.libelle}
+                            </option>
+                          )
+                        }
+                        return (
+                          <optgroup key={root.code} label={root.libelle}>
+                            <option value={root.libelle}>{root.libelle}</option>
+                            {items.map(({ entry, depth }) => (
+                              <option key={entry.code} value={entry.libelle}>
+                                {'  '.repeat(depth)}
+                                {entry.libelle}
+                              </option>
+                            ))}
+                          </optgroup>
+                        )
+                      })}
+                      {!!hubdsiGroups.orphans.length && (
+                        <optgroup label="Autres">
+                          {hubdsiGroups.orphans.map((o) => (
+                            <option key={o.code} value={o.libelle}>
+                              {o.libelle}
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
                       <option value={CUSTOM}>Autre (saisie libre)…</option>
                     </select>
                   )}

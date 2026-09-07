@@ -134,6 +134,7 @@ export interface Direction {
 export interface HubdsiEntry {
   code: string
   libelle: string
+  parent_code: string | null
   synced_at: string
 }
 
