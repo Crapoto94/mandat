@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { api, apiErrorMessage } from '../lib/api'
 import type { Direction, Engagement, Etat, Groupe, Meteo } from '../types'
 import EtatBadge from '../components/EtatBadge'
@@ -9,6 +9,7 @@ import { getAxeColor, axeList } from '../lib/axeColors'
 import { Star, Search } from 'lucide-react'
 
 export default function EngagementsPage() {
+  const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
   const [engagements, setEngagements] = useState<Engagement[]>([])
   const [groupes, setGroupes] = useState<Groupe[]>([])
@@ -200,12 +201,17 @@ export default function EngagementsPage() {
               {engagements.map((e) => (
                 <tr
                   key={e.id}
-                  className="border-b border-slate-50 last:border-0 hover:bg-slate-50"
+                  onClick={() => navigate(`/engagements/${e.id}`)}
+                  className="cursor-pointer border-b border-slate-50 last:border-0 hover:bg-slate-50"
                   style={{ borderLeft: `3px solid ${getAxeColor(e.axe)}` }}
                 >
                   <td className="px-4 py-3 align-top text-slate-500">{e.numero}</td>
                   <td className="max-w-md px-4 py-3 align-top">
-                    <Link to={`/engagements/${e.id}`} className="font-medium text-slate-800 hover:text-ville-blue">
+                    <Link
+                      to={`/engagements/${e.id}`}
+                      onClick={(ev) => ev.stopPropagation()}
+                      className="font-medium text-slate-800 hover:text-ville-blue"
+                    >
                       {e.contenu}
                     </Link>
                     <AxeTag axe={e.axe} className="mt-1" />
