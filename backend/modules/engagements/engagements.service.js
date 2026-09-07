@@ -13,6 +13,8 @@ const EDITABLE_FIELDS = [
   'description_avancement',
   'prochaines_etapes',
   'roles_precises',
+  'groupe_id',
+  'meteo_code',
 ];
 
 const MAX_PRIORITAIRES_PAR_GROUPE = 3;
@@ -53,10 +55,12 @@ async function list(filters) {
   const { where, params } = buildFilters(filters);
   return db.all(
     `SELECT e.*, g.code AS groupe_code, g.nom AS groupe_nom,
-            et.libelle AS etat_libelle, et.couleur AS etat_couleur, et.ordre AS etat_ordre
+            et.libelle AS etat_libelle, et.couleur AS etat_couleur, et.ordre AS etat_ordre,
+            m.libelle AS meteo_libelle, m.emoji AS meteo_emoji, m.couleur AS meteo_couleur
      FROM engagements e
      LEFT JOIN groupes g ON g.id = e.groupe_id
      LEFT JOIN etats et ON et.code = e.etat_code
+     LEFT JOIN meteos m ON m.code = e.meteo_code
      ${where}
      ORDER BY e.numero ASC`,
     params
@@ -66,16 +70,18 @@ async function list(filters) {
 async function getById(id) {
   const engagement = await db.get(
     `SELECT e.*, g.code AS groupe_code, g.nom AS groupe_nom,
-            et.libelle AS etat_libelle, et.couleur AS etat_couleur
+            et.libelle AS etat_libelle, et.couleur AS etat_couleur,
+            m.libelle AS meteo_libelle, m.emoji AS meteo_emoji, m.couleur AS meteo_couleur
      FROM engagements e
      LEFT JOIN groupes g ON g.id = e.groupe_id
      LEFT JOIN etats et ON et.code = e.etat_code
+     LEFT JOIN meteos m ON m.code = e.meteo_code
      WHERE e.id = $1`,
     [id]
   );
   if (!engagement) return null;
 
-  const [history, comments, coordinationTopics, roles, steps] = await Promise.all([
+  const [history, comments, coordinationTopics, roles, steps, attachments] = await Promise.all([
     db.all(
       `SELECT * FROM engagement_history WHERE engagement_id = $1 ORDER BY changed_at DESC`,
       [id]
@@ -97,9 +103,14 @@ async function getById(id) {
       `SELECT * FROM engagement_steps WHERE engagement_id = $1 ORDER BY date_etape ASC NULLS LAST, created_at ASC`,
       [id]
     ),
+    db.all(
+      `SELECT id, engagement_id, original_name, mime_type, size_bytes, uploaded_by, created_at
+       FROM engagement_attachments WHERE engagement_id = $1 ORDER BY created_at DESC`,
+      [id]
+    ),
   ]);
 
-  return { ...engagement, history, comments, coordinationTopics, roles, steps };
+  return { ...engagement, history, comments, coordinationTopics, roles, steps, attachments };
 }
 
 async function update(id, patch, author) {

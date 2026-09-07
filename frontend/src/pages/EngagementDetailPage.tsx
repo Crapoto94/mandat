@@ -4,6 +4,10 @@ import { api, apiErrorMessage } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import type { Engagement, Etat } from '../types'
 import EtatBadge from '../components/EtatBadge'
+import AxeTag from '../components/AxeTag'
+import RichTextEditor from '../components/RichTextEditor'
+import RolesSection from '../components/RolesSection'
+import StepsTimeline from '../components/StepsTimeline'
 import { ArrowLeft, Star, Send, Clock, MessageSquare } from 'lucide-react'
 
 export default function EngagementDetailPage() {
@@ -16,24 +20,16 @@ export default function EngagementDetailPage() {
   const [saved, setSaved] = useState(false)
 
   // Champs éditables (brouillon local avant sauvegarde)
-  const [form, setForm] = useState({
-    etat_code: '',
-    description_avancement: '',
-    prochaines_etapes: '',
-    roles_precises: '',
-  })
+  const [etatCode, setEtatCode] = useState('')
+  const [description, setDescription] = useState('')
   const [prioNote, setPrioNote] = useState('')
   const [commentBody, setCommentBody] = useState('')
 
   function load() {
     api.get(`/engagements/${id}`).then((res) => {
       setEngagement(res.data)
-      setForm({
-        etat_code: res.data.etat_code,
-        description_avancement: res.data.description_avancement || '',
-        prochaines_etapes: res.data.prochaines_etapes || '',
-        roles_precises: res.data.roles_precises || '',
-      })
+      setEtatCode(res.data.etat_code)
+      setDescription(res.data.description_avancement || '')
       setPrioNote(res.data.prioritaire_note || '')
     })
   }
@@ -49,7 +45,7 @@ export default function EngagementDetailPage() {
     setError(null)
     setSaved(false)
     try {
-      await api.patch(`/engagements/${id}`, form)
+      await api.patch(`/engagements/${id}`, { etat_code: etatCode, description_avancement: description })
       setSaved(true)
       load()
       setTimeout(() => setSaved(false), 2500)
@@ -106,10 +102,9 @@ export default function EngagementDetailPage() {
       <div className="rounded-xl border border-slate-200 bg-white p-6">
         <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-              Engagement n°{engagement.numero} — {engagement.axe}
-            </p>
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Engagement n°{engagement.numero}</p>
             <h1 className="mt-1 text-lg font-semibold text-slate-900">{engagement.contenu}</h1>
+            <AxeTag axe={engagement.axe} className="mt-2" />
           </div>
           <EtatBadge libelle={engagement.etat_libelle} couleur={engagement.etat_couleur} />
         </div>
@@ -166,8 +161,8 @@ export default function EngagementDetailPage() {
           <div>
             <label className="mb-1 block text-xs font-medium text-slate-500">État d'avancement</label>
             <select
-              value={form.etat_code}
-              onChange={(e) => setForm({ ...form, etat_code: e.target.value })}
+              value={etatCode}
+              onChange={(e) => setEtatCode(e.target.value)}
               className="w-full max-w-xs rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-ville-blue focus:outline-none"
             >
               {etats.map((e) => (
@@ -177,22 +172,10 @@ export default function EngagementDetailPage() {
               ))}
             </select>
           </div>
-          <Field
-            label="Description — point atteint"
-            value={form.description_avancement}
-            onChange={(v) => setForm({ ...form, description_avancement: v })}
-          />
-          <Field
-            label="Prochaines étapes"
-            value={form.prochaines_etapes}
-            onChange={(v) => setForm({ ...form, prochaines_etapes: v })}
-          />
-          <Field
-            label="Rôles précisés / points de coordination entre directions"
-            value={form.roles_precises}
-            onChange={(v) => setForm({ ...form, roles_precises: v })}
-            hint="À compléter quand la répartition entre directions mérite d'être clarifiée."
-          />
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-500">Description — point atteint</label>
+            <RichTextEditor value={description} onChange={setDescription} />
+          </div>
         </div>
         <div className="mt-4 flex items-center gap-3">
           <button
@@ -212,6 +195,10 @@ export default function EngagementDetailPage() {
           </p>
         )}
       </div>
+
+      <RolesSection engagementId={engagement.id} roles={engagement.roles || []} onChange={load} />
+
+      <StepsTimeline engagementId={engagement.id} steps={engagement.steps || []} onChange={load} />
 
       {/* Commentaires */}
       <div className="rounded-xl border border-slate-200 bg-white p-5">
@@ -277,31 +264,6 @@ function Info({ label, value }: { label: string; value?: string | null }) {
   )
 }
 
-function Field({
-  label,
-  value,
-  onChange,
-  hint,
-}: {
-  label: string
-  value: string
-  onChange: (v: string) => void
-  hint?: string
-}) {
-  return (
-    <div>
-      <label className="mb-1 block text-xs font-medium text-slate-500">{label}</label>
-      <textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        rows={3}
-        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-ville-blue focus:outline-none"
-      />
-      {hint && <p className="mt-1 text-xs text-slate-400">{hint}</p>}
-    </div>
-  )
-}
-
 const FIELD_LABELS: Record<string, string> = {
   etat_code: "l'état d'avancement",
   description_avancement: 'la description du point atteint',
@@ -313,7 +275,7 @@ const FIELD_LABELS: Record<string, string> = {
   contribution_elaboration: "la contribution à l'élaboration",
   contribution_impactees: 'les directions impactées',
   echeance: "l'échéance",
-  'prioritaire_plenaire': 'le marquage prioritaire plénière',
+  prioritaire_plenaire: 'le marquage prioritaire plénière',
 }
 
 function fieldLabel(code: string) {

@@ -51,6 +51,61 @@ export interface Engagement {
   history?: EngagementHistoryEntry[]
   comments?: Comment[]
   coordinationTopics?: CoordinationTopic[]
+  roles?: EngagementRole[]
+  steps?: EngagementStep[]
+}
+
+export interface RoleDef {
+  id: number
+  libelle: string
+  ordre: number
+}
+
+export interface EngagementRole {
+  id: number
+  engagement_id: number
+  role_id: number
+  role_libelle: string
+  agent_username: string | null
+  agent_display_name: string
+  agent_direction: string | null
+  created_by: string | null
+  created_at: string
+}
+
+export interface EngagementStep {
+  id: number
+  engagement_id: number
+  date_etape: string | null
+  description: string
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface TimelineEntry extends EngagementStep {
+  engagement_numero: number
+  engagement_contenu: string
+  engagement_axe: string
+  groupe_code: string | null
+}
+
+export interface AgentSearchResult {
+  displayName?: string
+  name?: string
+  username?: string
+  sAMAccountName?: string
+  direction?: string
+  service?: string
+  mail?: string
+  email?: string
+}
+
+export interface Direction {
+  code: string
+  libelle: string | null
+  libelle_manuel: boolean
+  updated_at: string
 }
 
 export interface EngagementHistoryEntry {

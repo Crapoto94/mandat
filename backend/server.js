@@ -24,6 +24,8 @@ const engagementTimelineRoutes = require('./modules/engagements/engagement-timel
 const rolesRoutes = require('./modules/roles/roles.routes');
 const agentsRoutes = require('./modules/agents/agents.routes');
 const timelineRoutes = require('./modules/timeline/timeline.routes');
+const meteoRoutes = require('./modules/meteo/meteo.routes');
+const attachmentsRoutes = require('./modules/attachments/attachments.routes');
 
 const app = express();
 const PORT = process.env.PORT || 5151;
@@ -66,6 +68,8 @@ app.use('/api/notify', notifyRoutes); // /api/notify/mail, /sms, /engagements/:i
 app.use('/api/admin', adminRoutes);
 app.use('/api/directions', directionsRoutes);
 app.use('/api/etats', etatsRoutes);
+app.use('/api/meteos', meteoRoutes);
+app.use('/api', attachmentsRoutes); // /api/engagements/:id/attachments, /api/attachments/:id/file
 
 app.use((req, res) => res.status(404).json({ error: 'Route inconnue' }));
 

@@ -111,13 +111,25 @@ contributions, échéance) et l'affectation aux groupes sont mis à jour.
 ## Déploiement
 
 ```bash
-docker compose up -d --build
+cp .env.example .env   # à la racine — définir APP_API_URL (voir ci-dessous)
+docker compose up -d --build backend frontend   # sans `db` si POSTGRES_HOST (backend/.env) pointe déjà vers la base Ville
 ```
 
 `docker-compose.yml` suit le modèle du guide (service `backend`, service
-`frontend` avec `VITE_API_URL` injecté au build). En production, ne pas
-utiliser le service `db` du compose : pointer `POSTGRES_HOST` (dans le
-`.env` du backend) vers le PostgreSQL partagé de la Ville.
+`frontend` avec `VITE_API_URL` injecté au build). Toute la config backend
+(dont `POSTGRES_HOST`) vient uniquement de `backend/.env`, sans override dans
+le compose — si elle pointe déjà vers le PostgreSQL partagé de la Ville, le
+service `db` du compose (Postgres de dev local) n'est pas utilisé : ne pas le
+démarrer (`docker compose up -d --build backend frontend`, sans `db`).
+
+> ⚠️ **`APP_API_URL` (fichier `.env` à la racine, différent de `backend/.env`)**
+> doit être l'adresse à laquelle le **navigateur des utilisateurs** peut
+> joindre le backend — jamais `localhost` dès que l'appli est servie ailleurs
+> que sur le poste de dev (`localhost` désignerait alors le poste de
+> l'utilisateur, pas le serveur, d'où une erreur *Network Error* au login).
+> Exemple : `APP_API_URL=http://10.103.130.106:5151`. Cette variable est lue
+> **au moment du build** de l'image frontend : après l'avoir changée, refaire
+> `docker compose up -d --build frontend`.
 
 ## Structure du repo
 

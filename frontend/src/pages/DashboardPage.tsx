@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { api, apiErrorMessage } from '../lib/api'
 import type { DashboardSummary, Groupe } from '../types'
 import { AlertTriangle, Star, ListChecks } from 'lucide-react'
+import { getAxeColor } from '../lib/axeColors'
 
 export default function DashboardPage() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null)
@@ -103,7 +104,10 @@ export default function DashboardPage() {
                 {a.axe}
               </span>
               <div className="h-2.5 flex-1 rounded-full bg-slate-100">
-                <div className="h-2.5 rounded-full bg-ville-blue" style={{ width: `${(a.count / maxAxe) * 100}%` }} />
+                <div
+                  className="h-2.5 rounded-full"
+                  style={{ width: `${(a.count / maxAxe) * 100}%`, backgroundColor: getAxeColor(a.axe) }}
+                />
               </div>
               <span className="w-6 shrink-0 text-right text-xs font-medium text-slate-700">{a.count}</span>
             </div>

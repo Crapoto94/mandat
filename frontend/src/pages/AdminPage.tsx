@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { api, apiErrorMessage } from '../lib/api'
-import { ShieldCheck, Upload, CheckCircle2, XCircle } from 'lucide-react'
+import type { Direction, RoleDef } from '../types'
+import { ShieldCheck, Upload, CheckCircle2, XCircle, RefreshCw, Tags, Trash2, Plus } from 'lucide-react'
 
 interface AdminAccount {
   id: number
@@ -98,8 +99,188 @@ export default function AdminPage() {
         <NewAdminForm onCreated={load} />
       </section>
 
+      <DirectionsSection onNotice={setNotice} onError={setError} />
+
+      <RolesCatalogSection onError={setError} />
+
       <ImportSection onDone={(msg) => setNotice(msg)} onError={(msg) => setError(msg)} />
     </div>
+  )
+}
+
+function DirectionsSection({
+  onNotice,
+  onError,
+}: {
+  onNotice: (m: string) => void
+  onError: (m: string) => void
+}) {
+  const [directions, setDirections] = useState<Direction[]>([])
+  const [drafts, setDrafts] = useState<Record<string, string>>({})
+  const [syncing, setSyncing] = useState(false)
+
+  function load() {
+    api.get('/directions').then((res) => {
+      setDirections(res.data)
+      setDrafts(Object.fromEntries(res.data.map((d: Direction) => [d.code, d.libelle || ''])))
+    })
+  }
+
+  useEffect(load, [])
+
+  async function saveLibelle(code: string) {
+    try {
+      await api.patch(`/directions/${encodeURIComponent(code)}`, { libelle: drafts[code] })
+      load()
+    } catch (err) {
+      onError(apiErrorMessage(err, 'Sauvegarde impossible'))
+    }
+  }
+
+  async function sync() {
+    setSyncing(true)
+    try {
+      const res = await api.post('/directions/sync')
+      onNotice(
+        `Synchronisation Hub DSI : ${res.data.synchronises} mis à jour, ${res.data.ignoresManuels} déjà saisis manuellement conservés (sur ${res.data.recuDuHub} reçus).`
+      )
+      load()
+    } catch (err) {
+      onError(apiErrorMessage(err, 'Synchronisation Hub DSI impossible'))
+    } finally {
+      setSyncing(false)
+    }
+  }
+
+  return (
+    <section className="rounded-xl border border-slate-200 bg-white p-5">
+      <div className="mb-1 flex items-center justify-between">
+        <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+          <Tags size={16} /> Table de concordance des directions
+        </h2>
+        <button
+          onClick={sync}
+          disabled={syncing}
+          className="flex items-center gap-1.5 rounded-md border border-slate-300 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-60"
+        >
+          <RefreshCw size={13} className={syncing ? 'animate-spin' : ''} />
+          Synchroniser depuis le Hub DSI
+        </button>
+      </div>
+      <p className="mb-4 text-xs text-slate-500">
+        Sigles rencontrés dans les engagements (pilotage / contributions) — associez leur nom complet. La
+        synchronisation Hub DSI ne touche jamais un libellé déjà saisi manuellement ici.
+      </p>
+      <div className="max-h-96 overflow-y-auto">
+        <table className="w-full text-sm">
+          <thead className="sticky top-0 bg-white">
+            <tr className="border-b border-slate-100 text-left text-xs uppercase text-slate-500">
+              <th className="py-2 pr-3 font-medium">Sigle</th>
+              <th className="py-2 pr-3 font-medium">Nom complet</th>
+              <th className="py-2 font-medium">Origine</th>
+              <th className="py-2 font-medium"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {directions.map((d) => (
+              <tr key={d.code} className="border-b border-slate-50 last:border-0">
+                <td className="py-1.5 pr-3 font-medium text-slate-700">{d.code}</td>
+                <td className="py-1.5 pr-3">
+                  <input
+                    value={drafts[d.code] ?? ''}
+                    onChange={(e) => setDrafts({ ...drafts, [d.code]: e.target.value })}
+                    placeholder="Nom complet de la direction"
+                    className="w-full rounded-md border border-slate-300 px-2 py-1 text-sm focus:border-ville-blue focus:outline-none"
+                  />
+                </td>
+                <td className="py-1.5 text-xs text-slate-400">{d.libelle_manuel ? 'Manuel' : 'Hub DSI / auto'}</td>
+                <td className="py-1.5 text-right">
+                  <button
+                    onClick={() => saveLibelle(d.code)}
+                    disabled={(drafts[d.code] ?? '') === (d.libelle ?? '')}
+                    className="text-xs font-medium text-ville-blue hover:underline disabled:opacity-40"
+                  >
+                    Enregistrer
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {!directions.length && (
+              <tr>
+                <td colSpan={4} className="py-6 text-center text-xs text-slate-400">
+                  Aucun sigle référencé pour l'instant (généré automatiquement à l'import des engagements).
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  )
+}
+
+function RolesCatalogSection({ onError }: { onError: (m: string) => void }) {
+  const [roles, setRoles] = useState<RoleDef[]>([])
+  const [newLabel, setNewLabel] = useState('')
+
+  function load() {
+    api.get('/roles').then((res) => setRoles(res.data))
+  }
+
+  useEffect(load, [])
+
+  async function add(e: FormEvent) {
+    e.preventDefault()
+    if (!newLabel.trim()) return
+    try {
+      await api.post('/roles', { libelle: newLabel.trim(), ordre: roles.length + 1 })
+      setNewLabel('')
+      load()
+    } catch (err) {
+      onError(apiErrorMessage(err, 'Création impossible'))
+    }
+  }
+
+  async function remove(id: number) {
+    try {
+      await api.delete(`/roles/${id}`)
+      load()
+    } catch (err) {
+      onError(apiErrorMessage(err, 'Suppression impossible'))
+    }
+  }
+
+  return (
+    <section className="rounded-xl border border-slate-200 bg-white p-5">
+      <h2 className="mb-1 text-sm font-semibold text-slate-800">Catalogue des rôles</h2>
+      <p className="mb-4 text-xs text-slate-500">
+        Rôles proposés lors de l'assignation d'un agent sur un engagement (fiche engagement → « Rôles assignés »).
+      </p>
+      <ul className="mb-4 space-y-1.5">
+        {roles.map((r) => (
+          <li key={r.id} className="flex items-center justify-between rounded-md bg-slate-50 px-3 py-1.5 text-sm">
+            {r.libelle}
+            <button onClick={() => remove(r.id)} className="text-slate-400 hover:text-red-600" title="Supprimer">
+              <Trash2 size={14} />
+            </button>
+          </li>
+        ))}
+      </ul>
+      <form onSubmit={add} className="flex items-center gap-2">
+        <input
+          value={newLabel}
+          onChange={(e) => setNewLabel(e.target.value)}
+          placeholder="Nouveau rôle (ex : Décisionnaire)"
+          className="flex-1 rounded-md border border-slate-300 px-2.5 py-1.5 text-sm focus:border-ville-blue focus:outline-none"
+        />
+        <button
+          type="submit"
+          className="flex items-center gap-1.5 rounded-md bg-ville-blue px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
+        >
+          <Plus size={14} /> Ajouter
+        </button>
+      </form>
+    </section>
   )
 }
 

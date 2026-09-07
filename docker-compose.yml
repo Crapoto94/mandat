@@ -22,20 +22,30 @@ services:
     build: { context: ./backend }
     restart: always
     ports: ["5151:5151"]
+    # Toute la config (dont POSTGRES_HOST/PORT) vient de backend/.env, sans
+    # override ici : si POSTGRES_HOST y pointe déjà vers la base Ville, le
+    # service `db` ci-dessus n'est pas utilisé (ne pas le démarrer dans ce
+    # cas : `docker compose up -d --build backend frontend`).
+    # Pour utiliser le Postgres de dev local du compose à la place, mettre
+    # POSTGRES_HOST=db et POSTGRES_PORT=5432 dans backend/.env.
     env_file: ./backend/.env
     environment:
       - NODE_ENV=production
       - PORT=5151
-      - POSTGRES_HOST=db
-      - POSTGRES_PORT=5432
-    depends_on:
-      db:
-        condition: service_healthy
+      - UPLOADS_DIR=/app/data/uploads
+      - ATTACHMENTS_DIR=/app/data/attachments
+    volumes:
+      - ./data:/app/data
 
   frontend:
     build:
       context: ./frontend
       args:
+        # IMPORTANT : c'est l'adresse à laquelle le NAVIGATEUR des utilisateurs
+        # peut joindre le backend — jamais "localhost" en déploiement distant
+        # (ça désignerait le poste de l'utilisateur, pas le serveur). Définir
+        # APP_API_URL dans un fichier .env à la racine du repo, ex. :
+        #   APP_API_URL=http://10.103.130.106:5151
         - VITE_API_URL=${APP_API_URL:-http://localhost:5151}
     restart: always
     ports: ["5150:80"]

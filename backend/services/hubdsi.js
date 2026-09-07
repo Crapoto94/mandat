@@ -34,24 +34,45 @@ async function getElus() {
 }
 
 /**
- * Normalise la réponse (forme non documentée avec certitude) en paires
- * {code, libelle} : accepte un tableau direct ou un objet enveloppant
- * (data/results/directions/services), et plusieurs noms de champs possibles.
+ * Normalise la réponse `/api/directions-services` (un organigramme —
+ * hiérarchie de la Ville, potentiellement imbriquée sur plusieurs niveaux
+ * direction → services, sous des noms de champs non garantis) en paires
+ * {code, libelle} : parcourt récursivement toute la structure, à tous les
+ * niveaux, qu'il s'agisse d'une direction ou d'un service — peu importe le
+ * nom de la clé qui les contient. Le nom complet retenu est celui du
+ * référentiel Hub DSI, tel quel.
  */
 function normalizeDirections(raw) {
-  if (!raw) return [];
-  const list = Array.isArray(raw)
-    ? raw
-    : raw.data || raw.results || raw.directions || raw.services || raw.items || [];
-  if (!Array.isArray(list)) return [];
+  const found = [];
+  const seen = new Set();
 
-  return list
-    .map((item) => {
-      const code = item.code || item.sigle || item.acronyme || item.abbreviation || item.short_name;
-      const libelle = item.libelle || item.nom || item.name || item.designation || item.label;
-      return code && libelle ? { code: String(code).trim(), libelle: String(libelle).trim() } : null;
-    })
-    .filter(Boolean);
+  function visit(node) {
+    if (!node || typeof node !== 'object') return;
+
+    if (Array.isArray(node)) {
+      node.forEach(visit);
+      return;
+    }
+
+    const code = node.code || node.sigle || node.acronyme || node.abbreviation || node.short_name;
+    const libelle = node.libelle || node.nom || node.name || node.designation || node.label;
+    if (code && libelle) {
+      const key = String(code).trim().toUpperCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        found.push({ code: String(code).trim(), libelle: String(libelle).trim() });
+      }
+    }
+
+    // Descend dans toute sous-structure (organigramme = direction > services > ...),
+    // quel que soit le nom du champ qui la porte.
+    for (const value of Object.values(node)) {
+      if (value && typeof value === 'object') visit(value);
+    }
+  }
+
+  visit(raw);
+  return found;
 }
 
 module.exports = { hubConfigured, getDirectionsServices, getElus, normalizeDirections };

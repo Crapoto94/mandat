@@ -2,12 +2,17 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
 const { db } = require('../../db/pg_db');
 const { requireAuth, requireAdmin } = require('../../middleware/auth');
 const { importFromFiles } = require('../../scripts/import-lib');
 
 const router = express.Router();
-const upload = multer({ dest: path.join(__dirname, '..', '..', '..', 'data', 'uploads') });
+// Chemin paramétrable (cf. ATTACHMENTS_DIR dans attachments.routes.js) —
+// en Docker, pointer UPLOADS_DIR vers le volume monté.
+const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(__dirname, '..', '..', '..', 'data', 'uploads');
+fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+const upload = multer({ dest: UPLOADS_DIR });
 
 router.use(requireAuth, requireAdmin);
 

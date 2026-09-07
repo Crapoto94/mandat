@@ -1,11 +1,20 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { LayoutDashboard, ListChecks, MessageSquareWarning, Presentation, ShieldCheck, LogOut } from 'lucide-react'
+import {
+  LayoutDashboard,
+  ListChecks,
+  MessageSquareWarning,
+  Presentation,
+  ShieldCheck,
+  LogOut,
+  GitCommitHorizontal,
+} from 'lucide-react'
 
 const navItems = [
   { to: '/', label: 'Tableau de bord', icon: LayoutDashboard, end: true },
   { to: '/engagements', label: 'Engagements', icon: ListChecks },
   { to: '/coordination', label: 'Coordination', icon: MessageSquareWarning },
+  { to: '/timeline', label: 'Timeline', icon: GitCommitHorizontal },
   { to: '/plenaire', label: 'Plénière', icon: Presentation },
 ]
 

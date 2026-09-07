@@ -20,6 +20,24 @@ function requireAuth(req, res, next) {
   }
 }
 
+/**
+ * Variante pour les ressources chargées par le navigateur sans pouvoir fixer
+ * d'en-tête (balises <img>, liens de téléchargement direct) : accepte le
+ * JWT en query string (?token=...) en plus du header Authorization.
+ * Réservé aux routes GET de lecture de fichiers déjà uploadés.
+ */
+function requireAuthQueryOrHeader(req, res, next) {
+  const header = req.headers.authorization || '';
+  const token = (header.startsWith('Bearer ') ? header.slice(7) : null) || req.query.token;
+  if (!token) return res.status(401).json({ error: 'Authentification requise' });
+  try {
+    req.user = jwt.verify(token, JWT_SECRET);
+    return next();
+  } catch (err) {
+    return res.status(401).json({ error: 'Session invalide ou expirée' });
+  }
+}
+
 /** Restreint une route au rôle admin (compte de secours local). */
 function requireAdmin(req, res, next) {
   if (req.user?.role !== 'admin') {
@@ -28,4 +46,4 @@ function requireAdmin(req, res, next) {
   return next();
 }
 
-module.exports = { signToken, requireAuth, requireAdmin, JWT_SECRET };
+module.exports = { signToken, requireAuth, requireAuthQueryOrHeader, requireAdmin, JWT_SECRET };
