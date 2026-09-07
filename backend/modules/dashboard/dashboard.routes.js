@@ -8,22 +8,22 @@ router.get('/summary', requireAuth, async (req, res) => {
   const [parEtat, parAxe, parGroupe, total, prioritaires, sansGroupe] = await Promise.all([
     db.all(
       `SELECT et.code, et.libelle, et.couleur, et.ordre, COUNT(e.id)::int AS count
-       FROM mandat.etats et
-       LEFT JOIN mandat.engagements e ON e.etat_code = et.code
+       FROM etats et
+       LEFT JOIN engagements e ON e.etat_code = et.code
        GROUP BY et.code, et.libelle, et.couleur, et.ordre
        ORDER BY et.ordre ASC`
     ),
     db.all(
-      `SELECT axe, COUNT(*)::int AS count FROM mandat.engagements GROUP BY axe ORDER BY MIN(numero) ASC`
+      `SELECT axe, COUNT(*)::int AS count FROM engagements GROUP BY axe ORDER BY MIN(numero) ASC`
     ),
     db.all(
       `SELECT g.code, g.nom, COUNT(e.id)::int AS count
-       FROM mandat.groupes g LEFT JOIN mandat.engagements e ON e.groupe_id = g.id
+       FROM groupes g LEFT JOIN engagements e ON e.groupe_id = g.id
        GROUP BY g.code, g.nom, g.ordre ORDER BY g.ordre ASC`
     ),
-    db.get(`SELECT COUNT(*)::int AS count FROM mandat.engagements`),
-    db.get(`SELECT COUNT(*)::int AS count FROM mandat.engagements WHERE prioritaire_plenaire = true`),
-    db.get(`SELECT COUNT(*)::int AS count FROM mandat.engagements WHERE groupe_id IS NULL`),
+    db.get(`SELECT COUNT(*)::int AS count FROM engagements`),
+    db.get(`SELECT COUNT(*)::int AS count FROM engagements WHERE prioritaire_plenaire = true`),
+    db.get(`SELECT COUNT(*)::int AS count FROM engagements WHERE groupe_id IS NULL`),
   ]);
 
   res.json({

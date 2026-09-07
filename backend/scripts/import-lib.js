@@ -104,7 +104,7 @@ async function importFromFiles({ suiviFile, repartitionFile }) {
   const suiviRows = parseSuiviWorkbook(suiviFile);
   const groupMap = repartitionFile ? parseRepartitionWorkbook(repartitionFile) : new Map();
 
-  const groupes = await db.all(`SELECT id, code FROM mandat.groupes`);
+  const groupes = await db.all(`SELECT id, code FROM groupes`);
   const groupeIdByCode = new Map(groupes.map((g) => [g.code, g.id]));
 
   const warnings = [];
@@ -130,11 +130,11 @@ async function importFromFiles({ suiviFile, repartitionFile }) {
       directionCodes.add(c)
     );
 
-    const existing = await db.get(`SELECT id FROM mandat.engagements WHERE numero = $1`, [row.numero]);
+    const existing = await db.get(`SELECT id FROM engagements WHERE numero = $1`, [row.numero]);
 
     if (existing) {
       await db.run(
-        `UPDATE mandat.engagements SET
+        `UPDATE engagements SET
            axe = $1, contenu = $2, pilotage = $3, contribution_elaboration = $4,
            contribution_impactees = $5, echeance = $6, groupe_id = COALESCE($7, groupe_id)
          WHERE id = $8`,
@@ -152,7 +152,7 @@ async function importFromFiles({ suiviFile, repartitionFile }) {
       updated += 1;
     } else {
       await db.run(
-        `INSERT INTO mandat.engagements
+        `INSERT INTO engagements
            (numero, axe, contenu, pilotage, contribution_elaboration, contribution_impactees,
             echeance, etat_code, description_avancement, prochaines_etapes, groupe_id)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
@@ -176,7 +176,7 @@ async function importFromFiles({ suiviFile, repartitionFile }) {
 
   for (const code of directionCodes) {
     await db
-      .run(`INSERT INTO mandat.directions (code, libelle) VALUES ($1, $1) ON CONFLICT DO NOTHING`, [code])
+      .run(`INSERT INTO directions (code, libelle) VALUES ($1, $1) ON CONFLICT DO NOTHING`, [code])
       .catch(() => {});
   }
 

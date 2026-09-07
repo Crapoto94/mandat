@@ -1,4 +1,7 @@
-require('dotenv').config();
+// Chemin explicite : sinon dotenv cherche .env dans process.cwd(), qui peut
+// différer du dossier backend/ selon la façon dont le process est lancé
+// (ex. `npm --prefix backend run dev` depuis la racine du repo).
+require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 const express = require('express');
 const cors = require('cors');
 const swaggerJsdoc = require('swagger-jsdoc');
@@ -17,6 +20,10 @@ const notifyRoutes = require('./modules/notify/notify.routes');
 const adminRoutes = require('./modules/admin/admin.routes');
 const directionsRoutes = require('./modules/directions/directions.routes');
 const etatsRoutes = require('./modules/directions/etats.routes');
+const engagementTimelineRoutes = require('./modules/engagements/engagement-timeline.routes');
+const rolesRoutes = require('./modules/roles/roles.routes');
+const agentsRoutes = require('./modules/agents/agents.routes');
+const timelineRoutes = require('./modules/timeline/timeline.routes');
 
 const app = express();
 const PORT = process.env.PORT || 5151;
@@ -47,7 +54,11 @@ app.get('/api/status', async (req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/engagements', engagementsRoutes);
+app.use('/api/engagements', engagementTimelineRoutes); // /:id/roles, /:id/steps
 app.use('/api', commentsRoutes); // expose /api/engagements/:id/comments
+app.use('/api/roles', rolesRoutes);
+app.use('/api/agents', agentsRoutes);
+app.use('/api/timeline', timelineRoutes);
 app.use('/api/coordination', coordinationRoutes);
 app.use('/api/groupes', groupsRoutes);
 app.use('/api/dashboard', dashboardRoutes);

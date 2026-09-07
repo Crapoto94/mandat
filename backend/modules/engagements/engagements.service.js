@@ -54,9 +54,9 @@ async function list(filters) {
   return db.all(
     `SELECT e.*, g.code AS groupe_code, g.nom AS groupe_nom,
             et.libelle AS etat_libelle, et.couleur AS etat_couleur, et.ordre AS etat_ordre
-     FROM mandat.engagements e
-     LEFT JOIN mandat.groupes g ON g.id = e.groupe_id
-     LEFT JOIN mandat.etats et ON et.code = e.etat_code
+     FROM engagements e
+     LEFT JOIN groupes g ON g.id = e.groupe_id
+     LEFT JOIN etats et ON et.code = e.etat_code
      ${where}
      ORDER BY e.numero ASC`,
     params
@@ -67,33 +67,43 @@ async function getById(id) {
   const engagement = await db.get(
     `SELECT e.*, g.code AS groupe_code, g.nom AS groupe_nom,
             et.libelle AS etat_libelle, et.couleur AS etat_couleur
-     FROM mandat.engagements e
-     LEFT JOIN mandat.groupes g ON g.id = e.groupe_id
-     LEFT JOIN mandat.etats et ON et.code = e.etat_code
+     FROM engagements e
+     LEFT JOIN groupes g ON g.id = e.groupe_id
+     LEFT JOIN etats et ON et.code = e.etat_code
      WHERE e.id = $1`,
     [id]
   );
   if (!engagement) return null;
 
-  const [history, comments, coordinationTopics] = await Promise.all([
+  const [history, comments, coordinationTopics, roles, steps] = await Promise.all([
     db.all(
-      `SELECT * FROM mandat.engagement_history WHERE engagement_id = $1 ORDER BY changed_at DESC`,
+      `SELECT * FROM engagement_history WHERE engagement_id = $1 ORDER BY changed_at DESC`,
       [id]
     ),
-    db.all(`SELECT * FROM mandat.comments WHERE engagement_id = $1 ORDER BY created_at ASC`, [id]),
+    db.all(`SELECT * FROM comments WHERE engagement_id = $1 ORDER BY created_at ASC`, [id]),
     db.all(
-      `SELECT t.* FROM mandat.coordination_topics t
-       JOIN mandat.coordination_topic_engagements l ON l.topic_id = t.id
+      `SELECT t.* FROM coordination_topics t
+       JOIN coordination_topic_engagements l ON l.topic_id = t.id
        WHERE l.engagement_id = $1 ORDER BY t.updated_at DESC`,
+      [id]
+    ),
+    db.all(
+      `SELECT er.*, r.libelle AS role_libelle FROM engagement_roles er
+       JOIN roles r ON r.id = er.role_id
+       WHERE er.engagement_id = $1 ORDER BY er.created_at ASC`,
+      [id]
+    ),
+    db.all(
+      `SELECT * FROM engagement_steps WHERE engagement_id = $1 ORDER BY date_etape ASC NULLS LAST, created_at ASC`,
       [id]
     ),
   ]);
 
-  return { ...engagement, history, comments, coordinationTopics };
+  return { ...engagement, history, comments, coordinationTopics, roles, steps };
 }
 
 async function update(id, patch, author) {
-  const current = await db.get(`SELECT * FROM mandat.engagements WHERE id = $1`, [id]);
+  const current = await db.get(`SELECT * FROM engagements WHERE id = $1`, [id]);
   if (!current) return { ok: false, status: 404, error: 'Engagement introuvable' };
 
   const fields = Object.keys(patch).filter((k) => EDITABLE_FIELDS.includes(k));
@@ -104,7 +114,10 @@ async function update(id, patch, author) {
   const historyEntries = [];
 
   for (const field of fields) {
-    const newValue = patch[field];
+    // Une chaîne vide venant d'un champ texte non renseigné équivaut à
+    // l'absence de valeur : on normalise pour ne pas polluer l'historique
+    // à chaque sauvegarde d'un champ resté vide.
+    const newValue = patch[field] === '' ? null : patch[field];
     const oldValue = current[field];
     if ((oldValue ?? null) === (newValue ?? null)) continue; // pas de changement réel
     params.push(newValue);
@@ -119,13 +132,13 @@ async function update(id, patch, author) {
   params.push(id);
 
   const updated = await db.get(
-    `UPDATE mandat.engagements SET ${setClauses.join(', ')} WHERE id = $${params.length} RETURNING *`,
+    `UPDATE engagements SET ${setClauses.join(', ')} WHERE id = $${params.length} RETURNING *`,
     params
   );
 
   for (const entry of historyEntries) {
     await db.run(
-      `INSERT INTO mandat.engagement_history (engagement_id, champ, ancienne_valeur, nouvelle_valeur, changed_by)
+      `INSERT INTO engagement_history (engagement_id, champ, ancienne_valeur, nouvelle_valeur, changed_by)
        VALUES ($1, $2, $3, $4, $5)`,
       [id, entry.field, entry.oldValue ?? null, entry.newValue ?? null, author || null]
     );
@@ -135,7 +148,7 @@ async function update(id, patch, author) {
 }
 
 async function setPrioritaire(id, prioritaire, note, author) {
-  const engagement = await db.get(`SELECT * FROM mandat.engagements WHERE id = $1`, [id]);
+  const engagement = await db.get(`SELECT * FROM engagements WHERE id = $1`, [id]);
   if (!engagement) return { ok: false, status: 404, error: 'Engagement introuvable' };
 
   if (prioritaire && !engagement.prioritaire_plenaire) {
@@ -143,7 +156,7 @@ async function setPrioritaire(id, prioritaire, note, author) {
       return { ok: false, status: 400, error: "Cet engagement n'appartient à aucun groupe" };
     }
     const { count } = await db.get(
-      `SELECT COUNT(*)::int AS count FROM mandat.engagements
+      `SELECT COUNT(*)::int AS count FROM engagements
        WHERE groupe_id = $1 AND prioritaire_plenaire = true AND id <> $2`,
       [engagement.groupe_id, id]
     );
@@ -157,14 +170,14 @@ async function setPrioritaire(id, prioritaire, note, author) {
   }
 
   const updated = await db.get(
-    `UPDATE mandat.engagements
+    `UPDATE engagements
      SET prioritaire_plenaire = $1, prioritaire_note = $2, updated_by = $3
      WHERE id = $4 RETURNING *`,
     [prioritaire, note ?? null, author || null, id]
   );
 
   await db.run(
-    `INSERT INTO mandat.engagement_history (engagement_id, champ, ancienne_valeur, nouvelle_valeur, changed_by)
+    `INSERT INTO engagement_history (engagement_id, champ, ancienne_valeur, nouvelle_valeur, changed_by)
      VALUES ($1, 'prioritaire_plenaire', $2, $3, $4)`,
     [id, String(engagement.prioritaire_plenaire), String(prioritaire), author || null]
   );

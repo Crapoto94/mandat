@@ -1,5 +1,18 @@
 const { Pool } = require('pg');
 
+// Nom du schéma dédié à l'appli — jamais en dur dans les requêtes (cf. guide
+// §1.1) : on le lit du .env et on l'impose via search_path sur chaque
+// connexion du pool. Validé strictement car interpolé tel quel dans du SQL
+// (les identifiants ne se paramètrent pas avec $1, $2… côté Postgres).
+const SCHEMA = validateSchemaName(process.env.POSTGRES_SCHEMA || 'mandat');
+
+function validateSchemaName(name) {
+  if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name)) {
+    throw new Error(`POSTGRES_SCHEMA invalide : "${name}" (lettres/chiffres/underscore uniquement)`);
+  }
+  return name;
+}
+
 // Tous les identifiants proviennent du .env — aucune valeur en dur ici.
 const pool = new Pool({
   user: process.env.POSTGRES_USER,
@@ -7,6 +20,14 @@ const pool = new Pool({
   database: process.env.POSTGRES_DB || 'ivry_admin',
   password: process.env.POSTGRES_PASSWORD,
   port: process.env.POSTGRES_PORT || 5432,
+});
+
+// Impose le schéma dédié sur chaque nouvelle connexion du pool : toutes les
+// requêtes non qualifiées (SELECT * FROM engagements...) s'y résolvent.
+pool.on('connect', (client) => {
+  client.query(`SET search_path TO "${SCHEMA}", public`).catch((err) => {
+    console.error('[DB] Impossible de positionner le search_path :', err.message);
+  });
 });
 
 pool.on('error', (err) => {
@@ -30,4 +51,4 @@ async function checkConnection() {
   }
 }
 
-module.exports = { pool, db, checkConnection };
+module.exports = { pool, db, checkConnection, SCHEMA };

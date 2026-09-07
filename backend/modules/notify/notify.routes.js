@@ -36,7 +36,7 @@ router.post('/engagements/:id/relance', requireAuth, async (req, res) => {
   const { to, message } = req.body || {};
   if (!to || !message) return res.status(400).json({ error: 'to et message sont requis' });
 
-  const engagement = await db.get(`SELECT * FROM mandat.engagements WHERE id = $1`, [req.params.id]);
+  const engagement = await db.get(`SELECT * FROM engagements WHERE id = $1`, [req.params.id]);
   if (!engagement) return res.status(404).json({ error: 'Engagement introuvable' });
 
   try {

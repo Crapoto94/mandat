@@ -2,9 +2,28 @@
 // Toute la mutualisation mail / SMS / AD passe par ici — on ne réimplémente
 // jamais ces intégrations ailleurs dans l'appli (cf. guide §3).
 const axios = require('axios');
+const https = require('https');
 
 const APM_URL = process.env.APM_API_URL || 'https://api.ivry.local';
 const APM_KEY = process.env.APM_API_KEY;
+
+// Le certificat de l'APM interne Ville peut être auto-signé (PKI interne non
+// reconnue par le magasin de CA système). Paramètre explicite, à activer
+// uniquement pour cet hôte interne de confiance — jamais par défaut, et
+// jamais pour un hôte public quelconque (cf. .env.example).
+const TLS_REJECT_UNAUTHORIZED = process.env.APM_TLS_REJECT_UNAUTHORIZED !== 'false';
+
+const apmClient = axios.create({
+  baseURL: APM_URL,
+  httpsAgent: new https.Agent({ rejectUnauthorized: TLS_REJECT_UNAUTHORIZED }),
+});
+
+if (!TLS_REJECT_UNAUTHORIZED) {
+  console.warn(
+    '[APM] ⚠️  Vérification du certificat TLS désactivée (APM_TLS_REJECT_UNAUTHORIZED=false) — ' +
+      "réservé à l'hôte interne APM_API_URL avec certificat auto-signé connu."
+  );
+}
 
 function headers() {
   return { 'X-API-KEY': APM_KEY };
@@ -20,8 +39,8 @@ async function authenticateAgent(username, password) {
     return { success: false, error: 'APM non configuré (APM_API_KEY manquant)' };
   }
   try {
-    const { data } = await axios.post(
-      `${APM_URL}/api/v1/ad/authenticate`,
+    const { data } = await apmClient.post(
+      '/api/v1/ad/authenticate',
       { username, password },
       { headers: headers(), timeout: 8000 }
     );
@@ -35,7 +54,7 @@ async function authenticateAgent(username, password) {
 async function getAgent(identifier) {
   if (!apmConfigured()) return null;
   try {
-    const { data } = await axios.get(`${APM_URL}/api/v1/ad/user`, {
+    const { data } = await apmClient.get('/api/v1/ad/user', {
       params: { identifier },
       headers: headers(),
       timeout: 8000,
@@ -51,7 +70,7 @@ async function getAgent(identifier) {
 async function searchAgents(q) {
   if (!apmConfigured()) return [];
   try {
-    const { data } = await axios.get(`${APM_URL}/api/v1/ad/search`, {
+    const { data } = await apmClient.get('/api/v1/ad/search', {
       params: { q },
       headers: headers(),
       timeout: 8000,
@@ -68,8 +87,8 @@ async function sendMail({ to, subject, content, footer1, footer2, footer3, foote
   if (!apmConfigured()) {
     throw new Error('APM non configuré (APM_API_KEY manquant)');
   }
-  const { data } = await axios.post(
-    `${APM_URL}/api/v1/mail/send`,
+  const { data } = await apmClient.post(
+    '/api/v1/mail/send',
     {
       to,
       subject,
@@ -90,11 +109,7 @@ async function sendSms({ mobile, message }) {
   if (!apmConfigured()) {
     throw new Error('APM non configuré (APM_API_KEY manquant)');
   }
-  const { data } = await axios.post(
-    `${APM_URL}/api/v1/sms/send`,
-    { mobile, message },
-    { headers: headers(), timeout: 10000 }
-  );
+  const { data } = await apmClient.post('/api/v1/sms/send', { mobile, message }, { headers: headers(), timeout: 10000 });
   return data;
 }
 
@@ -102,7 +117,7 @@ async function sendSms({ mobile, message }) {
 async function status() {
   if (!apmConfigured()) return { configured: false, reachable: false };
   try {
-    await axios.get(`${APM_URL}/api/status`, { timeout: 4000 });
+    await apmClient.get('/api/status', { timeout: 4000 });
     return { configured: true, reachable: true };
   } catch (err) {
     return { configured: true, reachable: false, error: err.message };

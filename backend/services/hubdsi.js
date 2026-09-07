@@ -33,4 +33,25 @@ async function getElus() {
   return hub('/api/ville/elus');
 }
 
-module.exports = { hubConfigured, getDirectionsServices, getElus };
+/**
+ * Normalise la réponse (forme non documentée avec certitude) en paires
+ * {code, libelle} : accepte un tableau direct ou un objet enveloppant
+ * (data/results/directions/services), et plusieurs noms de champs possibles.
+ */
+function normalizeDirections(raw) {
+  if (!raw) return [];
+  const list = Array.isArray(raw)
+    ? raw
+    : raw.data || raw.results || raw.directions || raw.services || raw.items || [];
+  if (!Array.isArray(list)) return [];
+
+  return list
+    .map((item) => {
+      const code = item.code || item.sigle || item.acronyme || item.abbreviation || item.short_name;
+      const libelle = item.libelle || item.nom || item.name || item.designation || item.label;
+      return code && libelle ? { code: String(code).trim(), libelle: String(libelle).trim() } : null;
+    })
+    .filter(Boolean);
+}
+
+module.exports = { hubConfigured, getDirectionsServices, getElus, normalizeDirections };

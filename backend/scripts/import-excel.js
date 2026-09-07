@@ -3,7 +3,7 @@
 // Usage :
 //   node scripts/import-excel.js --suivi "chemin/fichier suivi.xlsx" [--repartition "chemin/repartition.xlsx"]
 //   node scripts/import-excel.js --dry-run --suivi "..." --repartition "..."   (aucune écriture DB, juste un aperçu)
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 const { pool } = require('../db/pg_db');
 const { importFromFiles, parseSuiviWorkbook, parseRepartitionWorkbook } = require('./import-lib');
 

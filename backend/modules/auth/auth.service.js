@@ -23,7 +23,7 @@ async function loginAgent(username, password) {
 
   await db
     .run(
-      `INSERT INTO mandat.agents_cache (username, display_name, email, mobile, direction, updated_at)
+      `INSERT INTO agents_cache (username, display_name, email, mobile, direction, updated_at)
        VALUES ($1, $2, $3, $4, $5, now())
        ON CONFLICT (username) DO UPDATE SET
          display_name = EXCLUDED.display_name,
@@ -45,7 +45,7 @@ async function loginAdmin(username, password) {
     return { ok: false, status: 400, error: 'Identifiant et mot de passe requis' };
   }
   const account = await db.get(
-    `SELECT * FROM mandat.admin_users WHERE username = $1 AND active = true`,
+    `SELECT * FROM admin_users WHERE username = $1 AND active = true`,
     [username]
   );
   if (!account) {
@@ -57,7 +57,7 @@ async function loginAdmin(username, password) {
   }
 
   await db
-    .run(`UPDATE mandat.admin_users SET last_login_at = now() WHERE id = $1`, [account.id])
+    .run(`UPDATE admin_users SET last_login_at = now() WHERE id = $1`, [account.id])
     .catch(() => {});
 
   const user = { sub: account.username, role: 'admin', displayName: account.display_name || account.username };
