@@ -44,9 +44,14 @@ services:
         # IMPORTANT : c'est l'adresse à laquelle le NAVIGATEUR des utilisateurs
         # peut joindre le backend — jamais "localhost" en déploiement distant
         # (ça désignerait le poste de l'utilisateur, pas le serveur). Définir
-        # APP_API_URL dans un fichier .env à la racine du repo, ex. :
-        #   APP_API_URL=http://10.103.130.106:5151
-        - VITE_API_URL=${APP_API_URL:-http://localhost:5151}
+        # APP_API_URL dans un fichier .env à la racine du repo :
+        #   - IP/port direct :        APP_API_URL=http://10.103.130.106:5151
+        #   - reverse-proxy nginx     APP_API_URL=        (vide -> chemins
+        #     même origine (/api/…)   relatifs, résolus par nginx en /api/)
+        # Syntaxe SANS ":" avant le tiret : "${VAR-default}" ne retombe sur
+        # le défaut que si APP_API_URL est totalement absent de .env — pas
+        # s'il y est mais vide, sinon impossible de forcer l'URL vide ci-dessus.
+        - VITE_API_URL=${APP_API_URL-http://localhost:5151}
     restart: always
     ports: ["5150:80"]
     depends_on: [backend]

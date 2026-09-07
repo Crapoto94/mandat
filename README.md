@@ -110,34 +110,49 @@ contributions, échéance) et l'affectation aux groupes sont mis à jour.
 
 ## Déploiement
 
+**Un seul `docker-compose.yml`, pour dev local comme pour le serveur — seuls
+les fichiers `.env` changent** (rien à éditer dans le compose lui-même).
+Deux profils :
+
+| | Local (test rapide) | Serveur (derrière nginx, `mandat.ivry.local`) |
+|---|---|---|
+| `.env` (racine) | `APP_API_URL=http://localhost:5151` (ou absent — c'est le défaut) | `APP_API_URL=` **(vide)** — le front appelle des chemins relatifs `/api/…`, résolus par nginx |
+| `backend/.env` → `CORS_ORIGIN` | `http://localhost:5150` | `https://mandat.ivry.local` (même origine que le front via nginx — cette valeur ne sert alors qu'en secours) |
+| `backend/.env` → `POSTGRES_HOST` | Postgres local (`db` du compose, ou un Postgres de dev) | Postgres partagé de la Ville |
+| Commande | `docker compose up -d --build` | `docker compose up -d --build backend frontend` (sans `db`) |
+
 ```bash
-cp .env.example .env   # à la racine — définir APP_API_URL (voir ci-dessous)
+cp .env.example .env   # à la racine — adapter APP_API_URL selon le profil ci-dessus
 docker compose up -d --build backend frontend   # sans `db` si POSTGRES_HOST (backend/.env) pointe déjà vers la base Ville
 ```
 
-`docker-compose.yml` suit le modèle du guide (service `backend`, service
-`frontend` avec `VITE_API_URL` injecté au build). Toute la config backend
-(dont `POSTGRES_HOST`) vient uniquement de `backend/.env`, sans override dans
-le compose — si elle pointe déjà vers le PostgreSQL partagé de la Ville, le
-service `db` du compose (Postgres de dev local) n'est pas utilisé : ne pas le
-démarrer (`docker compose up -d --build backend frontend`, sans `db`).
-
-> ⚠️ **`APP_API_URL` (fichier `.env` à la racine, différent de `backend/.env`)**
-> doit être l'adresse à laquelle le **navigateur des utilisateurs** peut
-> joindre le backend — jamais `localhost` dès que l'appli est servie ailleurs
-> que sur le poste de dev (`localhost` désignerait alors le poste de
-> l'utilisateur, pas le serveur, d'où une erreur *Network Error* au login).
-> Exemple : `APP_API_URL=http://10.103.130.106:5151`. Cette variable est lue
-> **au moment du build** de l'image frontend : après l'avoir changée, refaire
-> `docker compose up -d --build frontend`.
+> ⚠️ **`APP_API_URL`** est lue **au moment du build** de l'image frontend :
+> après l'avoir changée, refaire `docker compose build --no-cache frontend &&
+> docker compose up -d --force-recreate frontend`. Ne jamais y mettre
+> `localhost` dès que l'appli est servie ailleurs que sur le poste de dev
+> (`localhost` désignerait alors le poste de l'utilisateur, pas le serveur —
+> *Network Error* au login). La variable accepte explicitement une valeur
+> **vide** (chemins relatifs, cas nginx same-origin ci-dessus) : le compose
+> utilise `${APP_API_URL-défaut}` (sans `:`), qui ne retombe sur le défaut
+> que si la variable est absente de `.env`, jamais si elle y est mais vide.
 >
-> **`CORS_ORIGIN` (dans `backend/.env`, cette fois) doit symétriquement être
-> l'origine exacte du frontend** (`http://10.103.130.106:5150` dans cet
-> exemple). En dev local le proxy Vite masque le problème (tout passe par la
-> même origine) ; en Docker/prod, front et back sont sur des ports différents
-> pour le navigateur — une mauvaise valeur ici bloque silencieusement TOUTES
-> les requêtes API (symptôme : "le front n'a pas accès au back" sur toutes
-> les pages, pas juste une).
+> **`CORS_ORIGIN`** (dans `backend/.env`) doit être l'origine exacte du
+> frontend **telle que vue par le navigateur**. En dev local le proxy Vite
+> masque le problème (tout passe par la même origine) ; sans nginx unifiant
+> front et back sous un seul nom d'hôte, une mauvaise valeur ici bloque
+> silencieusement TOUTES les requêtes API (symptôme : "le front n'a pas
+> accès au back" sur toutes les pages, pas juste une).
+>
+> **Reverse-proxy nginx recommandé** (front et back sous le même hôte,
+> distingués par chemin — évite le CORS entièrement) :
+> ```nginx
+> server {
+>     listen 443 ssl;
+>     server_name mandat.ivry.local;
+>     location /api/ { proxy_pass http://<hôte-docker>:5151; proxy_set_header Host $host; }
+>     location /     { proxy_pass http://<hôte-docker>:5150; proxy_set_header Host $host; }
+> }
+> ```
 
 ## Structure du repo
 
