@@ -5,6 +5,7 @@ import Layout from './components/Layout'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
 import EngagementsPage from './pages/EngagementsPage'
+import MesEngagementsPage from './pages/MesEngagementsPage'
 import EngagementDetailPage from './pages/EngagementDetailPage'
 import CoordinationPage from './pages/CoordinationPage'
 import PleniairePage from './pages/PleniairePage'
@@ -20,6 +21,7 @@ export default function App() {
           <Route element={<ProtectedRoute />}>
             <Route element={<Layout />}>
               <Route path="/" element={<DashboardPage />} />
+              <Route path="/mes-engagements" element={<MesEngagementsPage />} />
               <Route path="/engagements" element={<EngagementsPage />} />
               <Route path="/engagements/:id" element={<EngagementDetailPage />} />
               <Route path="/coordination" element={<CoordinationPage />} />

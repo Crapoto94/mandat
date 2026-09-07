@@ -59,6 +59,14 @@ async function getAgent(identifier) {
       headers: headers(),
       timeout: 8000,
     });
+    // L'AD peut renvoyer plusieurs comptes correspondants (homonymes, comptes
+    // de test/secours...) sous forme de tableau : on privilégie celui dont le
+    // sAMAccountName correspond exactement (insensible à la casse) à
+    // l'identifiant recherché, sinon le premier résultat.
+    if (Array.isArray(data)) {
+      const exact = data.find((u) => (u.sAMAccountName || '').toLowerCase() === identifier.toLowerCase());
+      return exact || data[0] || null;
+    }
     return data;
   } catch (err) {
     console.warn('[APM] ad/user a échoué pour', identifier, '-', err.message);

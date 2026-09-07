@@ -9,6 +9,33 @@ router.get('/', requireAuth, async (req, res) => {
   res.json(rows);
 });
 
+/**
+ * "Mes engagements" : ceux où la direction de l'agent connecté (issue de
+ * l'AD via l'APM) est pilote, contributrice, ou direction/fonction
+ * ressource impactée. Un ?direction=... explicite prend le pas (utile pour
+ * un compte admin, sans direction propre).
+ */
+router.get('/mine', requireAuth, async (req, res) => {
+  const rawDirection = req.query.direction || req.user.direction;
+  if (!rawDirection) {
+    return res.status(400).json({
+      error:
+        req.user.role === 'admin'
+          ? 'Compte admin sans direction associée — préciser ?direction=... dans la requête'
+          : "Aucune direction connue pour cet agent (non renseignée par l'annuaire Ville)",
+    });
+  }
+  const code = await service.resolveDirectionCode(rawDirection);
+  if (!code) {
+    return res.status(404).json({
+      error: `Aucun sigle ne correspond à la direction "${rawDirection}" dans la table de concordance (Admin → Table de concordance des directions)`,
+      direction: rawDirection,
+    });
+  }
+  const rows = await service.mine(code);
+  res.json({ direction: rawDirection, code, engagements: rows });
+});
+
 router.get('/:id', requireAuth, async (req, res) => {
   const engagement = await service.getById(req.params.id);
   if (!engagement) return res.status(404).json({ error: 'Engagement introuvable' });

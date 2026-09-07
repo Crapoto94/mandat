@@ -14,10 +14,13 @@ async function loginAgent(username, password) {
     return { ok: false, status: 401, error: result.error || 'Identifiants invalides' };
   }
 
-  // Enrichissement (direction, mail, mobile) — best effort, ne bloque pas la connexion.
+  // Enrichissement (direction, mail, mobile) — best effort, ne bloque pas la
+  // connexion. Champs réels observés sur le schéma AD Ville : la direction
+  // est dans `department`/`company` (parfois `physicalDeliveryOfficeName`
+  // sur d'anciens comptes), jamais `direction`/`service` (absents du schéma).
   const infos = await apm.getAgent(username);
   const displayName = infos?.displayName || infos?.name || username;
-  const direction = infos?.direction || infos?.service || null;
+  const direction = infos?.department || infos?.company || infos?.physicalDeliveryOfficeName || null;
   const email = infos?.mail || infos?.email || null;
   const mobile = infos?.mobile || infos?.telephoneMobile || null;
 

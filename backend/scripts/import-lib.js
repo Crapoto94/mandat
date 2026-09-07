@@ -92,7 +92,16 @@ function extractDirectionCodes(...fields) {
   const codes = new Set();
   for (const field of fields) {
     if (!field || typeof field !== 'string') continue;
-    for (const token of field.split(/[+\-\/,\n]|(?<=[a-zàâéèêëîïôûùç])(?=[A-ZÀÂÉÈÊËÎÏÔÛÙÇ])/)) {
+    for (const token of field.split(
+      // Délimiteurs explicites, transition minuscule->MAJUSCULE (camelCase
+      // collé), et espace entre deux sigles distincts collés par erreur
+      // (ex. "DSI Jeunesse" = DSI + Jeunesse) — repéré par : au moins deux
+      // majuscules suivies d'un espace puis d'un mot en Casse-De-Titre (une
+      // majuscule puis des minuscules). Un sigle multi-mots légitime reste
+      // intact tant que chaque mot est entièrement en majuscules (ex. "DG
+      // PEDT", "POLE FAMILLE"), puisque ce cas ne matche pas l'alternative.
+      /[+\-\/,\n]|(?<=[a-zàâéèêëîïôûùç])(?=[A-ZÀÂÉÈÊËÎÏÔÛÙÇ])|(?<=[A-ZÀÂÉÈÊËÎÏÔÛÙÇ]{2,})\s+(?=[A-ZÀÂÉÈÊËÎÏÔÛÙÇ][a-zà-ÿ])/
+    )) {
       const code = token.trim();
       if (code && code.length <= 20 && !/\s{2,}/.test(code)) codes.add(code);
     }

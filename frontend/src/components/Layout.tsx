@@ -8,10 +8,12 @@ import {
   ShieldCheck,
   LogOut,
   GitCommitHorizontal,
+  UserCircle2,
 } from 'lucide-react'
 
 const navItems = [
   { to: '/', label: 'Tableau de bord', icon: LayoutDashboard, end: true },
+  { to: '/mes-engagements', label: 'Mes engagements', icon: UserCircle2 },
   { to: '/engagements', label: 'Engagements', icon: ListChecks },
   { to: '/coordination', label: 'Coordination', icon: MessageSquareWarning },
   { to: '/timeline', label: 'Timeline', icon: GitCommitHorizontal },

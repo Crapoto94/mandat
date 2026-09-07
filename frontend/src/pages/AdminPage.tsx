@@ -285,8 +285,10 @@ function DirectionsSection({
                         return (
                           <optgroup key={root.code} label={root.libelle}>
                             {/* Le titre de groupe (gras) n'est jamais cliquable en HTML natif :
-                                cette option explicite permet quand même de choisir la direction elle-même. */}
-                            <option value={root.libelle}>— {root.libelle} (la direction) —</option>
+                                cette option (nom brut, tel quel) permet quand même de choisir la
+                                direction elle-même — jamais de texte décoratif, le libellé affiché
+                                doit rester le nom exact du Hub DSI pour pouvoir être ré-apparié plus tard. */}
+                            <option value={root.libelle}>{root.libelle}</option>
                             {items.map(({ entry, depth }) => (
                               <option key={entry.code} value={entry.libelle}>
                                 {'  '.repeat(depth)}

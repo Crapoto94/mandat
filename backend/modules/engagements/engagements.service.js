@@ -75,6 +75,59 @@ async function list(filters) {
   );
 }
 
+/** Casse, espaces superflus et accents neutralisés pour comparer deux noms
+ * de direction dont l'orthographe peut différer légèrement entre l'AD (pas
+ * toujours accentué) et le Hub DSI (accentué) sans être de vrais doublons. */
+function normalizeForMatch(str) {
+  return String(str || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '') // diacritiques
+    .replace(/\s+/g, ' ');
+}
+
+/**
+ * Résout le nom brut d'une direction (tel que renvoyé par l'AD/l'APM, ou
+ * saisi manuellement) vers son sigle applicatif, via la table de
+ * concordance — comparaison insensible à la casse, aux espaces superflus et
+ * aux accents (l'AD ne les saisit pas toujours). Renvoie null si aucune
+ * correspondance (direction non encore répertoriée dans la concordance).
+ */
+async function resolveDirectionCode(rawDirectionName) {
+  if (!rawDirectionName || !rawDirectionName.trim()) return null;
+  const target = normalizeForMatch(rawDirectionName);
+  const rows = await db.all(`SELECT code, libelle FROM directions WHERE libelle IS NOT NULL`);
+  const match = rows.find((d) => normalizeForMatch(d.libelle) === target);
+  return match?.code || null;
+}
+
+/**
+ * Engagements où le sigle donné apparaît en pilotage, en contribution à
+ * l'élaboration, ou en direction/fonction ressource impactée — chaque ligne
+ * est taguée pour indiquer dans quel(s) rôle(s) la direction est concernée.
+ * Le sigle est recherché comme "mot" isolé (bornes non alphanumériques),
+ * pour éviter qu'un sigle court ne matche un sigle plus long qui le contient.
+ */
+async function mine(directionCode) {
+  const pattern = `(^|[^A-Za-z0-9])${directionCode.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^A-Za-z0-9]|$)`;
+  return db.all(
+    `SELECT e.*, g.code AS groupe_code, g.nom AS groupe_nom,
+            et.libelle AS etat_libelle, et.couleur AS etat_couleur,
+            m.libelle AS meteo_libelle, m.emoji AS meteo_emoji, m.couleur AS meteo_couleur,
+            (e.pilotage ~* $1) AS est_pilote,
+            (e.contribution_elaboration ~* $1) AS est_contributeur,
+            (e.contribution_impactees ~* $1) AS est_ressource
+     FROM engagements e
+     LEFT JOIN groupes g ON g.id = e.groupe_id
+     LEFT JOIN etats et ON et.code = e.etat_code
+     LEFT JOIN meteos m ON m.code = e.meteo_code
+     WHERE e.pilotage ~* $1 OR e.contribution_elaboration ~* $1 OR e.contribution_impactees ~* $1
+     ORDER BY e.numero ASC`,
+    [pattern]
+  );
+}
+
 async function getById(id) {
   const engagement = await db.get(
     `SELECT e.*, g.code AS groupe_code, g.nom AS groupe_nom,
@@ -204,4 +257,13 @@ async function setPrioritaire(id, prioritaire, note, author) {
   return { ok: true, engagement: updated };
 }
 
-module.exports = { list, getById, update, setPrioritaire, EDITABLE_FIELDS, MAX_PRIORITAIRES_PAR_GROUPE };
+module.exports = {
+  list,
+  getById,
+  update,
+  setPrioritaire,
+  resolveDirectionCode,
+  mine,
+  EDITABLE_FIELDS,
+  MAX_PRIORITAIRES_PAR_GROUPE,
+};
