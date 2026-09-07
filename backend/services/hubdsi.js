@@ -10,17 +10,26 @@ function hubConfigured() {
   return Boolean(HUB_URL && HUB_KEY);
 }
 
+/**
+ * Retourne { data } en cas de succès, ou { error } avec le message exact
+ * (timeout, DNS, refus de connexion, statut HTTP...) — remonté tel quel côté
+ * admin plutôt qu'un message générique, pour diagnostiquer sans avoir à
+ * consulter les logs du conteneur.
+ */
 async function hub(path) {
-  if (!hubConfigured()) return null;
+  if (!hubConfigured()) return { error: 'Hub DSI non configuré (HUBDSI_API_URL / HUBDSI_API_KEY manquants)' };
   try {
     const { data } = await axios.get(`${HUB_URL}${path}`, {
       headers: { 'X-API-Key': HUB_KEY },
       timeout: 8000,
     });
-    return data;
+    return { data };
   } catch (err) {
-    console.warn('[HubDSI]', path, 'a échoué -', err.message);
-    return null;
+    const detail = err.response
+      ? `HTTP ${err.response.status} ${JSON.stringify(err.response.data).slice(0, 200)}`
+      : err.code || err.message;
+    console.warn('[HubDSI]', path, 'a échoué -', detail);
+    return { error: `${err.message} (${detail}) — URL appelée : ${HUB_URL}${path}` };
   }
 }
 

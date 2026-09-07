@@ -130,6 +130,14 @@ démarrer (`docker compose up -d --build backend frontend`, sans `db`).
 > Exemple : `APP_API_URL=http://10.103.130.106:5151`. Cette variable est lue
 > **au moment du build** de l'image frontend : après l'avoir changée, refaire
 > `docker compose up -d --build frontend`.
+>
+> **`CORS_ORIGIN` (dans `backend/.env`, cette fois) doit symétriquement être
+> l'origine exacte du frontend** (`http://10.103.130.106:5150` dans cet
+> exemple). En dev local le proxy Vite masque le problème (tout passe par la
+> même origine) ; en Docker/prod, front et back sont sur des ports différents
+> pour le navigateur — une mauvaise valeur ici bloque silencieusement TOUTES
+> les requêtes API (symptôme : "le front n'a pas accès au back" sur toutes
+> les pages, pas juste une).
 
 ## Structure du repo
 

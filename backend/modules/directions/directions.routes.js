@@ -28,12 +28,9 @@ router.patch('/:code', requireAuth, requireAdmin, async (req, res) => {
  * manuellement — la concordance manuelle a toujours priorité.
  */
 router.post('/sync', requireAuth, requireAdmin, async (req, res) => {
-  if (!hubdsi.hubConfigured()) {
-    return res.status(400).json({ error: 'Hub DSI non configuré (HUBDSI_API_URL / HUBDSI_API_KEY manquants)' });
-  }
-  const raw = await hubdsi.getDirectionsServices();
-  if (raw === null) {
-    return res.status(502).json({ error: 'Hub DSI injoignable (vérifier HUBDSI_API_URL et le réseau)' });
+  const { data: raw, error } = await hubdsi.getDirectionsServices();
+  if (error) {
+    return res.status(502).json({ error: `Hub DSI : ${error}` });
   }
   const remote = hubdsi.normalizeDirections(raw);
   if (!remote.length) {
