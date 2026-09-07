@@ -92,7 +92,12 @@ router.get('/agent-lookup', async (req, res) => {
   if (!infos) {
     return res.status(404).json({ error: `Aucune fiche AD trouvée pour "${identifier}"` });
   }
-  const direction = infos.department || infos.company || infos.physicalDeliveryOfficeName || null;
+  // Champ AD "entreprise" (`company`) : c'est lui qui porte la direction de
+  // rattachement de l'agent côté Ville (pas `department`, qui contient
+  // souvent le service). Sa valeur ne correspond pas forcément mot pour mot
+  // au libellé de la direction : resolveDirectionCodes la fait passer par
+  // la hiérarchie Hub DSI mise en cache pour retomber sur la bonne direction.
+  const direction = infos.company || infos.department || infos.physicalDeliveryOfficeName || null;
   const codes = direction ? await engagementsService.resolveDirectionCodes(direction) : [];
   const engagements = codes.length ? await engagementsService.mine(codes) : [];
 
@@ -104,6 +109,12 @@ router.get('/agent-lookup', async (req, res) => {
     title: infos.title || null,
     directionCode: codes.join(', ') || null,
     directionCodes: codes,
+    // Fiche AD complète telle que renvoyée par l'APM — affichée en admin
+    // pour diagnostiquer QUEL champ porte réellement la direction (le
+    // schéma AD Ville n'est pas homogène selon les comptes : `department`
+    // contient parfois le service et pas la direction). À retirer une fois
+    // le bon champ identifié et figé dans le code.
+    raw: infos,
     engagements,
   });
 });

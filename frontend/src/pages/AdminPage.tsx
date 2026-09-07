@@ -665,6 +665,8 @@ interface AgentLookupResult {
   mail: string | null
   title: string | null
   directionCode: string | null
+  directionCodes: string[]
+  raw: Record<string, unknown>
   engagements: AgentLookupEngagement[]
 }
 
@@ -767,6 +769,17 @@ function AgentLookupSection() {
                 </Link>
               ))}
             </div>
+          )}
+
+          {result.raw && (
+            <details className="mt-3 border-t border-slate-200 pt-3">
+              <summary className="cursor-pointer text-xs font-medium uppercase tracking-wide text-slate-400">
+                Champs bruts renvoyés par l'AD (diagnostic)
+              </summary>
+              <pre className="mt-2 max-h-64 overflow-auto rounded-md bg-slate-900 p-2.5 text-[11px] leading-relaxed text-slate-100">
+                {JSON.stringify(result.raw, null, 2)}
+              </pre>
+            </details>
           )}
         </div>
       )}

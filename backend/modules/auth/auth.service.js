@@ -16,11 +16,13 @@ async function loginAgent(username, password) {
 
   // Enrichissement (direction, mail, mobile) — best effort, ne bloque pas la
   // connexion. Champs réels observés sur le schéma AD Ville : la direction
-  // est dans `department`/`company` (parfois `physicalDeliveryOfficeName`
-  // sur d'anciens comptes), jamais `direction`/`service` (absents du schéma).
+  // de rattachement est dans `company` ("entreprise" côté AD) — `department`
+  // contient souvent le service de l'agent, pas sa direction — avec
+  // `physicalDeliveryOfficeName` en repli sur d'anciens comptes. Jamais
+  // `direction`/`service` (absents du schéma).
   const infos = await apm.getAgent(username);
   const displayName = infos?.displayName || infos?.name || username;
-  const direction = infos?.department || infos?.company || infos?.physicalDeliveryOfficeName || null;
+  const direction = infos?.company || infos?.department || infos?.physicalDeliveryOfficeName || null;
   const email = infos?.mail || infos?.email || null;
   const mobile = infos?.mobile || infos?.telephoneMobile || null;
 
