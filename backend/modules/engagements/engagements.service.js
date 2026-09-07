@@ -89,28 +89,36 @@ function normalizeForMatch(str) {
 
 /**
  * Résout le nom brut d'une direction (tel que renvoyé par l'AD/l'APM, ou
- * saisi manuellement) vers son sigle applicatif, via la table de
+ * saisi manuellement) vers ses sigles applicatifs, via la table de
  * concordance — comparaison insensible à la casse, aux espaces superflus et
- * aux accents (l'AD ne les saisit pas toujours). Renvoie null si aucune
- * correspondance (direction non encore répertoriée dans la concordance).
+ * aux accents (l'AD ne les saisit pas toujours). Une même direction peut
+ * avoir été saisie sous plusieurs sigles distincts dans l'Excel source
+ * (ex. DSPORT, DSPORTS, Dsports, SPORT tous concordés vers le même
+ * libellé) : on renvoie donc TOUS les codes qui concordent, pas seulement
+ * le premier trouvé, pour ne perdre aucun engagement. Renvoie un tableau
+ * vide si aucune correspondance (direction non encore répertoriée dans la
+ * concordance).
  */
-async function resolveDirectionCode(rawDirectionName) {
-  if (!rawDirectionName || !rawDirectionName.trim()) return null;
+async function resolveDirectionCodes(rawDirectionName) {
+  if (!rawDirectionName || !rawDirectionName.trim()) return [];
   const target = normalizeForMatch(rawDirectionName);
   const rows = await db.all(`SELECT code, libelle FROM directions WHERE libelle IS NOT NULL`);
-  const match = rows.find((d) => normalizeForMatch(d.libelle) === target);
-  return match?.code || null;
+  return rows.filter((d) => normalizeForMatch(d.libelle) === target).map((d) => d.code);
 }
 
 /**
- * Engagements où le sigle donné apparaît en pilotage, en contribution à
- * l'élaboration, ou en direction/fonction ressource impactée — chaque ligne
- * est taguée pour indiquer dans quel(s) rôle(s) la direction est concernée.
- * Le sigle est recherché comme "mot" isolé (bornes non alphanumériques),
- * pour éviter qu'un sigle court ne matche un sigle plus long qui le contient.
+ * Engagements où l'un des sigles donnés apparaît en pilotage, en
+ * contribution à l'élaboration, ou en direction/fonction ressource
+ * impactée — chaque ligne est taguée pour indiquer dans quel(s) rôle(s) la
+ * direction est concernée. Chaque sigle est recherché comme "mot" isolé
+ * (bornes non alphanumériques), pour éviter qu'un sigle court ne matche un
+ * sigle plus long qui le contient.
  */
-async function mine(directionCode) {
-  const pattern = `(^|[^A-Za-z0-9])${directionCode.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^A-Za-z0-9]|$)`;
+async function mine(directionCodes) {
+  const codes = Array.isArray(directionCodes) ? directionCodes : [directionCodes];
+  if (!codes.length) return [];
+  const alternatives = codes.map((c) => c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+  const pattern = `(^|[^A-Za-z0-9])(${alternatives})([^A-Za-z0-9]|$)`;
   return db.all(
     `SELECT e.*, g.code AS groupe_code, g.nom AS groupe_nom,
             et.libelle AS etat_libelle, et.couleur AS etat_couleur,
@@ -262,7 +270,7 @@ module.exports = {
   getById,
   update,
   setPrioritaire,
-  resolveDirectionCode,
+  resolveDirectionCodes,
   mine,
   EDITABLE_FIELDS,
   MAX_PRIORITAIRES_PAR_GROUPE,

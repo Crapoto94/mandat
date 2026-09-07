@@ -93,8 +93,8 @@ router.get('/agent-lookup', async (req, res) => {
     return res.status(404).json({ error: `Aucune fiche AD trouvée pour "${identifier}"` });
   }
   const direction = infos.department || infos.company || infos.physicalDeliveryOfficeName || null;
-  const code = direction ? await engagementsService.resolveDirectionCode(direction) : null;
-  const engagements = code ? await engagementsService.mine(code) : [];
+  const codes = direction ? await engagementsService.resolveDirectionCodes(direction) : [];
+  const engagements = codes.length ? await engagementsService.mine(codes) : [];
 
   res.json({
     sAMAccountName: infos.sAMAccountName || null,
@@ -102,7 +102,8 @@ router.get('/agent-lookup', async (req, res) => {
     direction,
     mail: infos.mail || null,
     title: infos.title || null,
-    directionCode: code,
+    directionCode: codes.join(', ') || null,
+    directionCodes: codes,
     engagements,
   });
 });

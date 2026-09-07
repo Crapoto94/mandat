@@ -25,15 +25,15 @@ router.get('/mine', requireAuth, async (req, res) => {
           : "Aucune direction connue pour cet agent (non renseignée par l'annuaire Ville)",
     });
   }
-  const code = await service.resolveDirectionCode(rawDirection);
-  if (!code) {
+  const codes = await service.resolveDirectionCodes(rawDirection);
+  if (!codes.length) {
     return res.status(404).json({
       error: `Aucun sigle ne correspond à la direction "${rawDirection}" dans la table de concordance (Admin → Table de concordance des directions)`,
       direction: rawDirection,
     });
   }
-  const rows = await service.mine(code);
-  res.json({ direction: rawDirection, code, engagements: rows });
+  const rows = await service.mine(codes);
+  res.json({ direction: rawDirection, code: codes.join(', '), codes, engagements: rows });
 });
 
 router.get('/:id', requireAuth, async (req, res) => {
