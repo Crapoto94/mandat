@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react'
 import { api, apiErrorMessage, attachmentFileUrl } from '../lib/api'
 import type { Attachment } from '../types'
-import { Paperclip, Download, Trash2, Upload } from 'lucide-react'
+import DocumentViewer from './DocumentViewer'
+import { Paperclip, Download, Trash2, Upload, Eye } from 'lucide-react'
 
 interface Props {
   engagementId: number
@@ -13,6 +14,7 @@ export default function AttachmentsSection({ engagementId, attachments, onChange
   const fileRef = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [previewing, setPreviewing] = useState<Attachment | null>(null)
 
   async function upload(files: FileList | null) {
     if (!files?.length) return
@@ -35,7 +37,10 @@ export default function AttachmentsSection({ engagementId, attachments, onChange
     }
   }
 
-  async function remove(id: number) {
+  async function remove(id: number, name: string) {
+    // Suppression douce (récupérable en corbeille admin), mais on confirme
+    // quand même : ça retire le fichier de la vue de tous les agents.
+    if (!confirm(`Supprimer "${name}" ? Le fichier ne sera plus visible sur la fiche (récupérable par un administrateur).`)) return
     await api.delete(`/engagements/${engagementId}/attachments/${id}`)
     onChange()
   }
@@ -50,30 +55,35 @@ export default function AttachmentsSection({ engagementId, attachments, onChange
         <ul className="mb-4 space-y-2">
           {attachments.map((a) => (
             <li key={a.id} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm">
-              <div className="flex min-w-0 items-center gap-2">
+              <button
+                onClick={() => setPreviewing(a)}
+                className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                title="Prévisualiser"
+              >
                 {a.mime_type?.startsWith('image/') ? (
                   <img src={attachmentFileUrl(a.id)} alt="" className="h-10 w-10 shrink-0 rounded object-cover" />
                 ) : (
                   <Paperclip size={14} className="shrink-0 text-slate-400" />
                 )}
                 <div className="min-w-0">
-                  <p className="truncate font-medium text-slate-800">{a.original_name}</p>
+                  <p className="truncate font-medium text-slate-800 hover:text-ville-blue">{a.original_name}</p>
                   <p className="text-xs text-slate-400">
                     {formatSize(a.size_bytes)} · {a.uploaded_by} · {new Date(a.created_at).toLocaleDateString('fr-FR')}
                   </p>
                 </div>
-              </div>
+              </button>
               <div className="flex shrink-0 items-center gap-2">
+                <button onClick={() => setPreviewing(a)} className="text-slate-400 hover:text-ville-blue" title="Prévisualiser">
+                  <Eye size={15} />
+                </button>
                 <a
-                  href={attachmentFileUrl(a.id)}
-                  target="_blank"
-                  rel="noreferrer"
+                  href={`${attachmentFileUrl(a.id)}&download=1`}
                   className="text-slate-400 hover:text-ville-blue"
                   title="Télécharger"
                 >
                   <Download size={15} />
                 </a>
-                <button onClick={() => remove(a.id)} className="text-slate-400 hover:text-red-600" title="Supprimer">
+                <button onClick={() => remove(a.id, a.original_name)} className="text-slate-400 hover:text-red-600" title="Supprimer">
                   <Trash2 size={15} />
                 </button>
               </div>
@@ -96,6 +106,8 @@ export default function AttachmentsSection({ engagementId, attachments, onChange
         />
       </label>
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+
+      {previewing && <DocumentViewer attachment={previewing} onClose={() => setPreviewing(null)} />}
     </div>
   )
 }

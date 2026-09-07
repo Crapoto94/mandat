@@ -1,7 +1,21 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { api, apiErrorMessage } from '../lib/api'
-import type { Direction, Etat, HubdsiEntry, Meteo, RoleDef } from '../types'
-import { ShieldCheck, Upload, CheckCircle2, XCircle, RefreshCw, Tags, Trash2, Plus, List } from 'lucide-react'
+import type { Direction, Etat, HubdsiEntry, Meteo, RoleDef, TrashedAttachment } from '../types'
+import {
+  ShieldCheck,
+  Upload,
+  CheckCircle2,
+  XCircle,
+  RefreshCw,
+  Tags,
+  Trash2,
+  Plus,
+  List,
+  Search,
+  UserCircle2,
+  RotateCcw,
+} from 'lucide-react'
 
 interface AdminAccount {
   id: number
@@ -57,6 +71,8 @@ export default function AdminPage() {
       {error && <p className="rounded-md bg-red-50 p-4 text-sm text-red-700">{error}</p>}
       {notice && <p className="rounded-md bg-green-50 p-4 text-sm text-green-700">{notice}</p>}
 
+      <AgentLookupSection />
+
       <section className="rounded-xl border border-slate-200 bg-white p-5">
         <h2 className="mb-1 text-sm font-semibold text-slate-800">Comptes de secours admin</h2>
         <p className="mb-4 text-xs text-slate-500">
@@ -106,6 +122,8 @@ export default function AdminPage() {
       <EtatsCatalogSection onError={setError} />
 
       <MeteoCatalogSection onError={setError} />
+
+      <TrashSection onError={setError} />
 
       <ImportSection onDone={(msg) => setNotice(msg)} onError={(msg) => setError(msg)} />
     </div>
@@ -631,6 +649,131 @@ function MeteoCatalogSection({ onError }: { onError: (m: string) => void }) {
   )
 }
 
+interface AgentLookupEngagement {
+  id: number
+  numero: number
+  contenu: string
+  est_pilote: boolean
+  est_contributeur: boolean
+  est_ressource: boolean
+}
+
+interface AgentLookupResult {
+  sAMAccountName: string | null
+  displayName: string | null
+  direction: string | null
+  mail: string | null
+  title: string | null
+  directionCode: string | null
+  engagements: AgentLookupEngagement[]
+}
+
+/**
+ * Vérifie ce que l'annuaire Ville renvoie pour un identifiant donné (nom,
+ * direction, mail) — en lecture seule via l'APM, sans jamais avoir besoin
+ * du mot de passe de l'agent. Utile pour diagnostiquer si un agent "remonte"
+ * bien et avec la bonne direction, sans se connecter à sa place.
+ */
+function AgentLookupSection() {
+  const [identifier, setIdentifier] = useState('')
+  const [result, setResult] = useState<AgentLookupResult | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  async function submit(e: FormEvent) {
+    e.preventDefault()
+    if (!identifier.trim()) return
+    setBusy(true)
+    setError(null)
+    setResult(null)
+    try {
+      const res = await api.get('/admin/agent-lookup', { params: { identifier: identifier.trim() } })
+      setResult(res.data)
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Recherche impossible'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <section className="rounded-xl border border-slate-200 bg-white p-5">
+      <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold text-slate-800">
+        <UserCircle2 size={16} /> Vérifier un agent dans l'annuaire
+      </h2>
+      <p className="mb-4 text-xs text-slate-500">
+        Lecture seule (via l'APM, sans mot de passe) — pour vérifier qu'un identifiant remonte bien, avec la bonne
+        direction, sans se connecter à sa place.
+      </p>
+      <form onSubmit={submit} className="flex items-center gap-2">
+        <div className="relative flex-1 max-w-xs">
+          <Search size={14} className="pointer-events-none absolute left-2.5 top-2.5 text-slate-400" />
+          <input
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)}
+            placeholder="Identifiant Ville (ex : machevalier)"
+            className="w-full rounded-md border border-slate-300 py-1.5 pl-8 pr-2 text-sm focus:border-ville-blue focus:outline-none"
+          />
+        </div>
+        <button
+          type="submit"
+          disabled={busy}
+          className="rounded-md bg-ville-blue px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60"
+        >
+          {busy ? 'Recherche…' : 'Vérifier'}
+        </button>
+      </form>
+      {error && <p className="mt-3 rounded-md bg-red-50 p-2 text-sm text-red-700">{error}</p>}
+      {result && (
+        <div className="mt-3 rounded-lg bg-slate-50 p-3 text-sm">
+          <p className="font-medium text-slate-800">{result.displayName || '—'}</p>
+          <p className="text-slate-500">
+            Direction : <span className="font-medium text-slate-700">{result.direction || '— non renseignée —'}</span>
+          </p>
+          {result.title && <p className="text-slate-500">Poste : {result.title}</p>}
+          {result.mail && <p className="text-slate-500">Mail : {result.mail}</p>}
+          <p className="mt-1 text-xs text-slate-400">
+            Identifiant AD : {result.sAMAccountName}
+            {result.directionCode && ` · sigle résolu : ${result.directionCode}`}
+          </p>
+
+          {result.direction && !result.directionCode && (
+            <p className="mt-2 text-xs text-amber-700">
+              Aucun sigle ne correspond à "{result.direction}" dans la table de concordance des directions.
+            </p>
+          )}
+
+          {!!result.engagements.length && (
+            <div className="mt-3 space-y-1.5 border-t border-slate-200 pt-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                {result.engagements.length} engagement(s) concerné(s)
+              </p>
+              {result.engagements.map((e) => (
+                <Link
+                  key={e.id}
+                  to={`/engagements/${e.id}`}
+                  className="flex items-center justify-between gap-2 rounded-md bg-white px-2.5 py-1.5 text-xs hover:bg-ville-blue/5"
+                >
+                  <span className="truncate text-slate-700">
+                    n°{e.numero} — {e.contenu}
+                  </span>
+                  <span className="flex shrink-0 gap-1">
+                    {e.est_pilote && <span className="rounded-full bg-ville-blue/10 px-1.5 py-0.5 text-ville-blue">Pilote</span>}
+                    {e.est_contributeur && (
+                      <span className="rounded-full bg-purple-50 px-1.5 py-0.5 text-purple-700">Contrib.</span>
+                    )}
+                    {e.est_ressource && <span className="rounded-full bg-amber-50 px-1.5 py-0.5 text-amber-700">Ressource</span>}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  )
+}
+
 function StatusRow({ label, ok, hint }: { label: string; ok: boolean; hint?: string }) {
   return (
     <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm">
@@ -704,6 +847,89 @@ function NewAdminForm({ onCreated }: { onCreated: () => void }) {
       </button>
       {error && <p className="w-full text-sm text-red-600">{error}</p>}
     </form>
+  )
+}
+
+/**
+ * Corbeille des pièces jointes supprimées : la suppression normale (fiche
+ * engagement) ne fait que les masquer, jamais toucher au fichier — ici on
+ * peut les restaurer, ou les purger définitivement (fichier + ligne).
+ */
+function TrashSection({ onError }: { onError: (m: string) => void }) {
+  const [items, setItems] = useState<TrashedAttachment[]>([])
+
+  function load() {
+    api
+      .get('/admin/attachments/trash')
+      .then((res) => setItems(res.data))
+      .catch((err) => onError(apiErrorMessage(err)))
+  }
+
+  useEffect(load, [])
+
+  async function restore(id: number) {
+    try {
+      await api.post(`/admin/attachments/${id}/restore`)
+      load()
+    } catch (err) {
+      onError(apiErrorMessage(err, 'Restauration impossible'))
+    }
+  }
+
+  async function purge(id: number, name: string) {
+    if (!confirm(`Purger définitivement "${name}" ? Cette action supprime aussi le fichier, irréversible.`)) return
+    try {
+      await api.delete(`/admin/attachments/${id}/purge`)
+      load()
+    } catch (err) {
+      onError(apiErrorMessage(err, 'Purge impossible'))
+    }
+  }
+
+  return (
+    <section className="rounded-xl border border-slate-200 bg-white p-5">
+      <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold text-slate-800">
+        <Trash2 size={16} /> Corbeille des pièces jointes
+      </h2>
+      <p className="mb-4 text-xs text-slate-500">
+        Une pièce jointe supprimée depuis une fiche engagement reste ici, restaurable — le fichier n'est jamais
+        touché tant qu'elle n'est pas purgée définitivement.
+      </p>
+      {!items.length ? (
+        <p className="text-sm text-slate-400">La corbeille est vide.</p>
+      ) : (
+        <ul className="space-y-1.5">
+          {items.map((a) => (
+            <li key={a.id} className="flex items-center justify-between gap-2 rounded-md bg-slate-50 px-3 py-2 text-sm">
+              <div className="min-w-0">
+                <p className="truncate font-medium text-slate-700">{a.original_name}</p>
+                <p className="text-xs text-slate-400">
+                  Engagement n°{a.engagement_numero} — {a.engagement_contenu.slice(0, 60)}
+                  {a.engagement_contenu.length > 60 ? '…' : ''} · supprimé par {a.deleted_by} le{' '}
+                  {a.deleted_at && new Date(a.deleted_at).toLocaleString('fr-FR')}
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <button
+                  onClick={() => restore(a.id)}
+                  className="flex items-center gap-1 text-xs font-medium text-ville-blue hover:underline"
+                  title="Restaurer"
+                >
+                  <RotateCcw size={13} /> Restaurer
+                </button>
+                <button
+                  onClick={() => purge(a.id, a.original_name)}
+                  className="flex items-center gap-1 text-xs font-medium text-red-600 hover:underline"
+                  title="Purger définitivement"
+                >
+                  <Trash2 size={13} /> Purger
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   )
 }
 

@@ -54,3 +54,8 @@ export function apiErrorMessage(err: unknown, fallback = 'Une erreur est survenu
 export function attachmentFileUrl(id: number): string {
   return `${backendOrigin}/api/attachments/${id}/file?token=${encodeURIComponent(getToken() || '')}`
 }
+
+/** Pièce jointe embarquée dans un .msg (cf. DocumentViewer), par index. */
+export function msgAttachmentUrl(id: number, index: number): string {
+  return `${backendOrigin}/api/attachments/${id}/msg/attachments/${index}?token=${encodeURIComponent(getToken() || '')}`
+}

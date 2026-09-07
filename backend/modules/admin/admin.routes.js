@@ -6,6 +6,8 @@ const fs = require('fs');
 const { db } = require('../../db/pg_db');
 const { requireAuth, requireAdmin } = require('../../middleware/auth');
 const { importFromFiles } = require('../../scripts/import-lib');
+const apm = require('../../services/apm');
+const engagementsService = require('../engagements/engagements.service');
 
 const router = express.Router();
 // Chemin paramétrable (cf. ATTACHMENTS_DIR dans attachments.routes.js) —
@@ -71,6 +73,38 @@ router.patch('/admins/:id', async (req, res) => {
   );
   if (!updated) return res.status(404).json({ error: 'Compte introuvable' });
   res.json(updated);
+});
+
+// --- Vérification annuaire (lecture seule, sans mot de passe) --------------
+
+/**
+ * Interroge l'AD (via l'APM, en lecture seule — aucune authentification,
+ * juste la clé applicative) pour vérifier ce que l'annuaire Ville renvoie
+ * pour un identifiant donné : nom, direction, mail. Sert à diagnostiquer
+ * "l'agent X remonte-t-il bien, avec la bonne direction ?" sans jamais
+ * avoir besoin du mot de passe de l'agent concerné.
+ */
+router.get('/agent-lookup', async (req, res) => {
+  const identifier = (req.query.identifier || '').trim();
+  if (!identifier) return res.status(400).json({ error: 'Paramètre identifier requis' });
+
+  const infos = await apm.getAgent(identifier);
+  if (!infos) {
+    return res.status(404).json({ error: `Aucune fiche AD trouvée pour "${identifier}"` });
+  }
+  const direction = infos.department || infos.company || infos.physicalDeliveryOfficeName || null;
+  const code = direction ? await engagementsService.resolveDirectionCode(direction) : null;
+  const engagements = code ? await engagementsService.mine(code) : [];
+
+  res.json({
+    sAMAccountName: infos.sAMAccountName || null,
+    displayName: infos.displayName || infos.name || null,
+    direction,
+    mail: infos.mail || null,
+    title: infos.title || null,
+    directionCode: code,
+    engagements,
+  });
 });
 
 // --- Réimport des fichiers Excel sources -------------------------------------

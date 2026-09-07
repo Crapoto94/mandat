@@ -166,7 +166,7 @@ async function getById(id) {
     ),
     db.all(
       `SELECT id, engagement_id, original_name, mime_type, size_bytes, uploaded_by, created_at
-       FROM engagement_attachments WHERE engagement_id = $1 ORDER BY created_at DESC`,
+       FROM engagement_attachments WHERE engagement_id = $1 AND deleted_at IS NULL ORDER BY created_at DESC`,
       [id]
     ),
   ]);

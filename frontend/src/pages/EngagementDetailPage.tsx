@@ -241,7 +241,7 @@ export default function EngagementDetailPage() {
       </div>
 
       {/* Historique */}
-      {!!engagement.history?.length && (
+      {user?.role === 'admin' && !!engagement.history?.length && (
         <div className="rounded-xl border border-slate-200 bg-white p-5">
           <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800">
             <Clock size={16} /> Historique des modifications

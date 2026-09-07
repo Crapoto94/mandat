@@ -31,9 +31,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
       <div className="w-full max-w-sm">
         <div className="mb-6 text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-ville-blue text-lg font-bold text-white">
-            M
-          </div>
+          <img src="/logo-ivry.png" alt="Ville d'Ivry-sur-Seine" className="mx-auto mb-3 h-12 w-auto" />
           <h1 className="text-lg font-semibold text-slate-900">Suivi des engagements du mandat</h1>
           <p className="text-sm text-slate-500">Ville d'Ivry-sur-Seine</p>
         </div>

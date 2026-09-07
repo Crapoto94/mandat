@@ -127,13 +127,14 @@ function normalizeDirections(raw, rootParentCode = null) {
     // défaut, le nom sert aussi de clé (le champ "code" n'est ici qu'un
     // identifiant unique pour le cache, pas censé matcher nos sigles).
     const code = node.code || node.sigle || node.acronyme || node.abbreviation || node.short_name || libelle;
-    // Le Hub DSI renvoie aussi des codes courts sans rapport avec des
-    // directions/services (codes budgétaires type "BB", "BF"...) : un nom
-    // complet de direction/service/secteur fait toujours plus de quelques lettres.
-    const looksLikeShortCode = typeof libelle === 'string' && libelle.trim().length <= 4;
+    // (Le filtrage des codes budgétaires courts type "BB"/"BF" se fait
+    // désormais en amont, à l'écriture dans `directions` : la synchro ne
+    // met plus jamais à jour QUE des sigles déjà issus de l'Excel — cf.
+    // directions.routes.js. Filtrer ici sur la longueur du libellé aurait
+    // aussi exclu de vrais noms courts légitimes, ex. "DG"/"DGA".)
 
     let ownCode = null;
-    if (code && libelle && typeof libelle === 'string' && !looksLikePerson && !looksLikeShortCode) {
+    if (code && libelle && typeof libelle === 'string' && !looksLikePerson) {
       ownCode = String(code).trim();
       const key = ownCode.toUpperCase();
       if (!seen.has(key)) {

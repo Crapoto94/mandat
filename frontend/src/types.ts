@@ -76,6 +76,13 @@ export interface Attachment {
   size_bytes: number | null
   uploaded_by: string | null
   created_at: string
+  deleted_at?: string | null
+  deleted_by?: string | null
+}
+
+export interface TrashedAttachment extends Attachment {
+  engagement_numero: number
+  engagement_contenu: string
 }
 
 export interface RoleDef {
