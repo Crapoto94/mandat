@@ -44,13 +44,6 @@ export default function Layout() {
               <p className="text-sm font-semibold text-slate-900">Suivi des engagements du mandat</p>
               <p className="text-xs text-slate-500">Ville d'Ivry-sur-Seine</p>
             </div>
-            <NavLink
-              to="/nouveautes"
-              title="Nouveautés de cette version"
-              className="rounded-full border border-slate-200 px-2 py-0.5 text-[11px] font-semibold text-slate-500 hover:border-ville-blue/40 hover:text-ville-blue"
-            >
-              v{APP_VERSION}
-            </NavLink>
           </div>
 
           <nav className="hidden items-center gap-1 md:flex">
@@ -124,6 +117,15 @@ export default function Layout() {
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
         <Outlet />
       </main>
+
+      <footer className="border-t border-slate-200 px-4 py-4 sm:px-6">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
+          <p>Conception : DSI (Marc Chevalier) et Claude.</p>
+          <NavLink to="/nouveautes" className="font-medium text-slate-500 hover:text-ville-blue">
+            v{APP_VERSION} — Nouveautés
+          </NavLink>
+        </div>
+      </footer>
     </div>
   )
 }
