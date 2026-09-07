@@ -1,4 +1,4 @@
-const { db } = require('../../db/pg_db');
+const { db, pool } = require('../../db/pg_db');
 
 // Colonnes que l'on autorise à modifier via PATCH — tout le reste (numero,
 // dates système...) est en lecture seule côté API.
@@ -19,10 +19,29 @@ const EDITABLE_FIELDS = [
 
 const MAX_PRIORITAIRES_PAR_GROUPE = 3;
 
-function buildFilters({ groupe_id, etat_code, meteo_code, axe, prioritaire, q }) {
+/** Motif regex "mot isolé" (bornes non alphanumériques) pour un ou plusieurs
+ * sigles en alternative — partagé entre le filtre par direction de la liste
+ * des engagements et `mine()`, pour ne jamais faire matcher un sigle court
+ * comme sous-chaîne d'un sigle plus long. */
+function codesToWordPattern(codes) {
+  const alternatives = codes.map((c) => c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+  return `(^|[^A-Za-z0-9])(${alternatives})([^A-Za-z0-9]|$)`;
+}
+
+function buildFilters({ groupe_id, etat_code, meteo_code, axe, prioritaire, q, directionCodes }) {
   const clauses = [];
   const params = [];
 
+  if (directionCodes !== undefined) {
+    if (!directionCodes.length) {
+      // Direction demandée mais non concordée : aucun engagement ne peut correspondre.
+      clauses.push('FALSE');
+    } else {
+      params.push(codesToWordPattern(directionCodes));
+      const p = `$${params.length}`;
+      clauses.push(`(e.pilotage ~* ${p} OR e.contribution_elaboration ~* ${p} OR e.contribution_impactees ~* ${p})`);
+    }
+  }
   if (groupe_id !== undefined) {
     if (groupe_id === 'none') {
       clauses.push('e.groupe_id IS NULL');
@@ -59,8 +78,9 @@ function buildFilters({ groupe_id, etat_code, meteo_code, axe, prioritaire, q })
   return { where: clauses.length ? `WHERE ${clauses.join(' AND ')}` : '', params };
 }
 
-async function list(filters) {
-  const { where, params } = buildFilters(filters);
+async function list({ direction, ...filters } = {}) {
+  const directionCodes = direction ? await resolveDirectionCodes(direction) : undefined;
+  const { where, params } = buildFilters({ ...filters, directionCodes });
   return db.all(
     `SELECT e.*, g.code AS groupe_code, g.nom AS groupe_nom,
             et.libelle AS etat_libelle, et.couleur AS etat_couleur, et.ordre AS etat_ordre,
@@ -156,8 +176,7 @@ async function resolveDirectionCodes(rawDirectionName) {
 async function mine(directionCodes) {
   const codes = Array.isArray(directionCodes) ? directionCodes : [directionCodes];
   if (!codes.length) return [];
-  const alternatives = codes.map((c) => c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
-  const pattern = `(^|[^A-Za-z0-9])(${alternatives})([^A-Za-z0-9]|$)`;
+  const pattern = codesToWordPattern(codes);
   return db.all(
     `SELECT e.*, g.code AS groupe_code, g.nom AS groupe_nom,
             et.libelle AS etat_libelle, et.couleur AS etat_couleur,
@@ -304,6 +323,105 @@ async function setPrioritaire(id, prioritaire, note, author) {
   return { ok: true, engagement: updated };
 }
 
+/**
+ * Uniformise, dans le texte libre des engagements (pilotage, contribution à
+ * l'élaboration, directions/ressources impactées), toutes les variantes
+ * orthographiques d'un même sigle vers une écriture canonique unique (ex.
+ * DSPORT / SPORT / Dsports → DSPORTS), puis nettoie la table de concordance
+ * en conséquence : les sigles alias, devenus obsolètes une fois le texte
+ * réécrit, sont supprimés ; le libellé (nom complet), s'il avait été saisi
+ * manuellement sur l'un des alias, est repris sur le sigle canonique s'il
+ * n'en avait pas déjà un.
+ *
+ * Chaque alias est recherché en tant que "mot" isolé (ou expression, s'il
+ * contient un espace), insensible à la casse et aux accents, via des
+ * lookarounds à largeur nulle (`(?<!...)`/`(?!...)`, supportés par le moteur
+ * de regex de Postgres) — contrairement aux groupes capturants utilisés
+ * ailleurs (cf. codesToWordPattern), ceci ne "consomme" aucun caractère de
+ * bordure, donc deux occurrences adjacentes (ex. "DSPORT,SPORT") sont
+ * remplacées correctement l'une comme l'autre.
+ *
+ * `mapping` : [{ canonical: 'DSPORTS', aliases: ['DSPORT', 'SPORT', 'Dsports'] }, ...]
+ * Toute l'opération est transactionnelle (tout ou rien).
+ */
+async function mergeDirectionAliases(mapping) {
+  const client = await pool.connect();
+  const summary = [];
+  try {
+    await client.query('BEGIN');
+
+    for (const { canonical, aliases: rawAliases } of mapping) {
+      const aliases = [...new Set(rawAliases)].filter((a) => a !== canonical);
+      let occurrencesRenamed = 0;
+
+      for (const alias of aliases) {
+        const escaped = alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const pattern = `(?<![A-Za-z0-9])${escaped}(?![A-Za-z0-9])`;
+        for (const column of ['pilotage', 'contribution_elaboration', 'contribution_impactees']) {
+          const result = await client.query(
+            `UPDATE engagements SET ${column} = regexp_replace(${column}, $1, $2, 'gi')
+             WHERE ${column} ~* $1`,
+            [pattern, canonical]
+          );
+          occurrencesRenamed += result.rowCount;
+        }
+      }
+
+      const codesToLookup = [canonical, ...aliases];
+      const { rows: existingRows } = await client.query(
+        `SELECT code, libelle, libelle_manuel FROM directions WHERE code = ANY($1)`,
+        [codesToLookup]
+      );
+      const canonicalRow = existingRows.find((r) => r.code === canonical);
+      const manualAlias = existingRows.find((r) => r.code !== canonical && r.libelle_manuel);
+
+      if (!canonicalRow) {
+        await client.query(
+          `INSERT INTO directions (code, libelle, libelle_manuel) VALUES ($1, $2, $3) ON CONFLICT (code) DO NOTHING`,
+          [canonical, manualAlias?.libelle || canonical, !!manualAlias]
+        );
+      } else if (!canonicalRow.libelle_manuel && manualAlias) {
+        await client.query(
+          `UPDATE directions SET libelle = $1, libelle_manuel = true, updated_at = now() WHERE code = $2`,
+          [manualAlias.libelle, canonical]
+        );
+      }
+
+      if (aliases.length) {
+        await client.query(`DELETE FROM directions WHERE code = ANY($1)`, [aliases]);
+      }
+
+      summary.push({ canonical, aliases, occurrencesRenamed });
+    }
+
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+  return summary;
+}
+
+// Sigles à écriture non uniforme repérés dans l'Excel source — même direction
+// saisie sous plusieurs graphies au fil des mises à jour successives du
+// fichier de suivi. Liste figée manuellement (pas d'heuristique fiable pour
+// détecter des quasi-doublons sans faux positifs) ; à compléter au fil de
+// l'eau si d'autres variantes sont repérées.
+const KNOWN_DIRECTION_ALIASES = [
+  { canonical: 'CCAS', aliases: ['DCCAS'] },
+  { canonical: 'DJEUN', aliases: ['DJ', 'JEUNESSE', 'Jeunesse'] },
+  { canonical: 'DSPORTS', aliases: ['DSPORT', 'SPORT', 'Dsports'] },
+  { canonical: 'VACANCES', aliases: ['Vacances'] },
+  { canonical: 'DSANTE', aliases: ['SANTE'] },
+  { canonical: 'POLE FAMILLE', aliases: ['Pôle familles'] },
+];
+
+async function normalizeKnownDirectionAliases() {
+  return mergeDirectionAliases(KNOWN_DIRECTION_ALIASES);
+}
+
 module.exports = {
   list,
   getById,
@@ -311,6 +429,8 @@ module.exports = {
   setPrioritaire,
   resolveDirectionCodes,
   mine,
+  mergeDirectionAliases,
+  normalizeKnownDirectionAliases,
   EDITABLE_FIELDS,
   MAX_PRIORITAIRES_PAR_GROUPE,
 };

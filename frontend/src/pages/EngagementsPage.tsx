@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api, apiErrorMessage } from '../lib/api'
-import type { Engagement, Etat, Groupe, Meteo } from '../types'
+import type { Direction, Engagement, Etat, Groupe, Meteo } from '../types'
 import EtatBadge from '../components/EtatBadge'
 import AxeTag from '../components/AxeTag'
 import { MeteoBadge } from '../components/MeteoPicker'
@@ -14,6 +14,7 @@ export default function EngagementsPage() {
   const [groupes, setGroupes] = useState<Groupe[]>([])
   const [etats, setEtats] = useState<Etat[]>([])
   const [meteos, setMeteos] = useState<Meteo[]>([])
+  const [directions, setDirections] = useState<Direction[]>([])
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [q, setQ] = useState(params.get('q') || '')
@@ -22,6 +23,7 @@ export default function EngagementsPage() {
   const etatCode = params.get('etat') || ''
   const meteoCode = params.get('meteo') || ''
   const prioritaire = params.get('prioritaire') || ''
+  const direction = params.get('direction') || ''
 
   useEffect(() => {
     api
@@ -36,7 +38,19 @@ export default function EngagementsPage() {
       .get('/meteos')
       .then((res) => setMeteos(res.data))
       .catch(() => {})
+    api
+      .get('/directions')
+      .then((res) => setDirections(res.data))
+      .catch(() => {})
   }, [])
+
+  // Plusieurs sigles peuvent être concordés vers le même nom complet (ex.
+  // DSPORT/DSPORTS/SPORT → "Direction des Sports") : le filtre se choisit
+  // par nom complet, dédupliqué, jamais par sigle brut.
+  const directionOptions = useMemo(() => {
+    const libelles = new Set(directions.map((d) => d.libelle).filter((l): l is string => !!l))
+    return [...libelles].sort((a, b) => a.localeCompare(b, 'fr'))
+  }, [directions])
 
   useEffect(() => {
     setLoading(true)
@@ -45,6 +59,7 @@ export default function EngagementsPage() {
     if (etatCode) query.etat_code = etatCode
     if (meteoCode) query.meteo_code = meteoCode
     if (prioritaire) query.prioritaire = prioritaire
+    if (direction) query.direction = direction
     if (params.get('q')) query.q = params.get('q')!
 
     api
@@ -52,7 +67,7 @@ export default function EngagementsPage() {
       .then((res) => setEngagements(res.data))
       .catch((err) => setError(apiErrorMessage(err, 'Impossible de charger les engagements')))
       .finally(() => setLoading(false))
-  }, [groupeId, etatCode, meteoCode, prioritaire, params])
+  }, [groupeId, etatCode, meteoCode, prioritaire, direction, params])
 
   const groupTabs = useMemo(
     () => [{ id: '', label: 'Tous' }, ...groupes.map((g) => ({ id: String(g.id), label: g.code })), { id: 'none', label: 'Hors groupe' }],
@@ -136,6 +151,18 @@ export default function EngagementsPage() {
             </option>
           ))}
           <option value="none">❔ Non renseignée</option>
+        </select>
+        <select
+          value={direction}
+          onChange={(e) => updateParam('direction', e.target.value)}
+          className="rounded-md border border-slate-300 px-2.5 py-1.5 text-sm"
+        >
+          <option value="">Toutes directions</option>
+          {directionOptions.map((libelle) => (
+            <option key={libelle} value={libelle}>
+              {libelle}
+            </option>
+          ))}
         </select>
         <button
           onClick={() => updateParam('prioritaire', prioritaire === 'true' ? '' : 'true')}

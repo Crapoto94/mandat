@@ -119,6 +119,75 @@ router.get('/agent-lookup', async (req, res) => {
   });
 });
 
+// --- Journal d'activité (lecture seule) --------------------------------------
+
+/**
+ * Vue unifiée de tout ce qui a été fait sur les engagements — modifications
+ * de champ (historique existant), commentaires postés, pièces jointes
+ * ajoutées ou supprimées — triée du plus récent au plus ancien. Sert de
+ * journal global pour l'admin, là où la fiche engagement n'affiche que
+ * l'historique de son propre engagement.
+ */
+router.get('/activity-log', async (req, res) => {
+  const limit = Math.min(Number(req.query.limit) || 200, 500);
+  const rows = await db.all(
+    `(
+       SELECT 'champ' AS type, h.changed_at AS at, h.changed_by AS auteur,
+              e.id AS engagement_id, e.numero AS engagement_numero, e.contenu AS engagement_contenu,
+              h.champ AS libelle, h.ancienne_valeur, h.nouvelle_valeur
+       FROM engagement_history h
+       JOIN engagements e ON e.id = h.engagement_id
+     )
+     UNION ALL
+     (
+       SELECT 'commentaire', c.created_at, c.author_name,
+              e.id, e.numero, e.contenu,
+              'commentaire', NULL, c.body
+       FROM comments c
+       JOIN engagements e ON e.id = c.engagement_id
+     )
+     UNION ALL
+     (
+       SELECT 'piece_jointe_ajoutee', a.created_at, a.uploaded_by,
+              e.id, e.numero, e.contenu,
+              a.original_name, NULL, NULL
+       FROM engagement_attachments a
+       JOIN engagements e ON e.id = a.engagement_id
+     )
+     UNION ALL
+     (
+       SELECT 'piece_jointe_supprimee', a.deleted_at, a.deleted_by,
+              e.id, e.numero, e.contenu,
+              a.original_name, NULL, NULL
+       FROM engagement_attachments a
+       JOIN engagements e ON e.id = a.engagement_id
+       WHERE a.deleted_at IS NOT NULL
+     )
+     ORDER BY at DESC
+     LIMIT $1`,
+    [limit]
+  );
+  res.json(rows);
+});
+
+// --- Uniformisation des sigles de direction -----------------------------------
+
+/**
+ * Réécrit dans les engagements toutes les variantes connues d'un même sigle
+ * (casse, orthographe legacy...) vers une écriture canonique unique, et
+ * nettoie la table de concordance en conséquence (cf.
+ * engagementsService.normalizeKnownDirectionAliases pour la liste et le
+ * détail du mécanisme). Idempotent : rejouable sans risque.
+ */
+router.post('/directions/normalize-aliases', async (req, res) => {
+  try {
+    const summary = await engagementsService.normalizeKnownDirectionAliases();
+    res.json({ summary });
+  } catch (err) {
+    res.status(500).json({ error: `Uniformisation impossible : ${err.message}` });
+  }
+});
+
 // --- Réimport des fichiers Excel sources -------------------------------------
 
 router.post('/import', upload.fields([{ name: 'suivi' }, { name: 'repartition' }]), async (req, res) => {

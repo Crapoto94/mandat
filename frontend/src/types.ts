@@ -164,6 +164,18 @@ export interface Comment {
   created_at: string
 }
 
+export interface ActivityLogEntry {
+  type: 'champ' | 'commentaire' | 'piece_jointe_ajoutee' | 'piece_jointe_supprimee'
+  at: string
+  auteur: string | null
+  engagement_id: number
+  engagement_numero: number
+  engagement_contenu: string
+  libelle: string
+  ancienne_valeur: string | null
+  nouvelle_valeur: string | null
+}
+
 export interface CoordinationTopic {
   id: number
   titre: string

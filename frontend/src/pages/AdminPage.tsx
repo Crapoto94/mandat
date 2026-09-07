@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { api, apiErrorMessage } from '../lib/api'
-import type { Direction, Etat, HubdsiEntry, Meteo, RoleDef, TrashedAttachment } from '../types'
+import type { ActivityLogEntry, Direction, Etat, HubdsiEntry, Meteo, RoleDef, TrashedAttachment } from '../types'
+import { fieldLabel } from '../lib/fieldLabels'
 import {
   ShieldCheck,
   Upload,
@@ -15,6 +16,11 @@ import {
   Search,
   UserCircle2,
   RotateCcw,
+  ScrollText,
+  MessageSquare,
+  Paperclip,
+  Pencil,
+  Wand2,
 } from 'lucide-react'
 
 interface AdminAccount {
@@ -125,6 +131,8 @@ export default function AdminPage() {
 
       <TrashSection onError={setError} />
 
+      <ActivityLogSection onError={setError} />
+
       <ImportSection onDone={(msg) => setNotice(msg)} onError={(msg) => setError(msg)} />
     </div>
   )
@@ -144,6 +152,7 @@ function DirectionsSection({
   const [drafts, setDrafts] = useState<Record<string, string>>({})
   const [modes, setModes] = useState<Record<string, 'select' | typeof CUSTOM>>({})
   const [syncing, setSyncing] = useState(false)
+  const [normalizing, setNormalizing] = useState(false)
 
   function load() {
     Promise.all([api.get('/directions'), api.get('/directions/hubdsi-referentiel')]).then(([dirsRes, hubRes]) => {
@@ -224,20 +233,58 @@ function DirectionsSection({
     }
   }
 
+  async function normalizeAliases() {
+    if (
+      !confirm(
+        "Uniformiser les sigles connus (ex. DSPORT/SPORT/Dsports → DSPORTS) dans tous les engagements ? " +
+          'Cette action réécrit le texte des engagements concernés et supprime les sigles alias devenus obsolètes.'
+      )
+    )
+      return
+    setNormalizing(true)
+    try {
+      const res = await api.post('/admin/directions/normalize-aliases')
+      const lignes = res.data.summary
+        .map((s: { canonical: string; aliases: string[]; occurrencesRenamed: number }) =>
+          s.occurrencesRenamed || s.aliases.length
+            ? `${s.canonical} (${s.occurrencesRenamed} occurrence(s) réécrite(s), sigles fusionnés : ${s.aliases.join(', ') || 'aucun'})`
+            : null
+        )
+        .filter(Boolean)
+      onNotice(lignes.length ? `Uniformisation terminée — ${lignes.join(' · ')}` : 'Uniformisation terminée — rien à changer.')
+      load()
+    } catch (err) {
+      onError(apiErrorMessage(err, 'Uniformisation impossible'))
+    } finally {
+      setNormalizing(false)
+    }
+  }
+
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-5">
-      <div className="mb-1 flex items-center justify-between">
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-800">
           <Tags size={16} /> Table de concordance des directions
         </h2>
-        <button
-          onClick={sync}
-          disabled={syncing}
-          className="flex items-center gap-1.5 rounded-md border border-slate-300 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-60"
-        >
-          <RefreshCw size={13} className={syncing ? 'animate-spin' : ''} />
-          Synchroniser depuis le Hub DSI
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={normalizeAliases}
+            disabled={normalizing}
+            className="flex items-center gap-1.5 rounded-md border border-slate-300 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-60"
+            title="Fusionne les sigles connus pour désigner la même direction sous une seule écriture"
+          >
+            <Wand2 size={13} />
+            Uniformiser les sigles
+          </button>
+          <button
+            onClick={sync}
+            disabled={syncing}
+            className="flex items-center gap-1.5 rounded-md border border-slate-300 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-60"
+          >
+            <RefreshCw size={13} className={syncing ? 'animate-spin' : ''} />
+            Synchroniser depuis le Hub DSI
+          </button>
+        </div>
       </div>
       <p className="mb-4 text-xs text-slate-500">
         Sigles rencontrés dans les engagements (pilotage / contributions) — affectez leur nom complet en le
@@ -941,6 +988,125 @@ function TrashSection({ onError }: { onError: (m: string) => void }) {
             </li>
           ))}
         </ul>
+      )}
+    </section>
+  )
+}
+
+/** Icône + libellé courts par type d'événement du journal. */
+const ACTIVITY_ICONS: Record<ActivityLogEntry['type'], typeof Pencil> = {
+  champ: Pencil,
+  commentaire: MessageSquare,
+  piece_jointe_ajoutee: Paperclip,
+  piece_jointe_supprimee: Trash2,
+}
+
+function activityDescription(entry: ActivityLogEntry) {
+  switch (entry.type) {
+    case 'champ':
+      return (
+        <>
+          a modifié <span className="font-medium">{fieldLabel(entry.libelle)}</span>
+        </>
+      )
+    case 'commentaire':
+      return (
+        <>
+          a commenté : « {entry.nouvelle_valeur && entry.nouvelle_valeur.length > 120
+            ? `${entry.nouvelle_valeur.slice(0, 120)}…`
+            : entry.nouvelle_valeur}{' '}
+          »
+        </>
+      )
+    case 'piece_jointe_ajoutee':
+      return (
+        <>
+          a ajouté la pièce jointe <span className="font-medium">{entry.libelle}</span>
+        </>
+      )
+    case 'piece_jointe_supprimee':
+      return (
+        <>
+          a supprimé la pièce jointe <span className="font-medium">{entry.libelle}</span>
+        </>
+      )
+  }
+}
+
+/**
+ * Journal global de tout ce qui s'est fait sur les engagements — modifications
+ * de champ, commentaires, pièces jointes — tous engagements confondus. Chargé
+ * à la demande (pas au montage de la page) : potentiellement volumineux et
+ * peu consulté, inutile de l'interroger à chaque ouverture de l'admin.
+ */
+function ActivityLogSection({ onError }: { onError: (m: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const [items, setItems] = useState<ActivityLogEntry[] | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  async function reveal() {
+    setOpen(true)
+    setBusy(true)
+    try {
+      const res = await api.get('/admin/activity-log', { params: { limit: 200 } })
+      setItems(res.data)
+    } catch (err) {
+      onError(apiErrorMessage(err, 'Journal indisponible'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <section className="rounded-xl border border-slate-200 bg-white p-5">
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold text-slate-800">
+            <ScrollText size={16} /> Journal d'activité
+          </h2>
+          <p className="text-xs text-slate-500">
+            Modifications, commentaires et pièces jointes sur tous les engagements, du plus récent au plus ancien.
+          </p>
+        </div>
+        <button
+          onClick={reveal}
+          disabled={busy}
+          className="shrink-0 rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+        >
+          {busy ? 'Chargement…' : open ? 'Rafraîchir' : "Afficher les logs"}
+        </button>
+      </div>
+
+      {open && items && (
+        !items.length ? (
+          <p className="mt-4 text-sm text-slate-400">Aucune activité enregistrée.</p>
+        ) : (
+          <ul className="mt-4 max-h-[32rem] space-y-1.5 overflow-y-auto">
+            {items.map((entry, i) => {
+              const Icon = ACTIVITY_ICONS[entry.type]
+              return (
+                <li
+                  key={i}
+                  className="flex items-start gap-2 rounded-md bg-slate-50 px-3 py-2 text-sm"
+                >
+                  <Icon size={14} className="mt-0.5 shrink-0 text-slate-400" />
+                  <div className="min-w-0">
+                    <p className="text-slate-700">
+                      <span className="font-medium">{entry.auteur || 'inconnu'}</span> {activityDescription(entry)}
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      {new Date(entry.at).toLocaleString('fr-FR')} ·{' '}
+                      <Link to={`/engagements/${entry.engagement_id}`} className="hover:text-ville-blue hover:underline">
+                        n°{entry.engagement_numero} — {entry.engagement_contenu.slice(0, 60)}
+                        {entry.engagement_contenu.length > 60 ? '…' : ''}
+                      </Link>
+                    </p>
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        )
       )}
     </section>
   )

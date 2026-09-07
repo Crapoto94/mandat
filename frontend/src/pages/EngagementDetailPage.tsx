@@ -4,6 +4,7 @@ import { api, apiErrorMessage } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import type { Engagement, Etat, Groupe, Meteo } from '../types'
 import { axeList } from '../lib/axeColors'
+import { fieldLabel } from '../lib/fieldLabels'
 import EtatBadge from '../components/EtatBadge'
 import AxeTag from '../components/AxeTag'
 import RichTextEditor from '../components/RichTextEditor'
@@ -460,22 +461,3 @@ function Info({ label, value }: { label: string; value?: string | null }) {
   )
 }
 
-const FIELD_LABELS: Record<string, string> = {
-  etat_code: "l'état d'avancement",
-  meteo_code: 'la météo',
-  description_avancement: 'la description du point atteint',
-  prochaines_etapes: 'les prochaines étapes',
-  roles_precises: 'les rôles précisés',
-  axe: "l'axe du projet",
-  contenu: 'le nom de l’engagement',
-  pilotage: 'le pilotage',
-  contribution_elaboration: "la contribution à l'élaboration",
-  contribution_impactees: 'les directions impactées',
-  echeance: "l'échéance",
-  groupe_id: 'le groupe de travail',
-  prioritaire_plenaire: 'le marquage prioritaire plénière',
-}
-
-function fieldLabel(code: string) {
-  return FIELD_LABELS[code] || code
-}
