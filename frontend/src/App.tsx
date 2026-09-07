@@ -11,6 +11,7 @@ import CoordinationPage from './pages/CoordinationPage'
 import PleniairePage from './pages/PleniairePage'
 import TimelinePage from './pages/TimelinePage'
 import AdminPage from './pages/AdminPage'
+import WhatsNewPage from './pages/WhatsNewPage'
 
 export default function App() {
   return (
@@ -27,6 +28,7 @@ export default function App() {
               <Route path="/coordination" element={<CoordinationPage />} />
               <Route path="/timeline" element={<TimelinePage />} />
               <Route path="/plenaire" element={<PleniairePage />} />
+              <Route path="/nouveautes" element={<WhatsNewPage />} />
               <Route element={<AdminRoute />}>
                 <Route path="/admin" element={<AdminPage />} />
               </Route>

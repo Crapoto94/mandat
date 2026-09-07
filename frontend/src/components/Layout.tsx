@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { api } from '../lib/api'
+import { APP_VERSION } from '../lib/version'
 import {
   LayoutDashboard,
   ListChecks,
@@ -43,6 +44,13 @@ export default function Layout() {
               <p className="text-sm font-semibold text-slate-900">Suivi des engagements du mandat</p>
               <p className="text-xs text-slate-500">Ville d'Ivry-sur-Seine</p>
             </div>
+            <NavLink
+              to="/nouveautes"
+              title="Nouveautés de cette version"
+              className="rounded-full border border-slate-200 px-2 py-0.5 text-[11px] font-semibold text-slate-500 hover:border-ville-blue/40 hover:text-ville-blue"
+            >
+              v{APP_VERSION}
+            </NavLink>
           </div>
 
           <nav className="hidden items-center gap-1 md:flex">
