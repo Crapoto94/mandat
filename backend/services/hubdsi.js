@@ -108,7 +108,11 @@ function normalizeDirections(raw) {
     // défaut, le nom sert aussi de clé (le champ "code" n'est ici qu'un
     // identifiant unique pour le cache, pas censé matcher nos sigles).
     const code = node.code || node.sigle || node.acronyme || node.abbreviation || node.short_name || libelle;
-    if (code && libelle && typeof libelle === 'string' && !looksLikePerson) {
+    // Le Hub DSI renvoie aussi des codes courts sans rapport avec des
+    // directions/services (codes budgétaires type "BB", "BF"...) : un nom
+    // complet de direction/service fait toujours plus de quelques lettres.
+    const looksLikeShortCode = typeof libelle === 'string' && libelle.trim().length <= 4;
+    if (code && libelle && typeof libelle === 'string' && !looksLikePerson && !looksLikeShortCode) {
       const key = String(code).trim().toUpperCase();
       if (!seen.has(key)) {
         seen.add(key);
