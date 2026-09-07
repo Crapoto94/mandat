@@ -155,12 +155,14 @@ export default function EngagementsPage() {
         <p className="p-8 text-center text-slate-500">Chargement…</p>
       ) : (
         <div className="scroll-x rounded-xl border border-slate-200 bg-white">
-          <table className="w-full min-w-[900px] text-sm">
+          <table className="w-full min-w-[1150px] text-sm">
             <thead>
               <tr className="border-b border-slate-100 text-left text-xs uppercase tracking-wide text-slate-500">
                 <th className="px-4 py-3 font-medium">#</th>
                 <th className="px-4 py-3 font-medium">Engagement</th>
                 <th className="px-4 py-3 font-medium">Pilotage</th>
+                <th className="px-4 py-3 font-medium">Contribution</th>
+                <th className="px-4 py-3 font-medium">Ressources</th>
                 <th className="px-4 py-3 font-medium">Groupe</th>
                 <th className="px-4 py-3 font-medium">État</th>
                 <th className="px-4 py-3 font-medium">Météo</th>
@@ -181,7 +183,9 @@ export default function EngagementsPage() {
                     </Link>
                     <AxeTag axe={e.axe} className="mt-1" />
                   </td>
-                  <td className="px-4 py-3 align-top text-slate-600">{e.pilotage || '—'}</td>
+                  <td className="max-w-[160px] px-4 py-3 align-top text-slate-600">{e.pilotage || '—'}</td>
+                  <td className="max-w-[160px] px-4 py-3 align-top text-slate-600">{e.contribution_elaboration || '—'}</td>
+                  <td className="max-w-[160px] px-4 py-3 align-top text-slate-600">{e.contribution_impactees || '—'}</td>
                   <td className="px-4 py-3 align-top text-slate-600">{e.groupe_code || 'Hors groupe'}</td>
                   <td className="px-4 py-3 align-top">
                     <EtatBadge libelle={e.etat_libelle} couleur={e.etat_couleur} />
@@ -200,7 +204,7 @@ export default function EngagementsPage() {
               ))}
               {!engagements.length && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-10 text-center text-sm text-slate-400">
+                  <td colSpan={9} className="px-4 py-10 text-center text-sm text-slate-400">
                     Aucun engagement ne correspond à ces filtres.
                   </td>
                 </tr>
