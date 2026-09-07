@@ -33,20 +33,39 @@ async function hub(path) {
   }
 }
 
-// Plusieurs endpoints possibles selon la version du Hub DSI / le scope de la
-// clé (le nom exact n'est pas garanti par la doc) : on essaie dans l'ordre
-// et on s'arrête au premier qui répond sans erreur.
-const DIRECTIONS_CANDIDATE_PATHS = [
+// Repli si l'endpoint dédié (ci-dessous) est indisponible : plusieurs formes
+// possibles selon la version du Hub DSI / le scope de la clé (le nom exact
+// n'est pas garanti par la doc) — on essaie dans l'ordre.
+const DIRECTIONS_FALLBACK_PATHS = [
   '/api/directions-services',
   '/api/admin/rh/organisation-chart',
   '/api/admin/rh/services-tree',
   '/api/admin/rh/hierarchy',
 ];
 
-/** Organisation Ville (directions / services), lecture seule — maîtrisée par le Hub DSI. */
+/**
+ * Organisation Ville (directions / services), lecture seule — maîtrisée par
+ * le Hub DSI. Passe d'abord par l'API dédiée en deux temps : liste des
+ * directions, puis services de chacune (`/api/consumable/org-directions` +
+ * `/api/consumable/org-services/:directionCode`) — plus fiable que
+ * l'organigramme RH générique, repli si indisponible.
+ */
 async function getDirectionsServices() {
-  let lastError = 'Aucun endpoint testé';
-  for (const path of DIRECTIONS_CANDIDATE_PATHS) {
+  const dirsResult = await hub('/api/consumable/org-directions');
+  if (!dirsResult.error) {
+    const directions = normalizeDirections(dirsResult.data);
+    if (directions.length) {
+      const all = [...directions];
+      for (const { code } of directions) {
+        const servicesResult = await hub(`/api/consumable/org-services/${encodeURIComponent(code)}`);
+        if (!servicesResult.error) all.push(...normalizeDirections(servicesResult.data));
+      }
+      return { data: all };
+    }
+  }
+
+  let lastError = dirsResult.error || 'Aucun endpoint testé';
+  for (const path of DIRECTIONS_FALLBACK_PATHS) {
     const result = await hub(path);
     if (!result.error) return result;
     lastError = result.error;
