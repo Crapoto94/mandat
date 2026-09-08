@@ -41,33 +41,81 @@ const FIELD_LABELS = {
   prioritaire_plenaire: 'le marquage prioritaire plénière',
 };
 
+const MAX_ITEMS_PER_KIND = 5; // au-delà, on résume plutôt que de lister (mail illisible sinon)
+
+function truncate(str, max) {
+  const s = String(str || '').trim();
+  return s.length > max ? `${s.slice(0, max)}…` : s;
+}
+
+function formatDate(d) {
+  return d ? new Date(d).toLocaleDateString('fr-FR') : null;
+}
+
 /** Ce qui a concrètement changé sur un engagement depuis `since` — pour que
- * le mail dise "quoi", pas seulement "quelque chose a changé". */
+ * le mail dise précisément "quoi" (quel commentaire, quel jalon, quelle
+ * pièce jointe...), pas seulement "quelque chose a changé". */
 async function describeChanges(engagementId, since) {
-  const [fieldsChanged, commentCount, stepCount, attachmentCount] = await Promise.all([
+  const [fieldsChanged, comments, newSteps, updatedSteps, attachments] = await Promise.all([
     db.all(`SELECT DISTINCT champ FROM engagement_history WHERE engagement_id = $1 AND changed_at > $2`, [
       engagementId,
       since,
     ]),
-    db.get(`SELECT COUNT(*)::int AS n FROM comments WHERE engagement_id = $1 AND created_at > $2`, [
-      engagementId,
-      since,
-    ]),
-    db.get(
-      `SELECT COUNT(*)::int AS n FROM engagement_steps WHERE engagement_id = $1 AND GREATEST(created_at, updated_at) > $2`,
+    db.all(
+      `SELECT author_name, body FROM comments WHERE engagement_id = $1 AND created_at > $2
+       ORDER BY created_at ASC LIMIT ${MAX_ITEMS_PER_KIND + 1}`,
       [engagementId, since]
     ),
-    db.get(
-      `SELECT COUNT(*)::int AS n FROM engagement_attachments WHERE engagement_id = $1 AND created_at > $2 AND deleted_at IS NULL`,
+    // Jalon créé après `since` : nouveau.
+    db.all(
+      `SELECT description, date_etape FROM engagement_steps WHERE engagement_id = $1 AND created_at > $2
+       ORDER BY created_at ASC LIMIT ${MAX_ITEMS_PER_KIND + 1}`,
+      [engagementId, since]
+    ),
+    // Jalon existant avant `since` mais modifié depuis : distinct des nouveaux,
+    // pour ne pas doublonner "ajouté" et "modifié" sur le même jalon.
+    db.all(
+      `SELECT description, date_etape FROM engagement_steps
+       WHERE engagement_id = $1 AND created_at <= $2 AND updated_at > $2
+       ORDER BY updated_at ASC LIMIT ${MAX_ITEMS_PER_KIND + 1}`,
+      [engagementId, since]
+    ),
+    db.all(
+      `SELECT original_name FROM engagement_attachments WHERE engagement_id = $1 AND created_at > $2 AND deleted_at IS NULL
+       ORDER BY created_at ASC LIMIT ${MAX_ITEMS_PER_KIND + 1}`,
       [engagementId, since]
     ),
   ]);
 
   const changes = fieldsChanged.map((f) => `${FIELD_LABELS[f.champ] || f.champ} modifié(e)`);
-  if (commentCount.n) changes.push(commentCount.n === 1 ? '1 nouveau commentaire' : `${commentCount.n} nouveaux commentaires`);
-  if (stepCount.n) changes.push(stepCount.n === 1 ? '1 étape ajoutée ou modifiée' : `${stepCount.n} étapes ajoutées ou modifiées`);
-  if (attachmentCount.n)
-    changes.push(attachmentCount.n === 1 ? '1 pièce jointe ajoutée' : `${attachmentCount.n} pièces jointes ajoutées`);
+
+  function addWithOverflow(list, formatOne, singularKind, pluralKind) {
+    const shown = list.slice(0, MAX_ITEMS_PER_KIND);
+    for (const item of shown) changes.push(formatOne(item));
+    const overflow = list.length - shown.length;
+    if (overflow > 0) changes.push(`… et ${overflow} autre(s) ${overflow === 1 ? singularKind : pluralKind}`);
+  }
+
+  addWithOverflow(
+    comments,
+    (c) => `Nouveau commentaire${c.author_name ? ` de ${c.author_name}` : ''} : « ${truncate(c.body, 100)} »`,
+    'commentaire',
+    'commentaires'
+  );
+  addWithOverflow(
+    newSteps,
+    (s) => `Nouveau jalon${formatDate(s.date_etape) ? ` (${formatDate(s.date_etape)})` : ''} : ${truncate(s.description, 100)}`,
+    'jalon',
+    'jalons'
+  );
+  addWithOverflow(
+    updatedSteps,
+    (s) => `Jalon modifié${formatDate(s.date_etape) ? ` (${formatDate(s.date_etape)})` : ''} : ${truncate(s.description, 100)}`,
+    'jalon',
+    'jalons'
+  );
+  addWithOverflow(attachments, (a) => `Pièce jointe ajoutée : ${a.original_name}`, 'pièce jointe', 'pièces jointes');
+
   return changes;
 }
 
@@ -117,7 +165,9 @@ function buildEmailContent(displayName, items) {
         </a> — ${escapeHtml(it.contenu)}
         ${
           it.changes?.length
-            ? `<br/><span style="color:#334155;font-size:13px;">Modifié : ${it.changes.map(escapeHtml).join(', ')}</span>`
+            ? `<ul style="margin:4px 0 0 0;padding-left:16px;color:#334155;font-size:13px;">
+                ${it.changes.map((c) => `<li>${escapeHtml(c)}</li>`).join('')}
+              </ul>`
             : ''
         }
         ${it.etat_libelle ? `<br/><span style="color:#64748b;font-size:12px;">État actuel : ${escapeHtml(it.etat_libelle)}</span>` : ''}
@@ -207,21 +257,28 @@ async function sendExampleDigest({ to, displayName }) {
       numero: 12,
       contenu: 'Créer une maison des associations, point de rendez-vous de la vie associative ivryenne.',
       etat_libelle: 'En cours',
-      changes: ["l'état d'avancement modifié(e)", '1 nouveau commentaire'],
+      changes: [
+        "l'état d'avancement modifié(e)",
+        'Nouveau commentaire de DUPONT Julie : « On avance bien, RDV avec les assos prévu le 15. »',
+      ],
     },
     {
       engagement_id: 2,
       numero: 27,
       contenu: 'Favoriser les mobilités actives et développer un plan vélo ambitieux.',
       etat_libelle: 'Partiellement réalisé',
-      changes: ['la météo modifié(e)', 'la description du point atteint modifié(e)', '1 étape ajoutée ou modifiée'],
+      changes: [
+        'la météo modifié(e)',
+        'la description du point atteint modifié(e)',
+        'Nouveau jalon (15/12/2026) : Lancement des travaux de la piste cyclable rue Gabriel Péri',
+      ],
     },
     {
       engagement_id: 3,
       numero: 41,
       contenu: "Ouvrir un budget participatif pour les projets d'initiative citoyenne.",
       etat_libelle: 'À lancer',
-      changes: ['1 pièce jointe ajoutée'],
+      changes: ['Pièce jointe ajoutée : Note de cadrage - budget participatif 2026.pdf'],
     },
   ];
   return sendMailLogged({
