@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api, apiErrorMessage } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
-import type { Comment, Engagement, Etat, FieldProposal, Groupe, Meteo } from '../types'
+import type { Comment, Engagement, Etat, FieldProposal, Groupe, Meteo, Projet } from '../types'
 import { axeList } from '../lib/axeColors'
 import { fieldLabel } from '../lib/fieldLabels'
 import { useFieldLock } from '../hooks/useFieldLock'
@@ -13,11 +13,22 @@ import RichTextEditor from '../components/RichTextEditor'
 import RolesSection from '../components/RolesSection'
 import StepsTimeline from '../components/StepsTimeline'
 import AttachmentsSection from '../components/AttachmentsSection'
-import MeteoPicker from '../components/MeteoPicker'
+import MeteoPicker, { MeteoBadge } from '../components/MeteoPicker'
 import ToggleSwitch from '../components/ToggleSwitch'
 import EditingBadge from '../components/EditingBadge'
 import LiveUpdateFlash from '../components/LiveUpdateFlash'
-import { ArrowLeft, Star, Send, Clock, MessageSquare, Pencil, X, Infinity as InfinityIcon } from 'lucide-react'
+import {
+  ArrowLeft,
+  Star,
+  Send,
+  Clock,
+  MessageSquare,
+  Pencil,
+  X,
+  Infinity as InfinityIcon,
+  FolderKanban,
+  Plus,
+} from 'lucide-react'
 
 const POLL_MS = 7000
 const DEBOUNCE_MS = 1500
@@ -227,6 +238,12 @@ export default function EngagementDetailPage() {
       {/* Fiche d'avancement — tout est instantané, plus de brouillon à valider */}
       <div className="rounded-xl border border-slate-200 bg-white p-5">
         <h2 className="mb-4 text-sm font-semibold text-slate-800">Point d'avancement</h2>
+        {!!engagement.projetsLies?.length && (
+          <p className="mb-4 rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-500">
+            État et météo calculés automatiquement à partir des {engagement.projetsLies.length} projet(s) lié(s)
+            ci-dessous (le moins avancé / la pire météo) — non modifiables directement tant qu'un projet est lié.
+          </p>
+        )}
         <div className="space-y-4">
           <div className="flex flex-wrap items-end gap-6">
             <div>
@@ -234,7 +251,8 @@ export default function EngagementDetailPage() {
               <select
                 value={engagement.etat_code}
                 onChange={(e) => setEtat(e.target.value)}
-                className="w-full max-w-xs rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-ville-blue focus:outline-none"
+                disabled={!!engagement.projetsLies?.length}
+                className="w-full max-w-xs rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-ville-blue focus:outline-none disabled:bg-slate-50 disabled:text-slate-400"
               >
                 {etats.map((e) => (
                   <option key={e.code} value={e.code}>
@@ -245,7 +263,12 @@ export default function EngagementDetailPage() {
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-500">Météo</label>
-              <MeteoPicker meteos={meteos} value={engagement.meteo_code} onChange={setMeteo} />
+              <MeteoPicker
+                meteos={meteos}
+                value={engagement.meteo_code}
+                onChange={setMeteo}
+                disabled={!!engagement.projetsLies?.length}
+              />
             </div>
           </div>
           <div>
@@ -280,6 +303,8 @@ export default function EngagementDetailPage() {
           </p>
         )}
       </div>
+
+      <ProjetsLiesPanel engagementId={engagement.id} projets={engagement.projetsLies || []} />
 
       <RolesSection engagementId={engagement.id} roles={engagement.roles || []} onChange={load} />
 
@@ -628,6 +653,54 @@ function BaseInfoCard({
 /** Un commentaire, éditable en place par son auteur (identifié par
  * author_sub — les commentaires antérieurs à cette fonctionnalité n'ont pas
  * cet identifiant et restent donc non modifiables). */
+/** Projets liés à l'engagement — l'agrégat (météo/état) est déjà répercuté
+ * plus haut sur la fiche ; ici, la liste elle-même ne montre que les
+ * projets dont l'utilisateur est membre (filtré côté serveur). */
+function ProjetsLiesPanel({ engagementId, projets }: { engagementId: number; projets: Projet[] }) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+          <FolderKanban size={16} /> Projets liés ({projets.length})
+        </h2>
+        <Link
+          to={`/projets?nouveau=1&engagement_id=${engagementId}`}
+          className="flex items-center gap-1.5 rounded-md border border-slate-300 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+        >
+          <Plus size={13} /> Nouveau projet
+        </Link>
+      </div>
+      {!projets.length ? (
+        <p className="text-sm text-slate-400">
+          Aucun projet lié visible pour vous — la météo et l'état de l'engagement restent saisis manuellement.
+        </p>
+      ) : (
+        <ul className="space-y-1.5">
+          {projets.map((p) => (
+            <li key={p.id}>
+              <Link
+                to={`/projets/${p.id}`}
+                className="flex items-center justify-between gap-2 rounded-md bg-slate-50 px-3 py-2 text-sm hover:bg-ville-blue/5"
+              >
+                <span className="font-medium text-slate-800">{p.nom}</span>
+                <span className="flex shrink-0 items-center gap-2">
+                  {p.meteo_code && (
+                    <MeteoBadge
+                      meteo={{ code: p.meteo_code, libelle: p.meteo_libelle || '', emoji: p.meteo_emoji || '', couleur: p.meteo_couleur || '#64748b', ordre: 0 }}
+                      iconOnly
+                    />
+                  )}
+                  <EtatBadge libelle={p.etat_libelle} couleur={p.etat_couleur} />
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 function CommentItem({
   comment,
   canEdit,

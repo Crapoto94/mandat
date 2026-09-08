@@ -35,6 +35,7 @@ interface AdminAccount {
   id: number
   username: string
   display_name: string
+  email: string | null
   active: boolean
   created_at: string
   last_login_at: string | null
@@ -99,6 +100,7 @@ export default function AdminPage() {
             <tr className="border-b border-slate-100 text-left text-xs uppercase text-slate-500">
               <th className="py-2 font-medium">Identifiant</th>
               <th className="py-2 font-medium">Nom affiché</th>
+              <th className="py-2 font-medium">Mail (notifications)</th>
               <th className="py-2 font-medium">Statut</th>
               <th className="py-2 font-medium">Dernière connexion</th>
               <th className="py-2 font-medium"></th>
@@ -109,6 +111,9 @@ export default function AdminPage() {
               <tr key={a.id} className="border-b border-slate-50 last:border-0">
                 <td className="py-2">{a.username}</td>
                 <td className="py-2">{a.display_name}</td>
+                <td className="py-2">
+                  <AdminEmailCell account={a} onSaved={load} />
+                </td>
                 <td className="py-2">{a.active ? 'Actif' : 'Désactivé'}</td>
                 <td className="py-2 text-slate-500">
                   {a.last_login_at ? new Date(a.last_login_at).toLocaleString('fr-FR') : 'Jamais'}
@@ -982,6 +987,37 @@ function StatusRow({ label, ok, hint }: { label: string; ok: boolean; hint?: str
       <span className="font-medium text-slate-700">{label}</span>
       {hint && <span className="text-xs text-slate-400">— {hint}</span>}
     </div>
+  )
+}
+
+/** Mail d'un compte admin, éditable en place (sauvegarde au blur) — sert de
+ * destinataire aux notifications de nouvelles demandes/bugs (feedback). */
+function AdminEmailCell({ account, onSaved }: { account: AdminAccount; onSaved: () => void }) {
+  const [value, setValue] = useState(account.email || '')
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => setValue(account.email || ''), [account.email])
+
+  async function save() {
+    if (value === (account.email || '')) return
+    setSaving(true)
+    try {
+      await api.patch(`/admin/admins/${account.id}`, { email: value.trim() || null })
+      onSaved()
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <input
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={save}
+      disabled={saving}
+      placeholder="mail@ivry94.fr"
+      className="w-full rounded-md border border-transparent px-1.5 py-1 text-sm hover:border-slate-200 focus:border-ville-blue focus:outline-none"
+    />
   )
 }
 

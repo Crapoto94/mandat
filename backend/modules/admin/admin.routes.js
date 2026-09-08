@@ -26,22 +26,22 @@ router.use(requireAuth, requireAdmin);
 
 router.get('/admins', async (req, res) => {
   const rows = await db.all(
-    `SELECT id, username, display_name, active, created_at, last_login_at FROM admin_users ORDER BY id ASC`
+    `SELECT id, username, display_name, email, active, created_at, last_login_at FROM admin_users ORDER BY id ASC`
   );
   res.json(rows);
 });
 
 router.post('/admins', async (req, res) => {
-  const { username, password, display_name } = req.body || {};
+  const { username, password, display_name, email } = req.body || {};
   if (!username || !password || password.length < 8) {
     return res.status(400).json({ error: "Identifiant requis et mot de passe d'au moins 8 caractères" });
   }
   const hash = await bcrypt.hash(password, 10);
   try {
     const created = await db.get(
-      `INSERT INTO admin_users (username, password_hash, display_name)
-       VALUES ($1, $2, $3) RETURNING id, username, display_name, active, created_at`,
-      [username, hash, display_name || username]
+      `INSERT INTO admin_users (username, password_hash, display_name, email)
+       VALUES ($1, $2, $3, $4) RETURNING id, username, display_name, email, active, created_at`,
+      [username, hash, display_name || username, email || null]
     );
     res.status(201).json(created);
   } catch (err) {
@@ -51,7 +51,7 @@ router.post('/admins', async (req, res) => {
 });
 
 router.patch('/admins/:id', async (req, res) => {
-  const { active, password, display_name } = req.body || {};
+  const { active, password, display_name, email } = req.body || {};
   const sets = [];
   const params = [];
   if (active !== undefined) {
@@ -61,6 +61,10 @@ router.patch('/admins/:id', async (req, res) => {
   if (display_name) {
     params.push(display_name);
     sets.push(`display_name = $${params.length}`);
+  }
+  if (email !== undefined) {
+    params.push(email || null);
+    sets.push(`email = $${params.length}`);
   }
   if (password) {
     if (password.length < 8) return res.status(400).json({ error: 'Mot de passe trop court (8 caractères min.)' });
@@ -72,7 +76,7 @@ router.patch('/admins/:id', async (req, res) => {
   params.push(req.params.id);
   const updated = await db.get(
     `UPDATE admin_users SET ${sets.join(', ')} WHERE id = $${params.length}
-     RETURNING id, username, display_name, active, created_at`,
+     RETURNING id, username, display_name, email, active, created_at`,
     params
   );
   if (!updated) return res.status(404).json({ error: 'Compte introuvable' });

@@ -5,8 +5,33 @@
 const express = require('express');
 const { db } = require('../../db/pg_db');
 const { requireAuth, requireAdmin } = require('../../middleware/auth');
+const { sendMailLogged } = require('../../services/mailLog');
 
 const router = express.Router();
+
+const APP_PUBLIC_URL = (process.env.APP_PUBLIC_URL || process.env.CORS_ORIGIN || '').replace(/\/$/, '');
+
+/** Notifie les comptes admin ayant une adresse mail renseignée — best
+ * effort, ne bloque jamais la soumission (l'agent ne doit pas voir
+ * échouer son signalement pour un problème de mail côté admin). */
+async function notifyAdmins(row) {
+  const admins = await db.all(`SELECT email, display_name FROM admin_users WHERE active = true AND email IS NOT NULL`);
+  const label = row.type === 'bug' ? 'Bug signalé' : "Demande d'évolution";
+  const link = APP_PUBLIC_URL ? `${APP_PUBLIC_URL}/admin` : '/admin';
+  const content = `<p>${label} par ${row.submitted_by_name || 'un agent'} :</p>
+    <p style="font-weight:600;">${row.titre}</p>
+    ${row.description ? `<p>${row.description.replace(/\n/g, '<br/>')}</p>` : ''}
+    <p><a href="${link}" style="color:#0055A4;">Voir dans l'administration</a></p>`;
+
+  for (const admin of admins) {
+    await sendMailLogged({
+      to: admin.email,
+      subject: `[Suivi mandat] ${label} : ${row.titre}`,
+      content,
+      context: 'feedback_notify',
+    }).catch((err) => console.warn('[feedback] notification admin échouée pour', admin.email, '-', err.message));
+  }
+}
 
 router.post('/', requireAuth, async (req, res) => {
   const { type, titre, description, page_url } = req.body || {};
@@ -18,6 +43,7 @@ router.post('/', requireAuth, async (req, res) => {
      VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
     [type, titre.trim(), description?.trim() || null, page_url || null, req.user.sub, req.user.displayName || req.user.sub]
   );
+  notifyAdmins(row).catch((err) => console.warn('[feedback] notifyAdmins a échoué :', err.message));
   res.status(201).json(row);
 });
 

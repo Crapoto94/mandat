@@ -1,6 +1,7 @@
 const express = require('express');
 const service = require('./engagements.service');
 const proposalsService = require('./proposals.service');
+const projetsService = require('../projets/projets.service');
 const { requireAuth } = require('../../middleware/auth');
 
 const router = express.Router();
@@ -47,7 +48,15 @@ router.get('/nouveautes-counts', requireAuth, async (req, res) => {
 router.get('/:id', requireAuth, async (req, res) => {
   const engagement = await service.getById(req.params.id);
   if (!engagement) return res.status(404).json({ error: 'Engagement introuvable' });
-  res.json(engagement);
+  // Projets liés : l'agrégat (météo/état déjà répercutés sur l'engagement)
+  // est public, mais la liste elle-même n'expose que les projets dont
+  // l'utilisateur est membre (ou tout si admin) — cf. accès réservé aux
+  // membres sur les projets.
+  const projetsLies = await projetsService.listForEngagement(req.params.id, {
+    userSub: req.user.sub,
+    isAdmin: req.user.role === 'admin',
+  });
+  res.json({ ...engagement, projetsLies });
 });
 
 /**

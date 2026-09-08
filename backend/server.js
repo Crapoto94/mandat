@@ -30,6 +30,7 @@ const locksRoutes = require('./modules/engagements/locks.routes');
 const alertsRoutes = require('./modules/engagements/alerts.routes');
 const alertsDigestJob = require('./jobs/alertsDigest');
 const feedbackRoutes = require('./modules/feedback/feedback.routes');
+const projetsRoutes = require('./modules/projets/projets.routes');
 
 const app = express();
 const PORT = process.env.PORT || 5151;
@@ -77,6 +78,7 @@ app.use('/api/meteos', meteoRoutes);
 app.use('/api', attachmentsRoutes); // /api/engagements/:id/attachments, /api/attachments/:id/file
 app.use('/api/alerts', alertsRoutes); // /api/alerts/mine, POST|DELETE /api/alerts/:id
 app.use('/api/feedback', feedbackRoutes); // demandes/bugs — soumission libre, liste réservée admin
+app.use('/api/projets', projetsRoutes); // accès réservé aux membres (+ admin)
 
 app.use((req, res) => res.status(404).json({ error: 'Route inconnue' }));
 

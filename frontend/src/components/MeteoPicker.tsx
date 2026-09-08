@@ -4,9 +4,10 @@ interface Props {
   meteos: Meteo[]
   value: string | null
   onChange: (code: string | null) => void
+  disabled?: boolean
 }
 
-export default function MeteoPicker({ meteos, value, onChange }: Props) {
+export default function MeteoPicker({ meteos, value, onChange, disabled }: Props) {
   return (
     <div className="flex items-center gap-1.5">
       {meteos.map((m) => (
@@ -14,10 +15,11 @@ export default function MeteoPicker({ meteos, value, onChange }: Props) {
           key={m.code}
           type="button"
           title={m.libelle}
+          disabled={disabled}
           onClick={() => onChange(value === m.code ? null : m.code)}
-          className={`flex h-9 w-9 items-center justify-center rounded-full text-lg transition-all ${
+          className={`flex h-9 w-9 items-center justify-center rounded-full text-lg transition-all disabled:cursor-not-allowed ${
             value === m.code ? 'ring-2 ring-offset-1' : 'opacity-40 hover:opacity-80'
-          }`}
+          } ${disabled ? 'disabled:opacity-30 disabled:hover:opacity-30' : ''}`}
           style={value === m.code ? { backgroundColor: `${m.couleur}22`, outlineColor: m.couleur } : undefined}
         >
           {m.emoji}

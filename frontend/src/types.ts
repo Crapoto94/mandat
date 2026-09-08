@@ -63,6 +63,7 @@ export interface Engagement {
   steps?: EngagementStep[]
   attachments?: Attachment[]
   fieldProposals?: FieldProposal[]
+  projetsLies?: Projet[]
 }
 
 export interface FieldProposal {
@@ -210,6 +211,77 @@ export interface AlertSubscription {
   last_notified_at: string | null
   engagement_numero: number
   engagement_contenu: string
+}
+
+export interface ProjetMembre {
+  id: number
+  projet_id: number
+  user_sub: string
+  display_name: string | null
+  direction: string | null
+  role: string | null
+  added_at: string
+  added_by: string | null
+}
+
+export interface ProjetStep {
+  id: number
+  projet_id: number
+  date_etape: string | null
+  description: string
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ProjetComment {
+  id: number
+  projet_id: number
+  author_name: string
+  author_direction: string | null
+  author_sub: string | null
+  body: string
+  created_at: string
+  edited_at: string | null
+}
+
+export interface ProjetHistoryEntry {
+  id: number
+  projet_id: number
+  champ: string
+  ancienne_valeur: string | null
+  nouvelle_valeur: string | null
+  changed_by: string | null
+  changed_at: string
+}
+
+export interface Projet {
+  id: number
+  engagement_id: number | null
+  engagement_numero?: number | null
+  engagement_contenu?: string | null
+  nom: string
+  description: string | null
+  axe: string | null
+  etat_code: string
+  etat_libelle?: string
+  etat_couleur?: string
+  meteo_code: string | null
+  meteo_libelle?: string | null
+  meteo_emoji?: string | null
+  meteo_couleur?: string | null
+  echeance: string | null
+  continu: boolean
+  pilotage: string | null
+  created_by: string | null
+  updated_by: string | null
+  created_at: string
+  updated_at: string
+  membre_count?: number
+  membres?: ProjetMembre[]
+  steps?: ProjetStep[]
+  comments?: ProjetComment[]
+  history?: ProjetHistoryEntry[]
 }
 
 export interface AccessGroup {
