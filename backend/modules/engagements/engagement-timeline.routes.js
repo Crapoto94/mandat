@@ -4,6 +4,7 @@
 const express = require('express');
 const { db } = require('../../db/pg_db');
 const { requireAuth } = require('../../middleware/auth');
+const { parseVagueDate } = require('../../lib/vagueDate');
 
 const router = express.Router();
 
@@ -77,22 +78,40 @@ router.post('/:id/steps', requireAuth, async (req, res) => {
   const { date_etape, description } = req.body || {};
   if (!description || !description.trim()) return res.status(400).json({ error: 'Description requise' });
 
+  let parsedDate;
+  try {
+    parsedDate = parseVagueDate(date_etape);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+
   const step = await db.get(
     `INSERT INTO engagement_steps (engagement_id, date_etape, description, created_by)
      VALUES ($1, $2, $3, $4) RETURNING *`,
-    [req.params.id, date_etape || null, description.trim(), req.user.displayName || req.user.sub]
+    [req.params.id, parsedDate, description.trim(), req.user.displayName || req.user.sub]
   );
   res.status(201).json(step);
 });
 
 router.patch('/:id/steps/:stepId', requireAuth, async (req, res) => {
   const { date_etape, description } = req.body || {};
+
+  let parsedDate;
+  try {
+    // undefined (champ absent du patch) : ne pas toucher la date existante.
+    // Chaîne vide explicite : effacer la date (COALESCE ne le permettrait
+    // pas, d'où le double-INSERT ci-dessous plutôt qu'un simple COALESCE).
+    parsedDate = date_etape === undefined ? undefined : parseVagueDate(date_etape);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+
   const step = await db.get(
     `UPDATE engagement_steps SET
-       date_etape = COALESCE($1, date_etape),
-       description = COALESCE($2, description)
-     WHERE id = $3 AND engagement_id = $4 RETURNING *`,
-    [date_etape || null, description?.trim() || null, req.params.stepId, req.params.id]
+       date_etape = CASE WHEN $1::boolean THEN $2::date ELSE date_etape END,
+       description = COALESCE($3, description)
+     WHERE id = $4 AND engagement_id = $5 RETURNING *`,
+    [parsedDate !== undefined, parsedDate ?? null, description?.trim() || null, req.params.stepId, req.params.id]
   );
   if (!step) return res.status(404).json({ error: 'Étape introuvable' });
   res.json(step);

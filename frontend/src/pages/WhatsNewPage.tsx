@@ -40,7 +40,12 @@ const VERSIONS: VersionEntry[] = [
       "Filtre « Nouveautés » sur la liste des engagements (aujourd'hui / 7 derniers jours / 30 derniers jours), avec un compteur par période",
       "Alertes par engagement : chaque agent choisit (cloche) les engagements à suivre et reçoit un mail récapitulatif en fin de journée en cas de nouveauté",
       "Administration : liste des abonnements aux alertes par engagement, journal des mails envoyés (alertes, relances) avec statut, et envoi d'un exemple de récapitulatif",
+      "Mail d'alerte détaillé : liste précise de ce qui a changé (commentaire, jalon, pièce jointe...) plutôt qu'un simple compteur",
       "Mise en page resserrée (moins de marge perdue sur grand écran, tableaux plus lisibles sans défilement horizontal inutile)",
+      "Échéances et étapes acceptant une date vague (« 2028 », « T3 2030 », « juin 2029 »), positionnée au milieu de la période correspondante dans la timeline",
+      "Échéance modifiable directement sur la fiche, sans passer par le formulaire complet d'édition",
+      'Commentaires modifiables par leur auteur',
+      "Plénière : météo et état d'avancement affichés sur chaque sujet retenu (l'état n'apparaissait plus, corrigé)",
     ],
   },
   {
@@ -55,11 +60,11 @@ const FEATURES: FeatureGroup[] = [
     icon: ListChecks,
     title: 'Suivi des 55 engagements du mandat',
     items: [
-      "Fiche par engagement : axe du projet, pilotage, contributions, échéance ou engagement continu (tout au long du mandat), groupe de travail — infos de base modifiables directement",
-      "État d'avancement, météo (santé/risque du sujet) et description du point atteint modifiables en direct, sans bouton « Enregistrer », avec historique des modifications (réservé aux administrateurs)",
+      "Fiche par engagement : axe du projet, pilotage, contributions, échéance (précise ou vague : « 2028 », « T3 2030 », « juin 2029 »...) ou engagement continu (tout au long du mandat), groupe de travail — infos de base modifiables directement",
+      "État d'avancement, météo (santé/risque du sujet), échéance et description du point atteint modifiables en direct, sans bouton « Enregistrer », avec historique des modifications (réservé aux administrateurs)",
       'Description du point atteint en éditeur enrichi (mise en forme, copier-coller direct d’images)',
       'Mode collaboratif : présence visible quand un autre utilisateur édite un champ, mise à jour en direct pour tous les viewers',
-      'Fil de commentaires horodaté par engagement',
+      'Fil de commentaires horodaté par engagement, modifiables par leur auteur',
     ],
   },
   {
@@ -83,7 +88,7 @@ const FEATURES: FeatureGroup[] = [
     icon: GitCommitHorizontal,
     title: 'Étapes et timeline',
     items: [
-      'Étapes datées par engagement, formant une timeline projet',
+      "Étapes datées par engagement (date précise ou vague), formant une timeline projet",
       'Timeline globale, tous engagements confondus, triée chronologiquement',
     ],
   },

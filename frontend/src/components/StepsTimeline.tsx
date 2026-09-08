@@ -71,10 +71,11 @@ export default function StepsTimeline({ engagementId, steps, onChange }: Props) 
         <div>
           <label className="mb-1 block text-xs font-medium text-slate-500">Date (optionnelle)</label>
           <input
-            type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="rounded-md border border-slate-300 px-2.5 py-1.5 text-sm"
+            placeholder="ex : 2028, T3 2030, juin 2029..."
+            title="Une date précise (JJ/MM/AAAA) ou vague (mois, trimestre, année seule) — positionnée au milieu de la période dans la timeline"
+            className="w-44 rounded-md border border-slate-300 px-2.5 py-1.5 text-sm focus:border-ville-blue focus:outline-none"
           />
         </div>
         <div className="flex-1 min-w-[220px]">

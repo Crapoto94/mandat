@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { api, apiErrorMessage } from '../lib/api'
 import type { Engagement, Groupe } from '../types'
 import EtatBadge from '../components/EtatBadge'
+import { MeteoBadge } from '../components/MeteoPicker'
 import { Printer } from 'lucide-react'
 
 export default function PleniairePage() {
@@ -57,6 +58,17 @@ export default function PleniairePage() {
                         n°{e.numero} — {e.contenu}
                       </Link>
                       <EtatBadge libelle={e.etat_libelle} couleur={e.etat_couleur} />
+                      {e.meteo_code && (
+                        <MeteoBadge
+                          meteo={{
+                            code: e.meteo_code,
+                            libelle: e.meteo_libelle || '',
+                            emoji: e.meteo_emoji || '',
+                            couleur: e.meteo_couleur || '#64748b',
+                            ordre: 0,
+                          }}
+                        />
+                      )}
                     </div>
                     <p className="text-xs text-slate-500">Pilotage : {e.pilotage || '—'}</p>
                     {e.prioritaire_note && <p className="mt-1.5 text-sm text-slate-700">{e.prioritaire_note}</p>}

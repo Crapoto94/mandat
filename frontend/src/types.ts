@@ -164,8 +164,10 @@ export interface Comment {
   engagement_id: number
   author_name: string
   author_direction: string | null
+  author_sub: string | null
   body: string
   created_at: string
+  edited_at: string | null
 }
 
 export interface ActivityLogEntry {

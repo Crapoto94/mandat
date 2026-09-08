@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api, apiErrorMessage } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
-import type { Engagement, Etat, Groupe, Meteo } from '../types'
+import type { Comment, Engagement, Etat, Groupe, Meteo } from '../types'
 import { axeList } from '../lib/axeColors'
 import { fieldLabel } from '../lib/fieldLabels'
 import { useFieldLock } from '../hooks/useFieldLock'
@@ -294,15 +294,7 @@ export default function EngagementDetailPage() {
         </h2>
         <div className="mb-4 space-y-3">
           {engagement.comments?.map((c) => (
-            <div key={c.id} className="rounded-lg bg-slate-50 p-3 text-sm">
-              <div className="mb-1 flex items-center justify-between">
-                <span className="font-medium text-slate-800">
-                  {c.author_name} {c.author_direction && <span className="text-slate-400">· {c.author_direction}</span>}
-                </span>
-                <span className="text-xs text-slate-400">{new Date(c.created_at).toLocaleString('fr-FR')}</span>
-              </div>
-              <p className="whitespace-pre-wrap text-slate-700">{c.body}</p>
-            </div>
+            <CommentItem key={c.id} comment={c} canEdit={!!c.author_sub && c.author_sub === user?.sub} onChanged={load} />
           ))}
           {!engagement.comments?.length && <p className="text-sm text-slate-400">Aucun échange pour l'instant.</p>}
         </div>
@@ -370,6 +362,12 @@ function BaseInfoCard({
 
   const conflict = useFieldLock(engagement.id, 'infos_de_base', editing)
   const [togglingContinu, setTogglingContinu] = useState(false)
+  const [echeanceDraft, setEcheanceDraft] = useState(engagement.echeance || '')
+  const [savingEcheance, setSavingEcheance] = useState(false)
+
+  useEffect(() => {
+    setEcheanceDraft(engagement.echeance || '')
+  }, [engagement.echeance])
 
   // Bascule instantanée, indépendante du formulaire d'édition verrouillé
   // (même logique que la météo/l'état : pas de brouillon à valider).
@@ -382,6 +380,23 @@ function BaseInfoCard({
       // silencieux : le prochain rafraîchissement live re-synchronisera l'affichage
     } finally {
       setTogglingContinu(false)
+    }
+  }
+
+  // Échéance volontairement en texte libre (pas un sélecteur de date) : une
+  // valeur vague ("2028", "T3 2030", "juin 2029"...) est aussi légitime
+  // qu'une date précise. Sauvegarde au blur, sans bouton dédié — comme la
+  // météo/l'état/le caractère continu.
+  async function saveEcheance() {
+    if (echeanceDraft === (engagement.echeance || '')) return
+    setSavingEcheance(true)
+    try {
+      await api.patch(`/engagements/${engagement.id}`, { echeance: echeanceDraft })
+      onSaved()
+    } catch {
+      setEcheanceDraft(engagement.echeance || '')
+    } finally {
+      setSavingEcheance(false)
     }
   }
 
@@ -443,15 +458,21 @@ function BaseInfoCard({
           <Info label="Contribution — directions/fonctions impactées" value={engagement.contribution_impactees} />
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Échéance</p>
-            <p className="mt-0.5 flex items-center gap-1.5 text-slate-700">
-              {engagement.continu ? (
-                <>
-                  <InfinityIcon size={14} className="text-ville-blue" /> Tout au long du mandat
-                </>
-              ) : (
-                engagement.echeance || '—'
-              )}
-            </p>
+            {engagement.continu ? (
+              <p className="mt-0.5 flex items-center gap-1.5 text-slate-700">
+                <InfinityIcon size={14} className="text-ville-blue" /> Tout au long du mandat
+              </p>
+            ) : (
+              <input
+                value={echeanceDraft}
+                onChange={(e) => setEcheanceDraft(e.target.value)}
+                onBlur={saveEcheance}
+                disabled={savingEcheance}
+                placeholder="ex : 2028, T3 2030, juin 2029..."
+                title="Une échéance vague (année, trimestre, mois) est tout à fait valable — pas besoin d'une date précise"
+                className="mt-0.5 w-full rounded-md border border-transparent px-0 py-0.5 text-sm text-slate-700 hover:border-slate-200 focus:border-ville-blue focus:px-2 focus:py-1 focus:outline-none"
+              />
+            )}
             <div className="mt-1.5">
               <ToggleSwitch
                 checked={engagement.continu}
@@ -533,22 +554,6 @@ function BaseInfoCard({
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-500">Échéance</label>
-          <input
-            value={form.echeance}
-            onChange={(e) => setForm({ ...form, echeance: e.target.value })}
-            disabled={form.continu}
-            placeholder={form.continu ? 'Engagement continu' : undefined}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-ville-blue focus:outline-none disabled:bg-slate-50 disabled:text-slate-400"
-          />
-          {form.continu && (
-            <p className="mt-1 text-xs text-slate-400">
-              Marqué "tout au long du mandat" — décochez la case sous l'échéance, en dehors de ce formulaire, pour
-              revenir à une échéance datée.
-            </p>
-          )}
-        </div>
-        <div>
           <label className="mb-1 block text-xs font-medium text-slate-500">Contribution — élaboration du projet</label>
           <input
             value={form.contribution_elaboration}
@@ -584,6 +589,95 @@ function BaseInfoCard({
         </button>
       </div>
     </form>
+  )
+}
+
+/** Un commentaire, éditable en place par son auteur (identifié par
+ * author_sub — les commentaires antérieurs à cette fonctionnalité n'ont pas
+ * cet identifiant et restent donc non modifiables). */
+function CommentItem({
+  comment,
+  canEdit,
+  onChanged,
+}: {
+  comment: Comment
+  canEdit: boolean
+  onChanged: () => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(comment.body)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  function startEditing() {
+    setDraft(comment.body)
+    setError(null)
+    setEditing(true)
+  }
+
+  async function save() {
+    if (!draft.trim()) return
+    setSaving(true)
+    setError(null)
+    try {
+      await api.patch(`/comments/${comment.id}`, { body: draft.trim() })
+      setEditing(false)
+      onChanged()
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Modification impossible'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="rounded-lg bg-slate-50 p-3 text-sm">
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <span className="font-medium text-slate-800">
+          {comment.author_name} {comment.author_direction && <span className="text-slate-400">· {comment.author_direction}</span>}
+        </span>
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="text-xs text-slate-400">
+            {new Date(comment.created_at).toLocaleString('fr-FR')}
+            {comment.edited_at && ' (modifié)'}
+          </span>
+          {canEdit && !editing && (
+            <button onClick={startEditing} title="Modifier ce commentaire" className="text-slate-400 hover:text-ville-blue">
+              <Pencil size={13} />
+            </button>
+          )}
+        </div>
+      </div>
+      {editing ? (
+        <div className="space-y-1.5">
+          <textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            rows={2}
+            autoFocus
+            className="w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm focus:border-ville-blue focus:outline-none"
+          />
+          {error && <p className="text-xs text-red-600">{error}</p>}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={save}
+              disabled={saving || !draft.trim()}
+              className="rounded-md bg-ville-blue px-2.5 py-1 text-xs font-medium text-white hover:opacity-90 disabled:opacity-60"
+            >
+              {saving ? 'Enregistrement…' : 'Enregistrer'}
+            </button>
+            <button
+              onClick={() => setEditing(false)}
+              className="rounded-md border border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-white"
+            >
+              Annuler
+            </button>
+          </div>
+        </div>
+      ) : (
+        <p className="whitespace-pre-wrap text-slate-700">{comment.body}</p>
+      )}
+    </div>
   )
 }
 

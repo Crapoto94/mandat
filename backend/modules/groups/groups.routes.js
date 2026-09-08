@@ -33,9 +33,13 @@ router.get('/', requireAuth, async (req, res) => {
 /** Synthèse plénière : les engagements marqués prioritaires par chaque groupe. */
 router.get('/plenieres', requireAuth, async (req, res) => {
   const rows = await db.all(
-    `SELECT e.*, g.code AS groupe_code, g.nom AS groupe_nom
+    `SELECT e.*, g.code AS groupe_code, g.nom AS groupe_nom,
+            et.libelle AS etat_libelle, et.couleur AS etat_couleur,
+            m.libelle AS meteo_libelle, m.emoji AS meteo_emoji, m.couleur AS meteo_couleur
      FROM engagements e
      JOIN groupes g ON g.id = e.groupe_id
+     LEFT JOIN etats et ON et.code = e.etat_code
+     LEFT JOIN meteos m ON m.code = e.meteo_code
      WHERE e.prioritaire_plenaire = true
      ORDER BY g.ordre ASC, e.numero ASC`
   );
