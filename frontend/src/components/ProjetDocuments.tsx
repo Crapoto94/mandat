@@ -108,16 +108,17 @@ export default function ProjetDocuments({ projetId }: { projetId: number }) {
     }
   }
 
-  async function uploadFiles(fileList: FileList | File[]) {
+/** Envoie des fichiers, avec un chemin relatif optionnel par fichier
+   * (dossier glissé-déposé) — le serveur reconstitue l'arborescence. */
+  async function uploadFiles(fileList: FileList | File[], relativePaths?: (string | null)[]) {
     const files = Array.from(fileList)
     if (!files.length) return
     setError(null)
     setUploading(true)
     try {
-      // Un unique .zip déposé seul : on le dépose comme archive (dossiers
-      // recréés automatiquement) — comportement "le plus simple possible".
-      // Sinon (un ou plusieurs fichiers, zip ou non), dépôt direct.
-      if (files.length === 1 && files[0].name.toLowerCase().endsWith('.zip')) {
+      // Un unique .zip déposé seul (sans venir d'un dossier) : dépôt comme
+      // archive, dossiers recréés automatiquement — le plus simple possible.
+      if (!relativePaths && files.length === 1 && files[0].name.toLowerCase().endsWith('.zip')) {
         const form = new FormData()
         form.append('file', files[0])
         if (currentFolderId) form.append('folder_id', String(currentFolderId))
@@ -126,6 +127,7 @@ export default function ProjetDocuments({ projetId }: { projetId: number }) {
         const form = new FormData()
         for (const f of files) form.append('files', f)
         if (currentFolderId) form.append('folder_id', String(currentFolderId))
+        if (relativePaths) form.append('paths', JSON.stringify(relativePaths))
         await api.post(`/projets/${projetId}/documents`, form, { headers: { 'Content-Type': 'multipart/form-data' } })
       }
       loadFolders()
@@ -136,6 +138,47 @@ export default function ProjetDocuments({ projetId }: { projetId: number }) {
       setUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
     }
+  }
+
+  /** Parcourt récursivement les entrées glissées-déposées (fichiers et
+   * dossiers) via l'API navigateur webkitGetAsEntry — sans elle (Safari
+   * ancien, ou simple sélection de fichiers), `e.dataTransfer.files`
+   * suffit et ne contient jamais de dossier. */
+  async function readEntry(entry: FileSystemEntry, prefix: string, files: File[], paths: string[]): Promise<void> {
+    if (entry.isFile) {
+      const file = await new Promise<File>((resolve, reject) => (entry as FileSystemFileEntry).file(resolve, reject))
+      files.push(file)
+      paths.push(prefix + entry.name)
+    } else if (entry.isDirectory) {
+      const reader = (entry as FileSystemDirectoryEntry).createReader()
+      const children = await new Promise<FileSystemEntry[]>((resolve, reject) => reader.readEntries(resolve, reject))
+      for (const child of children) await readEntry(child, `${prefix}${entry.name}/`, files, paths)
+    }
+  }
+
+  async function handleDrop(e: React.DragEvent) {
+    e.preventDefault()
+    setDragOver(false)
+    const items = e.dataTransfer.items
+    const supportsEntries = items && items.length > 0 && typeof items[0]?.webkitGetAsEntry === 'function'
+
+    if (supportsEntries) {
+      const files: File[] = []
+      const paths: string[] = []
+      for (const item of Array.from(items)) {
+        const entry = item.webkitGetAsEntry?.()
+        if (entry) await readEntry(entry, '', files, paths)
+      }
+      if (files.length) {
+        // Aucun fichier n'est réellement dans un sous-dossier (dépôt de
+        // fichiers "à plat", pas d'un dossier) : chemin = nom simple partout,
+        // équivalent à un dépôt classique — pas besoin de forcer le mode "paths".
+        const hasNesting = paths.some((p) => p.includes('/'))
+        return uploadFiles(files, hasNesting ? paths : undefined)
+      }
+      return
+    }
+    if (e.dataTransfer.files.length) uploadFiles(e.dataTransfer.files)
   }
 
   async function renameDocument(doc: ProjetDocument) {
@@ -177,11 +220,7 @@ export default function ProjetDocuments({ projetId }: { projetId: number }) {
         setDragOver(true)
       }}
       onDragLeave={() => setDragOver(false)}
-      onDrop={(e) => {
-        e.preventDefault()
-        setDragOver(false)
-        if (e.dataTransfer.files.length) uploadFiles(e.dataTransfer.files)
-      }}
+      onDrop={handleDrop}
     >
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-800">

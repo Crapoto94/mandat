@@ -63,6 +63,28 @@ async function findOrCreateFolder(projetId, parentId, nom, author) {
   return createFolder(projetId, parentId, nom, author);
 }
 
+/** Résout (en créant au besoin) la chaîne de sous-dossiers d'un chemin
+ * relatif ("A/B/C") sous un dossier racine — partagé entre le dépôt de zip
+ * et le dépôt d'un dossier glissé-déposé depuis l'explorateur du
+ * navigateur (même logique de reconstitution d'arborescence). `cache`
+ * (Map) est à fournir par l'appelant et réutiliser sur tout un lot de
+ * fichiers, pour ne créer chaque dossier qu'une seule fois. */
+async function resolveFolderPath(projetId, rootFolderId, dirParts, author, cache) {
+  let currentPath = '';
+  let parentId = rootFolderId;
+  for (const part of dirParts) {
+    currentPath = currentPath ? `${currentPath}/${part}` : part;
+    if (cache.has(currentPath)) {
+      parentId = cache.get(currentPath);
+      continue;
+    }
+    const folder = await findOrCreateFolder(projetId, parentId, part, author);
+    cache.set(currentPath, folder.id);
+    parentId = folder.id;
+  }
+  return parentId;
+}
+
 /** Chemin complet d'un dossier (fil d'Ariane), racine → feuille. */
 async function folderPath(folderId) {
   const chain = [];
@@ -155,6 +177,7 @@ module.exports = {
   UPLOAD_DIR,
   deleteStoredFiles,
   listAllStoredNames,
+  resolveFolderPath,
   baseName,
   listFolders,
   listDocuments,

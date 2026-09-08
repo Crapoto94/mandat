@@ -72,18 +72,51 @@ router.get('/:id/folders/:folderId/path', requireAuth, requireProjetMembership, 
   res.json(chain);
 });
 
-router.post('/:id/documents', requireAuth, requireProjetMembership, upload.array('files', 50), async (req, res) => {
+/**
+ * Dépôt de fichiers — éventuellement avec un chemin relatif par fichier
+ * (`paths`, tableau JSON parallèle à `files`, ex. "SousDossier/fichier.txt")
+ * pour reconstituer l'arborescence d'un DOSSIER glissé-déposé depuis
+ * l'explorateur du navigateur (l'API drag-and-drop ne fournit pas les
+ * fichiers d'un dossier directement — le frontend les aplati via
+ * webkitGetAsEntry() puis renvoie leur chemin ici). Sans `paths`, tous les
+ * fichiers vont directement dans `folder_id` (dépôt simple, comportement
+ * historique).
+ */
+router.post('/:id/documents', requireAuth, requireProjetMembership, upload.array('files', 200), async (req, res) => {
   if (!req.files?.length) return res.status(400).json({ error: 'Aucun fichier reçu' });
-  const folderId = req.body.folder_id ? Number(req.body.folder_id) : null;
+  const rootFolderId = req.body.folder_id ? Number(req.body.folder_id) : null;
   const author = req.user.displayName || req.user.sub;
+  const projetId = req.params.id;
 
+  let paths = null;
+  if (req.body.paths) {
+    try {
+      paths = JSON.parse(req.body.paths);
+      if (!Array.isArray(paths) || paths.length !== req.files.length) paths = null;
+    } catch {
+      paths = null;
+    }
+  }
+
+  const folderCache = new Map();
   const created = [];
-  for (const file of req.files) {
+  for (let i = 0; i < req.files.length; i++) {
+    const file = req.files[i];
+    let folderId = rootFolderId;
+    let originalName = fixUploadedFilename(file.originalname);
+
+    if (paths) {
+      const parts = String(paths[i] || '').split('/').filter(Boolean);
+      const fileName = parts.pop();
+      if (fileName) originalName = fileName;
+      if (parts.length) folderId = await docs.resolveFolderPath(projetId, rootFolderId, parts, author, folderCache);
+    }
+
     const row = await docs.createDocument({
-      projetId: req.params.id,
+      projetId,
       folderId,
       storedName: file.filename,
-      originalName: fixUploadedFilename(file.originalname),
+      originalName,
       mimeType: file.mimetype,
       sizeBytes: file.size,
       author,
@@ -108,24 +141,7 @@ router.post('/:id/documents/zip', requireAuth, requireProjetMembership, upload.s
     return res.status(400).json({ error: `Zip invalide : ${err.message}` });
   }
 
-  const folderCache = new Map(); // "a/b/c" -> folder_id, racine incluse (clé "")
-  folderCache.set('', rootFolderId);
-
-  async function resolveFolder(dirParts) {
-    let currentPath = '';
-    let parentId = rootFolderId;
-    for (const part of dirParts) {
-      currentPath = currentPath ? `${currentPath}/${part}` : part;
-      if (folderCache.has(currentPath)) {
-        parentId = folderCache.get(currentPath);
-        continue;
-      }
-      const folder = await docs.findOrCreateFolder(projetId, parentId, part, author);
-      folderCache.set(currentPath, folder.id);
-      parentId = folder.id;
-    }
-    return parentId;
-  }
+  const folderCache = new Map();
 
   const created = [];
   const entries = zip.getEntries().filter((e) => !e.isDirectory);
@@ -134,7 +150,7 @@ router.post('/:id/documents/zip', requireAuth, requireProjetMembership, upload.s
     const parts = entry.entryName.split('/').filter(Boolean);
     const fileName = parts.pop();
     if (!fileName) continue; // entrée de dossier vide (déjà filtrée) ou nom vide
-    const folderId = await resolveFolder(parts);
+    const folderId = await docs.resolveFolderPath(projetId, rootFolderId, parts, author, folderCache);
 
     const storedName = `${crypto.randomUUID()}${path.extname(fileName).slice(0, 10)}`;
     fs.writeFileSync(path.join(UPLOAD_DIR, storedName), entry.getData());
