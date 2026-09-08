@@ -12,14 +12,14 @@ import {
   LogOut,
   GitCommitHorizontal,
   UserCircle2,
-  FolderKanban,
 } from 'lucide-react'
 
 const navItems = [
   { to: '/', label: 'Tableau de bord', icon: LayoutDashboard, end: true },
   { to: '/mes-engagements', label: 'Mes engagements', icon: UserCircle2, badge: 'mine' as const },
   { to: '/engagements', label: 'Engagements', icon: ListChecks },
-  { to: '/projets', label: 'Projets', icon: FolderKanban },
+  // Projets : route active (voir App.tsx), volontairement pas encore dans
+  // le menu — endpoint/pages gardés pour un accès direct par lien.
   { to: '/coordination', label: 'Coordination', icon: MessageSquareWarning },
   { to: '/timeline', label: 'Timeline', icon: GitCommitHorizontal },
   { to: '/plenaire', label: 'Plénière', icon: Presentation },

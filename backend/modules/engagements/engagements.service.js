@@ -112,7 +112,8 @@ async function list({ direction, ...filters } = {}) {
     `SELECT e.*, g.code AS groupe_code, g.nom AS groupe_nom,
             et.libelle AS etat_libelle, et.couleur AS etat_couleur, et.ordre AS etat_ordre,
             ${DERNIERE_ACTIVITE_EXPR} AS derniere_activite,
-            m.libelle AS meteo_libelle, m.emoji AS meteo_emoji, m.couleur AS meteo_couleur
+            m.libelle AS meteo_libelle, m.emoji AS meteo_emoji, m.couleur AS meteo_couleur,
+            (SELECT COUNT(*)::int FROM projets p WHERE p.engagement_id = e.id) AS projets_count
      FROM engagements e
      LEFT JOIN groupes g ON g.id = e.groupe_id
      LEFT JOIN etats et ON et.code = e.etat_code

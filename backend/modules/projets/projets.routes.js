@@ -4,7 +4,7 @@
 const express = require('express');
 const service = require('./projets.service');
 const { db } = require('../../db/pg_db');
-const { requireAuth } = require('../../middleware/auth');
+const { requireAuth, requireAdmin } = require('../../middleware/auth');
 
 const router = express.Router();
 
@@ -48,7 +48,10 @@ router.patch('/:id', requireAuth, requireMembership, async (req, res) => {
   res.json(await service.getById(req.params.id));
 });
 
-router.delete('/:id', requireAuth, requireMembership, async (req, res) => {
+// Suppression réservée aux admin (demande explicite) — requireAdmin avant
+// requireMembership, pour ne même pas révéler qu'un non-admin membre
+// pourrait autrement voir le projet, puis se voir refuser la suppression.
+router.delete('/:id', requireAuth, requireAdmin, requireMembership, async (req, res) => {
   const result = await service.remove(req.params.id);
   if (!result.ok) return res.status(result.status).json({ error: result.error });
   res.status(204).end();

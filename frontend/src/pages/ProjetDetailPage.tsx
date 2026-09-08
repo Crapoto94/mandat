@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useNavigate } from 'react-router-dom'
 import { api, apiErrorMessage } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import type { AgentSearchResult, Etat, Meteo, Projet, ProjetComment, ProjetMembre, ProjetStep } from '../types'
@@ -235,7 +235,22 @@ export default function ProjetDetailPage() {
 }
 
 function HeaderCard({ projet, onSaved }: { projet: Projet; onSaved: () => void }) {
+  const { user } = useAuth()
+  const navigate = useNavigate()
   const [editing, setEditing] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  async function removeProjet() {
+    if (!confirm(`Supprimer définitivement le projet "${projet.nom}" ? Cette action est irréversible.`)) return
+    setDeleting(true)
+    try {
+      await api.delete(`/projets/${projet.id}`)
+      navigate(projet.engagement_id ? `/engagements/${projet.engagement_id}` : '/projets')
+    } catch (err) {
+      alert(apiErrorMessage(err, 'Suppression impossible'))
+      setDeleting(false)
+    }
+  }
   const [form, setForm] = useState({
     nom: projet.nom,
     description_courte: '',
@@ -287,6 +302,16 @@ function HeaderCard({ projet, onSaved }: { projet: Projet; onSaved: () => void }
             <button onClick={startEditing} className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-ville-blue">
               <Pencil size={15} />
             </button>
+            {user?.role === 'admin' && (
+              <button
+                onClick={removeProjet}
+                disabled={deleting}
+                title="Supprimer le projet (admin)"
+                className="rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+              >
+                <Trash2 size={15} />
+              </button>
+            )}
           </div>
         </div>
         <div className="grid grid-cols-1 gap-4 border-t border-slate-100 pt-4 text-sm sm:grid-cols-3">

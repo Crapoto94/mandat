@@ -304,7 +304,7 @@ export default function EngagementDetailPage() {
         )}
       </div>
 
-      <ProjetsLiesPanel engagementId={engagement.id} projets={engagement.projetsLies || []} />
+      <ProjetsLiesPanel engagementId={engagement.id} projets={engagement.projetsLies || []} onLinked={load} />
 
       <RolesSection engagementId={engagement.id} roles={engagement.roles || []} onChange={load} />
 
@@ -656,20 +656,96 @@ function BaseInfoCard({
 /** Projets liés à l'engagement — l'agrégat (météo/état) est déjà répercuté
  * plus haut sur la fiche ; ici, la liste elle-même ne montre que les
  * projets dont l'utilisateur est membre (filtré côté serveur). */
-function ProjetsLiesPanel({ engagementId, projets }: { engagementId: number; projets: Projet[] }) {
+function ProjetsLiesPanel({
+  engagementId,
+  projets,
+  onLinked,
+}: {
+  engagementId: number
+  projets: Projet[]
+  onLinked: () => void
+}) {
+  const [linking, setLinking] = useState(false)
+  const [mine, setMine] = useState<Projet[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  function openLinker() {
+    setLinking(true)
+    if (!mine) {
+      api
+        .get('/projets')
+        .then((res) => setMine(res.data))
+        .catch(() => setMine([]))
+    }
+  }
+
+  async function attach(projetId: number) {
+    setError(null)
+    try {
+      await api.patch(`/projets/${projetId}`, { engagement_id: engagementId })
+      setLinking(false)
+      setMine(null)
+      onLinked()
+    } catch (err) {
+      setError(apiErrorMessage(err, "Impossible de rattacher ce projet"))
+    }
+  }
+
+  const linkedIds = new Set(projets.map((p) => p.id))
+  const candidates = (mine || []).filter((p) => !linkedIds.has(p.id) && p.engagement_id !== engagementId)
+
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-5">
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-800">
           <FolderKanban size={16} /> Projets liés ({projets.length})
         </h2>
-        <Link
-          to={`/projets?nouveau=1&engagement_id=${engagementId}`}
-          className="flex items-center gap-1.5 rounded-md border border-slate-300 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
-        >
-          <Plus size={13} /> Nouveau projet
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={openLinker}
+            className="flex items-center gap-1.5 rounded-md border border-slate-300 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+          >
+            Rattacher un projet existant
+          </button>
+          <Link
+            to={`/projets?nouveau=1&engagement_id=${engagementId}`}
+            className="flex items-center gap-1.5 rounded-md border border-slate-300 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+          >
+            <Plus size={13} /> Nouveau projet
+          </Link>
+        </div>
       </div>
+
+      {linking && (
+        <div className="mb-4 rounded-md border border-slate-200 bg-slate-50 p-3">
+          {mine === null ? (
+            <p className="text-xs text-slate-400">Chargement de vos projets…</p>
+          ) : !candidates.length ? (
+            <p className="text-xs text-slate-400">Aucun autre projet à vous parmi lesquels choisir.</p>
+          ) : (
+            <ul className="space-y-1">
+              {candidates.map((p) => (
+                <li key={p.id} className="flex items-center justify-between gap-2 rounded-md bg-white px-2.5 py-1.5 text-sm">
+                  <span>
+                    {p.nom}
+                    {p.engagement_id && (
+                      <span className="ml-1 text-xs text-amber-600">(déjà lié à l'engagement n°{p.engagement_numero})</span>
+                    )}
+                  </span>
+                  <button onClick={() => attach(p.id)} className="text-xs font-medium text-ville-blue hover:underline">
+                    Rattacher ici
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+          <button onClick={() => setLinking(false)} className="mt-2 text-xs text-slate-400 hover:text-slate-600">
+            Fermer
+          </button>
+        </div>
+      )}
+
       {!projets.length ? (
         <p className="text-sm text-slate-400">
           Aucun projet lié visible pour vous — la météo et l'état de l'engagement restent saisis manuellement.

@@ -64,6 +64,7 @@ export interface Engagement {
   attachments?: Attachment[]
   fieldProposals?: FieldProposal[]
   projetsLies?: Projet[]
+  projets_count?: number
 }
 
 export interface FieldProposal {

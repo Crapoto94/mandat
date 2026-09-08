@@ -6,7 +6,7 @@ import EtatBadge from '../components/EtatBadge'
 import AxeTag from '../components/AxeTag'
 import { MeteoBadge } from '../components/MeteoPicker'
 import { getAxeColor, axeList } from '../lib/axeColors'
-import { Star, Search, Infinity as InfinityIcon, Bell, Clock3 } from 'lucide-react'
+import { Star, Search, Infinity as InfinityIcon, Bell, Clock3, FolderKanban } from 'lucide-react'
 
 const NOUVEAUTES_OPTIONS = [
   { value: 'today', label: "Aujourd'hui" },
@@ -317,6 +317,14 @@ export default function EngagementsPage() {
                     {e.continu && (
                       <span title="Engagement continu — pas d'échéance" className="ml-1.5 inline-block align-text-bottom text-slate-400">
                         <InfinityIcon size={14} className="inline" />
+                      </span>
+                    )}
+                    {!!e.projets_count && (
+                      <span
+                        title={`Se décompose en ${e.projets_count} projet(s)`}
+                        className="ml-1.5 inline-block align-text-bottom text-ville-blue"
+                      >
+                        <FolderKanban size={14} className="inline" />
                       </span>
                     )}
                     <AxeTag axe={e.axe} className="mt-1" />
