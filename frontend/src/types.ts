@@ -212,6 +212,27 @@ export interface AlertSubscription {
   engagement_contenu: string
 }
 
+export interface AccessGroup {
+  kind: 'niveau' | 'custom_group'
+  ref_code: string
+  libelle: string
+  description?: string | null
+  enabled: boolean
+  member_count: number | null
+}
+
+export interface AccessGroupMember {
+  matricule?: string
+  nom?: string
+  prenom?: string
+  direction?: string
+  poste?: string
+  // Forme LDAP (groupes particuliers) :
+  displayName?: string | null
+  sAMAccountName?: string | null
+  mail?: string | null
+}
+
 export interface FeedbackEntry {
   id: number
   type: 'bug' | 'demande'

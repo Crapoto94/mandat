@@ -29,6 +29,8 @@ const ATTRIBUTES = [
   'mobile',
   'telephoneMobile',
   'title',
+  'employeeID',
+  'member',
 ];
 
 function ldapConfigured() {
@@ -125,6 +127,7 @@ function searchUser(client, username) {
 
 function toAgentInfo(entry) {
   const direction = entry.company || entry.department || entry.physicalDeliveryOfficeName || null;
+  const memberOf = Array.isArray(entry.memberOf) ? entry.memberOf : entry.memberOf ? [entry.memberOf] : [];
   return {
     sAMAccountName: entry.sAMAccountName || null,
     displayName: entry.displayName || entry.cn || null,
@@ -132,6 +135,8 @@ function toAgentInfo(entry) {
     mail: entry.mail || null,
     mobile: entry.mobile || entry.telephoneMobile || null,
     title: entry.title || null,
+    employeeId: entry.employeeID || null,
+    memberOf,
     dn: entry.dn,
     raw: entry,
   };
@@ -189,4 +194,58 @@ async function lookup(username) {
   }
 }
 
-module.exports = { ldapConfigured, authenticate, lookup };
+/** Membres d'un groupe AD (attribut `member`, résolu en fiches agent) —
+ * même approche que le magapp (appdsi/backend/modules/rh/encadrants.controller.js
+ * #searchADGroupMembersByDN) : lecture du groupe par DN, puis recherche
+ * batchée des comptes par CN extrait de chaque DN membre. */
+async function listGroupMembers(groupDn) {
+  if (!ldapConfigured()) throw new Error('LDAP direct non configuré');
+  const client = newClient();
+  try {
+    await new Promise((resolve, reject) => {
+      client.bind(AD_BIND_DN, AD_BIND_PASSWORD, (err) => (err ? reject(err) : resolve()));
+    });
+
+    const groupEntry = await new Promise((resolve, reject) => {
+      client.search(
+        AD_BASE_DN,
+        { filter: `(distinguishedName=${escapeLdapFilter(groupDn)})`, scope: 'sub', attributes: ['member'] },
+        (err, res) => {
+          if (err) return reject(err);
+          let entry = null;
+          res.on('searchEntry', (e) => (entry = flattenLDAPEntry(e)));
+          res.on('error', reject);
+          res.on('end', () => resolve(entry));
+        }
+      );
+    });
+    if (!groupEntry) return [];
+
+    const rawMembers = Array.isArray(groupEntry.member) ? groupEntry.member : groupEntry.member ? [groupEntry.member] : [];
+    if (!rawMembers.length) return [];
+
+    const cns = rawMembers.map((dn) => String(dn).match(/^CN=([^,]+)/i)?.[1]).filter(Boolean);
+    if (!cns.length) return [];
+
+    const members = [];
+    const CHUNK = 50;
+    for (let i = 0; i < cns.length; i += CHUNK) {
+      const chunk = cns.slice(i, i + CHUNK);
+      const filter = `(&(objectClass=user)(|${chunk.map((cn) => `(cn=${escapeLdapFilter(cn)})`).join('')}))`;
+      await new Promise((resolve) => {
+        client.search(AD_BASE_DN, { filter, scope: 'sub', attributes: ATTRIBUTES }, (err, res) => {
+          if (err) return resolve();
+          res.on('searchEntry', (e) => members.push(toAgentInfo(flattenLDAPEntry(e))));
+          res.on('error', () => resolve());
+          res.on('end', () => resolve());
+        });
+      });
+    }
+    members.sort((a, b) => (a.displayName || '').localeCompare(b.displayName || '', 'fr'));
+    return members;
+  } finally {
+    client.destroy();
+  }
+}
+
+module.exports = { ldapConfigured, authenticate, lookup, listGroupMembers };

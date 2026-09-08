@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const { db } = require('../../db/pg_db');
 const apm = require('../../services/apm');
 const ldapAuth = require('../../services/ldapAuth');
+const accessControl = require('../../services/accessControl');
 const { signToken } = require('../../middleware/auth');
 
 async function cacheAgent({ username, displayName, email, mobile, direction }) {
@@ -32,6 +33,22 @@ async function loginAgentViaLdap(username, password) {
   }
   if (!agent) {
     return { ok: false, status: 401, error: 'Identifiants invalides' };
+  }
+
+  // Restriction d'accès par groupe (DG/DGA, Directeurs, Resp. service,
+  // groupes particuliers — cf. Admin → "Accès par groupe"). Échec de la
+  // vérification elle-même (base RH injoignable...) : on n'exclut pas
+  // l'agent pour une raison technique qui ne le concerne pas.
+  try {
+    const authorized = await accessControl.isAgentAuthorized({
+      employeeId: agent.employeeId,
+      memberOfDns: agent.memberOf,
+    });
+    if (!authorized) {
+      return { ok: false, status: 403, error: "Accès non autorisé — votre compte n'appartient à aucun groupe habilité" };
+    }
+  } catch (err) {
+    console.warn('[auth] vérification accès par groupe impossible :', err.message);
   }
 
   const displayName = agent.displayName || username;

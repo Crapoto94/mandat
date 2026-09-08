@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { api, apiErrorMessage } from '../lib/api'
-import type { ActivityLogEntry, AlertSubscription, Direction, Etat, FeedbackEntry, FieldProposal, HubdsiEntry, MailLogEntry, Meteo, RoleDef, TrashedAttachment } from '../types'
+import type { AccessGroup, AccessGroupMember, ActivityLogEntry, AlertSubscription, Direction, Etat, FeedbackEntry, FieldProposal, HubdsiEntry, MailLogEntry, Meteo, RoleDef, TrashedAttachment } from '../types'
 import { fieldLabel } from '../lib/fieldLabels'
 import {
   ShieldCheck,
@@ -26,6 +26,9 @@ import {
   Send,
   Bug,
   Lightbulb,
+  Users,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react'
 
 interface AdminAccount {
@@ -81,6 +84,8 @@ export default function AdminPage() {
 
       {error && <p className="rounded-md bg-red-50 p-4 text-sm text-red-700">{error}</p>}
       {notice && <p className="rounded-md bg-green-50 p-4 text-sm text-green-700">{notice}</p>}
+
+      <AccessGroupsSection onError={setError} />
 
       <AgentLookupSection />
 
@@ -736,6 +741,129 @@ interface AgentLookupResult {
  * du mot de passe de l'agent. Utile pour diagnostiquer si un agent "remonte"
  * bien et avec la bonne direction, sans se connecter à sa place.
  */
+/**
+ * Restriction d'accès à l'application par groupe : DG/DGA, Directeurs,
+ * Resp. service (classés depuis la base RH) + groupes particuliers (listes
+ * AD nommées, déjà maintenues par le magapp). Cochés = autorisés à se
+ * connecter, en plus des comptes admin locaux. N'a d'effet que sur la
+ * connexion LDAP directe (AD_HOST configuré) — sans ça, aucune restriction.
+ */
+function AccessGroupsSection({ onError }: { onError: (m: string) => void }) {
+  const [groups, setGroups] = useState<AccessGroup[] | null>(null)
+  const [busy, setBusy] = useState<string | null>(null)
+  const [expanded, setExpanded] = useState<string | null>(null)
+  const [members, setMembers] = useState<Record<string, AccessGroupMember[] | 'loading' | 'error'>>({})
+
+  function load() {
+    api
+      .get('/admin/access-groups')
+      .then((res) => setGroups(res.data))
+      .catch((err) => onError(apiErrorMessage(err, 'Liste des groupes indisponible')))
+  }
+
+  useEffect(load, [])
+
+  async function toggle(g: AccessGroup) {
+    const key = `${g.kind}:${g.ref_code}`
+    setBusy(key)
+    try {
+      await api.patch('/admin/access-groups', { kind: g.kind, ref_code: g.ref_code, enabled: !g.enabled })
+      load()
+    } catch (err) {
+      onError(apiErrorMessage(err, 'Modification impossible'))
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function toggleExpand(g: AccessGroup) {
+    const key = `${g.kind}:${g.ref_code}`
+    if (expanded === key) {
+      setExpanded(null)
+      return
+    }
+    setExpanded(key)
+    if (!members[key]) {
+      setMembers((m) => ({ ...m, [key]: 'loading' }))
+      try {
+        const res = await api.get(`/admin/access-groups/${g.kind}/${g.ref_code}/members`)
+        setMembers((m) => ({ ...m, [key]: res.data }))
+      } catch (err) {
+        setMembers((m) => ({ ...m, [key]: 'error' }))
+        onError(apiErrorMessage(err, 'Membres indisponibles'))
+      }
+    }
+  }
+
+  return (
+    <section className="rounded-xl border border-slate-200 bg-white p-5">
+      <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold text-slate-800">
+        <Users size={16} /> Accès à l'application par groupe
+      </h2>
+      <p className="mb-4 text-xs text-slate-500">
+        En plus des comptes admin, seuls les membres des groupes cochés ci-dessous peuvent se connecter. Sans
+        connexion AD directe configurée (AD_HOST), cette restriction n'est pas appliquée.
+      </p>
+      {!groups ? (
+        <p className="text-sm text-slate-400">Chargement…</p>
+      ) : (
+        <ul className="space-y-1.5">
+          {groups.map((g) => {
+            const key = `${g.kind}:${g.ref_code}`
+            const memberState = members[key]
+            return (
+              <li key={key} className="rounded-md bg-slate-50 px-3 py-2 text-sm">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={g.enabled}
+                    disabled={busy === key}
+                    onChange={() => toggle(g)}
+                    className="rounded border-slate-300 text-ville-blue focus:ring-ville-blue"
+                  />
+                  <button onClick={() => toggleExpand(g)} className="flex flex-1 items-center gap-1.5 text-left">
+                    {expanded === key ? (
+                      <ChevronDown size={13} className="shrink-0 text-slate-400" />
+                    ) : (
+                      <ChevronRight size={13} className="shrink-0 text-slate-400" />
+                    )}
+                    <span className="font-medium text-slate-800">{g.libelle}</span>
+                    <span className="text-xs text-slate-400">
+                      {g.kind === 'niveau' ? 'niveau RH' : 'groupe particulier (AD)'}
+                      {g.member_count !== null && ` · ${g.member_count} membre(s)`}
+                    </span>
+                  </button>
+                </div>
+                {expanded === key && (
+                  <div className="mt-2 border-t border-slate-200 pt-2">
+                    {memberState === 'loading' && <p className="text-xs text-slate-400">Chargement…</p>}
+                    {memberState === 'error' && <p className="text-xs text-red-600">Membres indisponibles.</p>}
+                    {Array.isArray(memberState) && (
+                      memberState.length ? (
+                        <ul className="grid grid-cols-1 gap-x-4 gap-y-0.5 text-xs text-slate-600 sm:grid-cols-2">
+                          {memberState.map((m, i) => (
+                            <li key={i}>
+                              {m.nom ? `${m.nom} ${m.prenom || ''}` : m.displayName || m.sAMAccountName || '—'}
+                              {m.poste && <span className="text-slate-400"> — {m.poste}</span>}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-xs text-slate-400">Aucun membre.</p>
+                      )
+                    )}
+                  </div>
+                )}
+              </li>
+            )
+          })}
+          {!groups.length && <p className="text-sm text-slate-400">Aucun groupe disponible.</p>}
+        </ul>
+      )}
+    </section>
+  )
+}
+
 function AgentLookupSection() {
   const [identifier, setIdentifier] = useState('')
   const [result, setResult] = useState<AgentLookupResult | null>(null)

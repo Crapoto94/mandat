@@ -10,6 +10,7 @@ const apm = require('../../services/apm');
 const ldapAuth = require('../../services/ldapAuth');
 const engagementsService = require('../engagements/engagements.service');
 const proposalsService = require('../engagements/proposals.service');
+const accessControl = require('../../services/accessControl');
 const alertsDigest = require('../../jobs/alertsDigest');
 
 const router = express.Router();
@@ -239,6 +240,42 @@ router.get('/alert-subscriptions', async (req, res) => {
      ORDER BY e.numero ASC, ea.user_display_name ASC`
   );
   res.json(rows);
+});
+
+// --- Accès à l'application par groupe (DG/DGA, Directeurs, Resp. service,
+// groupes particuliers) --------------------------------------------------------
+
+router.get('/access-groups', async (req, res) => {
+  try {
+    const groups = await accessControl.listGroupsForAdmin();
+    res.json(groups);
+  } catch (err) {
+    res.status(502).json({ error: `Liste des groupes indisponible (base RH/Hub injoignable ?) : ${err.message}` });
+  }
+});
+
+router.patch('/access-groups', async (req, res) => {
+  const { kind, ref_code, enabled } = req.body || {};
+  if (!kind || !ref_code || typeof enabled !== 'boolean') {
+    return res.status(400).json({ error: 'kind, ref_code et enabled (booléen) sont requis' });
+  }
+  try {
+    await accessControl.setEnabled(kind, ref_code, enabled, req.user.displayName || req.user.sub);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+/** Membres d'un groupe (niveau : requête RH directe ; groupe particulier :
+ * résolu en direct via LDAP, donc nécessite AD_HOST configuré). */
+router.get('/access-groups/:kind/:refCode/members', async (req, res) => {
+  try {
+    const members = await accessControl.getGroupMembers(req.params.kind, req.params.refCode);
+    res.json(members);
+  } catch (err) {
+    res.status(502).json({ error: `Membres indisponibles : ${err.message}` });
+  }
 });
 
 // --- Propositions de modification (pilotage / contributions) ------------------
