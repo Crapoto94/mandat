@@ -1,5 +1,6 @@
 const express = require('express');
 const service = require('./engagements.service');
+const proposalsService = require('./proposals.service');
 const { requireAuth } = require('../../middleware/auth');
 
 const router = express.Router();
@@ -49,11 +50,40 @@ router.get('/:id', requireAuth, async (req, res) => {
   res.json(engagement);
 });
 
+/**
+ * Pilotage / contributions : un agent non-admin ne modifie pas directement
+ * ces champs, il les propose (visibles en attente, couleur dédiée côté
+ * front) — seul un admin les applique, en validant la proposition (cf.
+ * proposals.service.js) ou en les modifiant lui-même directement ici.
+ */
 router.patch('/:id', requireAuth, async (req, res) => {
   const author = req.user.displayName || req.user.sub;
-  const result = await service.update(req.params.id, req.body || {}, author);
-  if (!result.ok) return res.status(result.status).json({ error: result.error });
-  res.json(result.engagement);
+  const body = { ...(req.body || {}) };
+  const proposalsCreated = [];
+
+  if (req.user.role !== 'admin') {
+    const restrictedKeys = Object.keys(body).filter((k) => proposalsService.RESTRICTED_FIELDS.includes(k));
+    if (restrictedKeys.length) {
+      const current = await service.getById(req.params.id);
+      if (!current) return res.status(404).json({ error: 'Engagement introuvable' });
+      for (const champ of restrictedKeys) {
+        const proposed = body[champ] === '' ? null : body[champ];
+        delete body[champ]; // jamais appliqué directement pour un non-admin
+        if ((current[champ] ?? null) === (proposed ?? null)) continue; // rien à proposer
+        const p = await proposalsService.upsertProposal(req.params.id, champ, current[champ], proposed, req.user.sub, author);
+        proposalsCreated.push(p);
+      }
+    }
+  }
+
+  if (Object.keys(body).length) {
+    const result = await service.update(req.params.id, body, author);
+    if (!result.ok) return res.status(result.status).json({ error: result.error });
+  }
+  // Toujours renvoyer la forme complète (getById), incluant fieldProposals —
+  // que la mise à jour ait porté sur un champ direct, une proposition, ou les deux.
+  const engagement = await service.getById(req.params.id);
+  res.json({ ...engagement, proposalsCreated });
 });
 
 router.patch('/:id/prioritaire', requireAuth, async (req, res) => {

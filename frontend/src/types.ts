@@ -62,6 +62,24 @@ export interface Engagement {
   roles?: EngagementRole[]
   steps?: EngagementStep[]
   attachments?: Attachment[]
+  fieldProposals?: FieldProposal[]
+}
+
+export interface FieldProposal {
+  id: number
+  engagement_id: number
+  champ: 'pilotage' | 'contribution_elaboration' | 'contribution_impactees'
+  valeur_actuelle: string | null
+  valeur_proposee: string
+  proposed_by: string | null
+  proposed_by_name: string | null
+  statut: 'en_attente' | 'validee' | 'rejetee'
+  created_at: string
+  reviewed_by: string | null
+  reviewed_at: string | null
+  // Présents uniquement sur la liste admin (jointure engagement) :
+  engagement_numero?: number
+  engagement_contenu?: string
 }
 
 export interface Meteo {
@@ -192,6 +210,19 @@ export interface AlertSubscription {
   last_notified_at: string | null
   engagement_numero: number
   engagement_contenu: string
+}
+
+export interface FeedbackEntry {
+  id: number
+  type: 'bug' | 'demande'
+  titre: string
+  description: string | null
+  page_url: string | null
+  submitted_by: string | null
+  submitted_by_name: string | null
+  statut: 'nouveau' | 'traite'
+  created_at: string
+  treated_at: string | null
 }
 
 export interface MailLogEntry {

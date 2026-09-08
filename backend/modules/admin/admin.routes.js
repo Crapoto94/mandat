@@ -7,7 +7,9 @@ const { db } = require('../../db/pg_db');
 const { requireAuth, requireAdmin } = require('../../middleware/auth');
 const { importFromFiles } = require('../../scripts/import-lib');
 const apm = require('../../services/apm');
+const ldapAuth = require('../../services/ldapAuth');
 const engagementsService = require('../engagements/engagements.service');
+const proposalsService = require('../engagements/proposals.service');
 const alertsDigest = require('../../jobs/alertsDigest');
 
 const router = express.Router();
@@ -89,33 +91,51 @@ router.get('/agent-lookup', async (req, res) => {
   const identifier = (req.query.identifier || '').trim();
   if (!identifier) return res.status(400).json({ error: 'Paramètre identifier requis' });
 
-  const infos = await apm.getAgent(identifier);
-  if (!infos) {
-    return res.status(404).json({ error: `Aucune fiche AD trouvée pour "${identifier}"` });
+  // Même source que la connexion réelle (LDAP direct si configuré, sinon
+  // APM) — pour que ce diagnostic reflète fidèlement ce qu'un agent
+  // rencontre en se connectant.
+  let displayName, direction, mail, title, sAMAccountName, raw;
+  if (ldapAuth.ldapConfigured()) {
+    let infos;
+    try {
+      infos = await ldapAuth.lookup(identifier);
+    } catch (err) {
+      return res.status(502).json({ error: `LDAP injoignable : ${err.message}` });
+    }
+    if (!infos) return res.status(404).json({ error: `Aucune fiche AD trouvée pour "${identifier}"` });
+    ({ displayName, direction, mail, title, sAMAccountName, raw } = infos);
+  } else {
+    const infos = await apm.getAgent(identifier);
+    if (!infos) return res.status(404).json({ error: `Aucune fiche AD trouvée pour "${identifier}"` });
+    // Champ AD "entreprise" (`company`) : c'est lui qui porte la direction de
+    // rattachement de l'agent côté Ville (pas `department`, qui contient
+    // souvent le service). Sa valeur ne correspond pas forcément mot pour mot
+    // au libellé de la direction : resolveDirectionCodes la fait passer par
+    // la hiérarchie Hub DSI mise en cache pour retomber sur la bonne direction.
+    direction = infos.company || infos.department || infos.physicalDeliveryOfficeName || null;
+    displayName = infos.displayName || infos.name || null;
+    mail = infos.mail || null;
+    title = infos.title || null;
+    sAMAccountName = infos.sAMAccountName || null;
+    raw = infos;
   }
-  // Champ AD "entreprise" (`company`) : c'est lui qui porte la direction de
-  // rattachement de l'agent côté Ville (pas `department`, qui contient
-  // souvent le service). Sa valeur ne correspond pas forcément mot pour mot
-  // au libellé de la direction : resolveDirectionCodes la fait passer par
-  // la hiérarchie Hub DSI mise en cache pour retomber sur la bonne direction.
-  const direction = infos.company || infos.department || infos.physicalDeliveryOfficeName || null;
+
   const codes = direction ? await engagementsService.resolveDirectionCodes(direction) : [];
   const engagements = codes.length ? await engagementsService.mine(codes) : [];
 
   res.json({
-    sAMAccountName: infos.sAMAccountName || null,
-    displayName: infos.displayName || infos.name || null,
+    sAMAccountName: sAMAccountName || null,
+    displayName: displayName || null,
     direction,
-    mail: infos.mail || null,
-    title: infos.title || null,
+    mail: mail || null,
+    title: title || null,
     directionCode: codes.join(', ') || null,
     directionCodes: codes,
-    // Fiche AD complète telle que renvoyée par l'APM — affichée en admin
-    // pour diagnostiquer QUEL champ porte réellement la direction (le
-    // schéma AD Ville n'est pas homogène selon les comptes : `department`
-    // contient parfois le service et pas la direction). À retirer une fois
-    // le bon champ identifié et figé dans le code.
-    raw: infos,
+    // Fiche AD complète — affichée en admin pour diagnostiquer QUEL champ
+    // porte réellement la direction (le schéma AD Ville n'est pas homogène
+    // selon les comptes : `department` contient parfois le service et pas
+    // la direction). À retirer une fois le bon champ identifié et figé.
+    raw,
     engagements,
   });
 });
@@ -219,6 +239,23 @@ router.get('/alert-subscriptions', async (req, res) => {
      ORDER BY e.numero ASC, ea.user_display_name ASC`
   );
   res.json(rows);
+});
+
+// --- Propositions de modification (pilotage / contributions) ------------------
+
+/** Toutes les propositions en attente, tous engagements confondus. */
+router.get('/proposals', async (req, res) => {
+  const rows = await proposalsService.listAllPending();
+  res.json(rows);
+});
+
+/** Valide (applique la valeur proposée) ou rejette une proposition. */
+router.patch('/proposals/:id', async (req, res) => {
+  const { action } = req.body || {};
+  const reviewer = req.user.displayName || req.user.sub;
+  const result = await proposalsService.resolve(req.params.id, action, reviewer);
+  if (!result.ok) return res.status(result.status).json({ error: result.error });
+  res.json(result.proposal);
 });
 
 // --- Journal des mails (alertes, relances, envois manuels) --------------------

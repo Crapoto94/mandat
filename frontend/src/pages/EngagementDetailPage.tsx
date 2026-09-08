@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api, apiErrorMessage } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
-import type { Comment, Engagement, Etat, Groupe, Meteo } from '../types'
+import type { Comment, Engagement, Etat, FieldProposal, Groupe, Meteo } from '../types'
 import { axeList } from '../lib/axeColors'
 import { fieldLabel } from '../lib/fieldLabels'
 import { useFieldLock } from '../hooks/useFieldLock'
@@ -359,6 +359,8 @@ function BaseInfoCard({
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  const { user } = useAuth()
 
   const conflict = useFieldLock(engagement.id, 'infos_de_base', editing)
   const [togglingContinu, setTogglingContinu] = useState(false)
@@ -419,10 +421,18 @@ function BaseInfoCard({
     e.preventDefault()
     setSaving(true)
     setError(null)
+    setNotice(null)
     try {
-      await api.patch(`/engagements/${engagement.id}`, form)
+      const res = await api.patch(`/engagements/${engagement.id}`, form)
+      const proposalsCreated: FieldProposal[] = res.data.proposalsCreated || []
       setEditing(false)
       onSaved()
+      if (proposalsCreated.length) {
+        setNotice(
+          `${proposalsCreated.length > 1 ? 'Propositions envoyées' : 'Proposition envoyée'} (pilotage/contributions) — ` +
+            `en attente de validation par un administrateur.`
+        )
+      }
     } catch (err) {
       setError(apiErrorMessage(err, 'Sauvegarde impossible'))
     } finally {
@@ -433,6 +443,9 @@ function BaseInfoCard({
   if (!editing) {
     return (
       <div className="rounded-xl border border-slate-200 bg-white p-6">
+        {notice && (
+          <p className="mb-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-700">{notice}</p>
+        )}
         <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Engagement n°{engagement.numero}</p>
@@ -453,9 +466,21 @@ function BaseInfoCard({
         </div>
 
         <div className="grid grid-cols-1 gap-4 border-t border-slate-100 pt-4 text-sm sm:grid-cols-3">
-          <Info label="Pilotage" value={engagement.pilotage} />
-          <Info label="Contribution — élaboration du projet" value={engagement.contribution_elaboration} />
-          <Info label="Contribution — directions/fonctions impactées" value={engagement.contribution_impactees} />
+          <Info
+            label="Pilotage"
+            value={engagement.pilotage}
+            proposal={engagement.fieldProposals?.find((p) => p.champ === 'pilotage')}
+          />
+          <Info
+            label="Contribution — élaboration du projet"
+            value={engagement.contribution_elaboration}
+            proposal={engagement.fieldProposals?.find((p) => p.champ === 'contribution_elaboration')}
+          />
+          <Info
+            label="Contribution — directions/fonctions impactées"
+            value={engagement.contribution_impactees}
+            proposal={engagement.fieldProposals?.find((p) => p.champ === 'contribution_impactees')}
+          />
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Échéance</p>
             {engagement.continu ? (
@@ -546,7 +571,9 @@ function BaseInfoCard({
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-500">Pilotage</label>
+          <label className="mb-1 block text-xs font-medium text-slate-500">
+            Pilotage {user?.role !== 'admin' && <span className="font-normal text-amber-600">(soumis à validation)</span>}
+          </label>
           <input
             value={form.pilotage}
             onChange={(e) => setForm({ ...form, pilotage: e.target.value })}
@@ -554,7 +581,10 @@ function BaseInfoCard({
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-500">Contribution — élaboration du projet</label>
+          <label className="mb-1 block text-xs font-medium text-slate-500">
+            Contribution — élaboration du projet{' '}
+            {user?.role !== 'admin' && <span className="font-normal text-amber-600">(soumis à validation)</span>}
+          </label>
           <input
             value={form.contribution_elaboration}
             onChange={(e) => setForm({ ...form, contribution_elaboration: e.target.value })}
@@ -562,7 +592,10 @@ function BaseInfoCard({
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-500">Contribution — directions/fonctions impactées</label>
+          <label className="mb-1 block text-xs font-medium text-slate-500">
+            Contribution — directions/fonctions impactées{' '}
+            {user?.role !== 'admin' && <span className="font-normal text-amber-600">(soumis à validation)</span>}
+          </label>
           <input
             value={form.contribution_impactees}
             onChange={(e) => setForm({ ...form, contribution_impactees: e.target.value })}
@@ -681,11 +714,19 @@ function CommentItem({
   )
 }
 
-function Info({ label, value }: { label: string; value?: string | null }) {
+function Info({ label, value, proposal }: { label: string; value?: string | null; proposal?: FieldProposal }) {
   return (
     <div>
       <p className="text-xs font-medium uppercase tracking-wide text-slate-400">{label}</p>
       <p className="mt-0.5 text-slate-700">{value || '—'}</p>
+      {proposal && (
+        <p
+          className="mt-1 rounded-md bg-amber-50 px-2 py-1 text-xs text-amber-700"
+          title="En attente de validation par un administrateur"
+        >
+          Proposition de {proposal.proposed_by_name || 'un agent'} : « {proposal.valeur_proposee} »
+        </p>
+      )}
     </div>
   )
 }

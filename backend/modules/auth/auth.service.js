@@ -1,14 +1,49 @@
 const bcrypt = require('bcryptjs');
 const { db } = require('../../db/pg_db');
 const apm = require('../../services/apm');
+const ldapAuth = require('../../services/ldapAuth');
 const { signToken } = require('../../middleware/auth');
 
-/** Connexion agent Ville : bind LDAP via l'APM, JWT applicatif ensuite. */
-async function loginAgent(username, password) {
-  if (!username || !password) {
-    return { ok: false, status: 400, error: 'Identifiant et mot de passe requis' };
+async function cacheAgent({ username, displayName, email, mobile, direction }) {
+  await db
+    .run(
+      `INSERT INTO agents_cache (username, display_name, email, mobile, direction, updated_at)
+       VALUES ($1, $2, $3, $4, $5, now())
+       ON CONFLICT (username) DO UPDATE SET
+         display_name = EXCLUDED.display_name,
+         email = EXCLUDED.email,
+         mobile = EXCLUDED.mobile,
+         direction = EXCLUDED.direction,
+         updated_at = now()`,
+      [username, displayName, email, mobile, direction]
+    )
+    .catch((err) => console.warn('[auth] cache agent impossible :', err.message));
+}
+
+/** Connexion agent Ville via LDAP direct — même méthode que le magapp/hub
+ * (services/ldapAuth.js) : un seul aller-retour AD fait à la fois
+ * l'authentification et la récupération des infos (direction, mail...). */
+async function loginAgentViaLdap(username, password) {
+  let agent;
+  try {
+    agent = await ldapAuth.authenticate(username, password);
+  } catch (err) {
+    return { ok: false, status: 502, error: `AD injoignable : ${err.message}` };
+  }
+  if (!agent) {
+    return { ok: false, status: 401, error: 'Identifiants invalides' };
   }
 
+  const displayName = agent.displayName || username;
+  await cacheAgent({ username, displayName, email: agent.mail, mobile: agent.mobile, direction: agent.direction });
+
+  const user = { sub: username, role: 'agent', displayName, direction: agent.direction, email: agent.mail };
+  return { ok: true, token: signToken(user), user };
+}
+
+/** Connexion agent Ville via l'APM (bind LDAP relayé) — repli historique si
+ * le LDAP direct n'est pas configuré (AD_HOST absent de .env). */
+async function loginAgentViaApm(username, password) {
   const result = await apm.authenticateAgent(username, password);
   if (!result.success) {
     return { ok: false, status: 401, error: result.error || 'Identifiants invalides' };
@@ -26,22 +61,26 @@ async function loginAgent(username, password) {
   const email = infos?.mail || infos?.email || null;
   const mobile = infos?.mobile || infos?.telephoneMobile || null;
 
-  await db
-    .run(
-      `INSERT INTO agents_cache (username, display_name, email, mobile, direction, updated_at)
-       VALUES ($1, $2, $3, $4, $5, now())
-       ON CONFLICT (username) DO UPDATE SET
-         display_name = EXCLUDED.display_name,
-         email = EXCLUDED.email,
-         mobile = EXCLUDED.mobile,
-         direction = EXCLUDED.direction,
-         updated_at = now()`,
-      [username, displayName, email, mobile, direction]
-    )
-    .catch((err) => console.warn('[auth] cache agent impossible :', err.message));
+  await cacheAgent({ username, displayName, email, mobile, direction });
 
   const user = { sub: username, role: 'agent', displayName, direction, email };
   return { ok: true, token: signToken(user), user };
+}
+
+/** Connexion agent Ville : LDAP direct si configuré (AD_HOST — cf.
+ * .env.example, même méthode que le magapp), sinon relayée par l'APM. */
+async function loginAgent(username, password) {
+  if (!username || !password) {
+    return { ok: false, status: 400, error: 'Identifiant et mot de passe requis' };
+  }
+  // Un identifiant saisi en email ("jflores@ivry94.fr") doit fonctionner
+  // comme le sAMAccountName seul — même normalisation que le magapp.
+  const cleanUsername = username.replace(/@ivry94\.fr$/i, '').trim();
+
+  if (ldapAuth.ldapConfigured()) {
+    return loginAgentViaLdap(cleanUsername, password);
+  }
+  return loginAgentViaApm(cleanUsername, password);
 }
 
 /** Connexion admin de secours : compte local, indépendant de l'AD/APM. */

@@ -262,7 +262,7 @@ async function getById(id) {
   );
   if (!engagement) return null;
 
-  const [history, comments, coordinationTopics, roles, steps, attachments] = await Promise.all([
+  const [history, comments, coordinationTopics, roles, steps, attachments, fieldProposals] = await Promise.all([
     db.all(
       `SELECT * FROM engagement_history WHERE engagement_id = $1 ORDER BY changed_at DESC`,
       [id]
@@ -289,9 +289,13 @@ async function getById(id) {
        FROM engagement_attachments WHERE engagement_id = $1 AND deleted_at IS NULL ORDER BY created_at DESC`,
       [id]
     ),
+    db.all(
+      `SELECT * FROM field_proposals WHERE engagement_id = $1 AND statut = 'en_attente' ORDER BY created_at ASC`,
+      [id]
+    ),
   ]);
 
-  return { ...engagement, history, comments, coordinationTopics, roles, steps, attachments };
+  return { ...engagement, history, comments, coordinationTopics, roles, steps, attachments, fieldProposals };
 }
 
 async function update(id, patch, author) {

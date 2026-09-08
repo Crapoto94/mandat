@@ -1,4 +1,6 @@
+import { useState, type FormEvent } from 'react'
 import { APP_VERSION, APP_RELEASE_DATE } from '../lib/version'
+import { api, apiErrorMessage } from '../lib/api'
 import {
   Sparkles,
   ListChecks,
@@ -13,6 +15,9 @@ import {
   Link2,
   History,
   BellRing,
+  Bug,
+  Lightbulb,
+  CheckCircle2,
 } from 'lucide-react'
 
 interface FeatureGroup {
@@ -172,6 +177,8 @@ export default function WhatsNewPage() {
         </p>
       </div>
 
+      <FeedbackForm />
+
       <div className="rounded-xl border border-slate-200 bg-white p-6">
         <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800">
           <History size={16} className="text-ville-blue" /> Journal des versions
@@ -214,6 +221,136 @@ export default function WhatsNewPage() {
           ))}
         </div>
       </div>
+    </div>
+  )
+}
+
+/** Signalement de bug ou demande d'évolution — ouvert à tout agent connecté ;
+ * la liste des soumissions n'est consultable qu'en admin (cf. AdminPage). */
+function FeedbackForm() {
+  const [open, setOpen] = useState(false)
+  const [type, setType] = useState<'bug' | 'demande'>('demande')
+  const [titre, setTitre] = useState('')
+  const [description, setDescription] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [sent, setSent] = useState(false)
+
+  async function submit(e: FormEvent) {
+    e.preventDefault()
+    if (!titre.trim()) return
+    setBusy(true)
+    setError(null)
+    try {
+      await api.post('/feedback', {
+        type,
+        titre: titre.trim(),
+        description: description.trim() || null,
+        page_url: window.location.href,
+      })
+      setTitre('')
+      setDescription('')
+      setType('demande')
+      setSent(true)
+      setOpen(false)
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Envoi impossible'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-6">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+            <Lightbulb size={16} className="text-ville-blue" /> Une idée, un bug ?
+          </h2>
+          <p className="mt-1 text-xs text-slate-500">
+            Signalez un dysfonctionnement ou proposez une amélioration — transmis directement à la DSI.
+          </p>
+        </div>
+        {!open && (
+          <button
+            onClick={() => {
+              setOpen(true)
+              setSent(false)
+            }}
+            className="shrink-0 rounded-md bg-ville-blue px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
+          >
+            Faire une demande / signaler un bug
+          </button>
+        )}
+      </div>
+
+      {sent && !open && (
+        <p className="mt-3 flex items-center gap-1.5 rounded-md bg-green-50 px-3 py-2 text-sm text-green-700">
+          <CheckCircle2 size={15} /> Envoyé — merci !
+        </p>
+      )}
+
+      {open && (
+        <form onSubmit={submit} className="mt-4 space-y-3 border-t border-slate-100 pt-4">
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setType('demande')}
+              className={`flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium ${
+                type === 'demande' ? 'border-ville-blue bg-ville-blue/10 text-ville-blue' : 'border-slate-300 text-slate-600'
+              }`}
+            >
+              <Lightbulb size={14} /> Demande d'évolution
+            </button>
+            <button
+              type="button"
+              onClick={() => setType('bug')}
+              className={`flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium ${
+                type === 'bug' ? 'border-red-400 bg-red-50 text-red-700' : 'border-slate-300 text-slate-600'
+              }`}
+            >
+              <Bug size={14} /> Bug
+            </button>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-500">Titre</label>
+            <input
+              value={titre}
+              onChange={(e) => setTitre(e.target.value)}
+              required
+              placeholder={type === 'bug' ? 'Ex : la météo ne se met pas à jour sur...' : "Ex : pouvoir trier la liste par..."}
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-ville-blue focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-500">Détails (optionnel)</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+              placeholder="Contexte, étapes pour reproduire, capture décrite..."
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-ville-blue focus:outline-none"
+            />
+          </div>
+          {error && <p className="text-sm text-red-600">{error}</p>}
+          <div className="flex items-center gap-2">
+            <button
+              type="submit"
+              disabled={busy || !titre.trim()}
+              className="rounded-md bg-ville-blue px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60"
+            >
+              {busy ? 'Envoi…' : 'Envoyer'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+            >
+              Annuler
+            </button>
+          </div>
+        </form>
+      )}
     </div>
   )
 }

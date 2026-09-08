@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { api, apiErrorMessage } from '../lib/api'
-import type { ActivityLogEntry, AlertSubscription, Direction, Etat, HubdsiEntry, MailLogEntry, Meteo, RoleDef, TrashedAttachment } from '../types'
+import type { ActivityLogEntry, AlertSubscription, Direction, Etat, FeedbackEntry, FieldProposal, HubdsiEntry, MailLogEntry, Meteo, RoleDef, TrashedAttachment } from '../types'
 import { fieldLabel } from '../lib/fieldLabels'
 import {
   ShieldCheck,
@@ -24,6 +24,8 @@ import {
   Bell,
   Mail,
   Send,
+  Bug,
+  Lightbulb,
 } from 'lucide-react'
 
 interface AdminAccount {
@@ -136,7 +138,11 @@ export default function AdminPage() {
 
       <AlertSubscriptionsSection onError={setError} />
 
+      <ProposalsSection onError={setError} onNotice={setNotice} />
+
       <MailLogSection onError={setError} onNotice={setNotice} />
+
+      <FeedbackSection onError={setError} />
 
       <ActivityLogSection onError={setError} />
 
@@ -1166,6 +1172,223 @@ function MailLogSection({ onError, onNotice }: { onError: (m: string) => void; o
         )
       )}
     </section>
+  )
+}
+
+/** Demandes d'évolution et signalements de bug soumis depuis la page
+ * "Nouveautés" — réservé admin (cf. requête utilisateur explicite). */
+/** Propositions en attente sur pilotage/contributions — un agent non-admin
+ * propose, un admin valide (applique) ou rejette ici. */
+function ProposalsSection({ onError, onNotice }: { onError: (m: string) => void; onNotice: (m: string) => void }) {
+  const [items, setItems] = useState<FieldProposal[] | null>(null)
+  const [busy, setBusy] = useState<number | null>(null)
+
+  function load() {
+    api
+      .get('/admin/proposals')
+      .then((res) => setItems(res.data))
+      .catch((err) => onError(apiErrorMessage(err, 'Propositions indisponibles')))
+  }
+
+  useEffect(load, [])
+
+  async function resolve(id: number, action: 'valider' | 'rejeter') {
+    setBusy(id)
+    try {
+      await api.patch(`/admin/proposals/${id}`, { action })
+      onNotice(action === 'valider' ? 'Proposition validée et appliquée.' : 'Proposition rejetée.')
+      load()
+    } catch (err) {
+      onError(apiErrorMessage(err, 'Action impossible'))
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  return (
+    <section className="rounded-xl border border-slate-200 bg-white p-5">
+      <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold text-slate-800">
+        <CheckCircle2 size={16} /> Propositions en attente (pilotage / contributions)
+      </h2>
+      <p className="mb-4 text-xs text-slate-500">
+        Modifications proposées par des agents sur les champs Pilotage / Contribution — élaboration / Contribution —
+        directions-fonctions impactées, à valider ou rejeter.
+      </p>
+      {!items ? (
+        <p className="text-sm text-slate-400">Chargement…</p>
+      ) : !items.length ? (
+        <p className="text-sm text-slate-400">Aucune proposition en attente.</p>
+      ) : (
+        <ul className="space-y-1.5">
+          {items.map((p) => (
+            <li key={p.id} className="rounded-md bg-amber-50 px-3 py-2 text-sm">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <Link
+                    to={`/engagements/${p.engagement_id}`}
+                    className="font-medium text-slate-800 hover:text-ville-blue hover:underline"
+                  >
+                    n°{p.engagement_numero} — {p.engagement_contenu?.slice(0, 60)}
+                    {(p.engagement_contenu?.length || 0) > 60 ? '…' : ''}
+                  </Link>
+                  <p className="mt-0.5 text-slate-600">
+                    {fieldLabel(p.champ)} : <span className="text-slate-400 line-through">{p.valeur_actuelle || '—'}</span>{' '}
+                    → <span className="font-medium text-amber-700">{p.valeur_proposee}</span>
+                  </p>
+                  <p className="mt-0.5 text-xs text-slate-400">
+                    Proposé par {p.proposed_by_name || 'inconnu'} le {new Date(p.created_at).toLocaleString('fr-FR')}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <button
+                    onClick={() => resolve(p.id, 'valider')}
+                    disabled={busy === p.id}
+                    title="Valider et appliquer"
+                    className="text-green-600 hover:text-green-700 disabled:opacity-40"
+                  >
+                    <CheckCircle2 size={18} />
+                  </button>
+                  <button
+                    onClick={() => resolve(p.id, 'rejeter')}
+                    disabled={busy === p.id}
+                    title="Rejeter"
+                    className="text-red-500 hover:text-red-600 disabled:opacity-40"
+                  >
+                    <XCircle size={18} />
+                  </button>
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
+function FeedbackSection({ onError }: { onError: (m: string) => void }) {
+  const [items, setItems] = useState<FeedbackEntry[] | null>(null)
+  const [busy, setBusy] = useState<number | null>(null)
+
+  function load() {
+    api
+      .get('/feedback')
+      .then((res) => setItems(res.data))
+      .catch((err) => onError(apiErrorMessage(err, 'Liste des demandes indisponible')))
+  }
+
+  useEffect(load, [])
+
+  async function setStatut(id: number, statut: 'nouveau' | 'traite') {
+    setBusy(id)
+    try {
+      await api.patch(`/feedback/${id}`, { statut })
+      load()
+    } catch (err) {
+      onError(apiErrorMessage(err, 'Mise à jour impossible'))
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const pending = items?.filter((i) => i.statut === 'nouveau') || []
+  const treated = items?.filter((i) => i.statut === 'traite') || []
+
+  return (
+    <section className="rounded-xl border border-slate-200 bg-white p-5">
+      <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold text-slate-800">
+        <Lightbulb size={16} /> Demandes et bugs signalés
+      </h2>
+      <p className="mb-4 text-xs text-slate-500">
+        Soumis par les agents depuis la page « Nouveautés » — visible uniquement ici.
+      </p>
+      {!items ? (
+        <p className="text-sm text-slate-400">Chargement…</p>
+      ) : !items.length ? (
+        <p className="text-sm text-slate-400">Aucune demande pour l'instant.</p>
+      ) : (
+        <div className="space-y-4">
+          {!!pending.length && (
+            <ul className="space-y-1.5">
+              {pending.map((f) => (
+                <FeedbackRow key={f.id} item={f} busy={busy === f.id} onResolve={() => setStatut(f.id, 'traite')} />
+              ))}
+            </ul>
+          )}
+          {!!treated.length && (
+            <details className="border-t border-slate-100 pt-3">
+              <summary className="cursor-pointer text-xs font-medium uppercase tracking-wide text-slate-400">
+                Traitées ({treated.length})
+              </summary>
+              <ul className="mt-2 space-y-1.5">
+                {treated.map((f) => (
+                  <FeedbackRow key={f.id} item={f} busy={busy === f.id} onReopen={() => setStatut(f.id, 'nouveau')} />
+                ))}
+              </ul>
+            </details>
+          )}
+        </div>
+      )}
+    </section>
+  )
+}
+
+function FeedbackRow({
+  item,
+  busy,
+  onResolve,
+  onReopen,
+}: {
+  item: FeedbackEntry
+  busy: boolean
+  onResolve?: () => void
+  onReopen?: () => void
+}) {
+  const Icon = item.type === 'bug' ? Bug : Lightbulb
+  return (
+    <li className={`rounded-md px-3 py-2 text-sm ${item.type === 'bug' ? 'bg-red-50' : 'bg-slate-50'}`}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-start gap-2 min-w-0">
+          <Icon size={14} className={`mt-0.5 shrink-0 ${item.type === 'bug' ? 'text-red-500' : 'text-ville-blue'}`} />
+          <div className="min-w-0">
+            <p className="font-medium text-slate-800">{item.titre}</p>
+            {item.description && <p className="mt-0.5 whitespace-pre-wrap text-slate-600">{item.description}</p>}
+            <p className="mt-1 text-xs text-slate-400">
+              {item.submitted_by_name || 'inconnu'} · {new Date(item.created_at).toLocaleString('fr-FR')}
+              {item.page_url && (
+                <>
+                  {' '}
+                  ·{' '}
+                  <a href={item.page_url} className="hover:text-ville-blue hover:underline">
+                    page source
+                  </a>
+                </>
+              )}
+            </p>
+          </div>
+        </div>
+        <div className="shrink-0">
+          {onResolve && (
+            <button
+              onClick={onResolve}
+              disabled={busy}
+              className="whitespace-nowrap text-xs font-medium text-ville-blue hover:underline disabled:opacity-40"
+            >
+              Marquer traité
+            </button>
+          )}
+          {onReopen && (
+            <button
+              onClick={onReopen}
+              disabled={busy}
+              className="whitespace-nowrap text-xs font-medium text-slate-500 hover:underline disabled:opacity-40"
+            >
+              Rouvrir
+            </button>
+          )}
+        </div>
+      </div>
+    </li>
   )
 }
 

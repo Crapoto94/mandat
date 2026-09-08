@@ -67,6 +67,7 @@ export default function PleniairePage() {
                             couleur: e.meteo_couleur || '#64748b',
                             ordre: 0,
                           }}
+                          iconOnly
                         />
                       )}
                     </div>
