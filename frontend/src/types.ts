@@ -65,7 +65,7 @@ export interface Engagement {
   fieldProposals?: FieldProposal[]
   projetsLies?: Projet[]
   projets_count?: number
-  projets_apercu?: { id: number; nom: string }[]
+  projets_apercu?: { id: number; nom: string; description: string | null }[]
 }
 
 export interface FieldProposal {

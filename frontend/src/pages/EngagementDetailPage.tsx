@@ -4,6 +4,7 @@ import { api, apiErrorMessage } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import type { Comment, Engagement, Etat, FieldProposal, Groupe, Meteo, Projet } from '../types'
 import { axeList } from '../lib/axeColors'
+import { stripHtml } from '../lib/text'
 import { fieldLabel } from '../lib/fieldLabels'
 import { useFieldLock } from '../hooks/useFieldLock'
 import { useFieldLocks } from '../hooks/useFieldLocks'
@@ -756,6 +757,7 @@ function ProjetsLiesPanel({
             <li key={p.id}>
               <Link
                 to={`/projets/${p.id}`}
+                title={stripHtml(p.description) || undefined}
                 className="flex items-center justify-between gap-2 rounded-md bg-slate-50 px-3 py-2 text-sm hover:bg-ville-blue/5"
               >
                 <span className="font-medium text-slate-800">{p.nom}</span>

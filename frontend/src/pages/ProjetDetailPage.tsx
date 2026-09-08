@@ -105,9 +105,18 @@ export default function ProjetDetailPage() {
 
   return (
     <div className="space-y-6">
-      <Link to="/projets" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-ville-blue">
-        <ArrowLeft size={15} /> Retour aux projets
-      </Link>
+      {projet.engagement_id ? (
+        <Link
+          to={`/engagements/${projet.engagement_id}`}
+          className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-ville-blue"
+        >
+          <ArrowLeft size={15} /> Retour à l'engagement
+        </Link>
+      ) : (
+        <Link to="/projets" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-ville-blue">
+          <ArrowLeft size={15} /> Retour aux projets
+        </Link>
+      )}
 
       {error && <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</p>}
 

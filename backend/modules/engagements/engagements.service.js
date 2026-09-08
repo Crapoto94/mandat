@@ -131,9 +131,9 @@ async function list({ direction, userSub, isAdmin, ...filters } = {}) {
   if (withProjets.length) {
     const ids = withProjets.map((r) => r.id);
     const projetRows = isAdmin
-      ? await db.all(`SELECT id, nom, engagement_id FROM projets WHERE engagement_id = ANY($1)`, [ids])
+      ? await db.all(`SELECT id, nom, description, engagement_id FROM projets WHERE engagement_id = ANY($1)`, [ids])
       : await db.all(
-          `SELECT p.id, p.nom, p.engagement_id FROM projets p
+          `SELECT p.id, p.nom, p.description, p.engagement_id FROM projets p
            WHERE p.engagement_id = ANY($1)
              AND EXISTS (SELECT 1 FROM projet_membres pm WHERE pm.projet_id = p.id AND pm.user_sub = $2)`,
           [ids, userSub || null]
@@ -141,7 +141,7 @@ async function list({ direction, userSub, isAdmin, ...filters } = {}) {
     const byEngagement = new Map();
     for (const p of projetRows) {
       if (!byEngagement.has(p.engagement_id)) byEngagement.set(p.engagement_id, []);
-      byEngagement.get(p.engagement_id).push({ id: p.id, nom: p.nom });
+      byEngagement.get(p.engagement_id).push({ id: p.id, nom: p.nom, description: p.description });
     }
     for (const r of rows) r.projets_apercu = byEngagement.get(r.id) || [];
   } else {

@@ -6,7 +6,8 @@ import EtatBadge from '../components/EtatBadge'
 import AxeTag from '../components/AxeTag'
 import { MeteoBadge } from '../components/MeteoPicker'
 import { getAxeColor, axeList } from '../lib/axeColors'
-import { Star, Search, Infinity as InfinityIcon, Bell, Clock3, FolderKanban } from 'lucide-react'
+import { stripHtml } from '../lib/text'
+import { Star, Search, Infinity as InfinityIcon, Bell, Clock3, CornerDownRight } from 'lucide-react'
 
 const NOUVEAUTES_OPTIONS = [
   { value: 'today', label: "Aujourd'hui" },
@@ -310,6 +311,7 @@ export default function EngagementsPage() {
                     <Link
                       to={`/engagements/${e.id}`}
                       onClick={(ev) => ev.stopPropagation()}
+                      title={stripHtml(e.description_avancement) || undefined}
                       className="font-medium text-slate-800 hover:text-ville-blue"
                     >
                       {e.contenu}
@@ -321,27 +323,24 @@ export default function EngagementsPage() {
                     )}
                     <AxeTag axe={e.axe} className="mt-1" />
                     {!!e.projets_count && (
-                      <div className="mt-1 flex flex-wrap items-center gap-1">
-                        <span
-                          title={`Se décompose en ${e.projets_count} projet(s)`}
-                          className="flex shrink-0 items-center gap-1 text-xs font-medium text-ville-blue"
-                        >
-                          <FolderKanban size={12} /> {e.projets_count} projet{e.projets_count > 1 ? 's' : ''} :
-                        </span>
+                      <div className="mt-1.5 ml-1.5 space-y-1 border-l-2 border-ville-blue/30 pl-2.5">
                         {e.projets_apercu?.map((p) => (
                           <Link
                             key={p.id}
                             to={`/projets/${p.id}`}
                             onClick={(ev) => ev.stopPropagation()}
-                            className="rounded-full bg-ville-blue/10 px-2 py-0.5 text-xs text-ville-blue hover:bg-ville-blue/20"
+                            title={stripHtml(p.description) || undefined}
+                            className="flex items-center gap-1 text-xs text-ville-blue hover:underline"
                           >
+                            <CornerDownRight size={11} className="shrink-0 text-ville-blue/50" />
                             {p.nom}
                           </Link>
                         ))}
                         {e.projets_count > (e.projets_apercu?.length || 0) && (
-                          <span className="text-xs text-slate-400">
-                            +{e.projets_count - (e.projets_apercu?.length || 0)} non visible(s) pour vous
-                          </span>
+                          <p className="flex items-center gap-1 text-xs text-slate-400">
+                            <CornerDownRight size={11} className="shrink-0 text-slate-300" />
+                            +{e.projets_count - (e.projets_apercu?.length || 0)} projet(s) non visible(s) pour vous
+                          </p>
                         )}
                       </div>
                     )}

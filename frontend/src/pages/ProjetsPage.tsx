@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { api, apiErrorMessage } from '../lib/api'
+import { stripHtml } from '../lib/text'
 import type { Projet } from '../types'
 import EtatBadge from '../components/EtatBadge'
 import { MeteoBadge } from '../components/MeteoPicker'
@@ -65,6 +66,7 @@ export default function ProjetsPage() {
             <Link
               key={p.id}
               to={`/projets/${p.id}`}
+              title={stripHtml(p.description) || undefined}
               className="block rounded-xl border border-slate-200 bg-white p-4 transition-colors hover:border-ville-blue/40"
             >
               <div className="mb-1.5 flex items-start justify-between gap-2">
