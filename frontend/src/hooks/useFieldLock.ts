@@ -14,7 +14,17 @@ export function useFieldLock(engagementId: number | null, champ: string, active:
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
-    if (!engagementId || !active) return
+    if (!engagementId || !active) {
+      // Ne pas laisser un conflit affiché devenir orphelin : si on n'est
+      // plus en train d'essayer d'éditer (ex : champ passé en lecture
+      // seule suite au conflit, donc plus "actif"), on ne réinterroge plus
+      // jamais le serveur ici — sans ce reset, le message "X modifie déjà
+      // ce champ" resterait affiché indéfiniment même après que X ait
+      // terminé. C'est useFieldLocks (liste, sondée en continu) qui prend
+      // le relais pour détecter la libération réelle.
+      setConflict(null)
+      return
+    }
 
     let cancelled = false
 

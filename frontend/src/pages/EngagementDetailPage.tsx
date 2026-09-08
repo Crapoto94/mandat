@@ -14,9 +14,10 @@ import RolesSection from '../components/RolesSection'
 import StepsTimeline from '../components/StepsTimeline'
 import AttachmentsSection from '../components/AttachmentsSection'
 import MeteoPicker from '../components/MeteoPicker'
+import ToggleSwitch from '../components/ToggleSwitch'
 import EditingBadge from '../components/EditingBadge'
 import LiveUpdateFlash from '../components/LiveUpdateFlash'
-import { ArrowLeft, Star, Send, Clock, MessageSquare, Pencil, X } from 'lucide-react'
+import { ArrowLeft, Star, Send, Clock, MessageSquare, Pencil, X, Infinity as InfinityIcon } from 'lucide-react'
 
 const POLL_MS = 7000
 const DEBOUNCE_MS = 1500
@@ -38,7 +39,12 @@ export default function EngagementDetailPage() {
   const [commentBody, setCommentBody] = useState('')
 
   const { lockFor } = useFieldLocks(engagement ? engagement.id : null)
-  const descriptionConflict = useFieldLock(engagement ? engagement.id : null, 'description_avancement', descriptionFocused)
+  // Détient/heartbeat notre propre verrou pendant l'édition — la valeur de
+  // retour (conflit immédiat) n'est pas utilisée pour l'affichage : c'est
+  // `descriptionLock`, sondé en continu via useFieldLocks, qui pilote le
+  // lecture-seule et le message, pour ne jamais rester bloqué sur un état
+  // périmé une fois le champ passé en lecture seule (donc plus "actif").
+  useFieldLock(engagement ? engagement.id : null, 'description_avancement', descriptionFocused)
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastLoadedDescriptionRef = useRef('')
@@ -248,9 +254,9 @@ export default function EngagementDetailPage() {
               {descriptionLock && <EditingBadge displayName={descriptionLock.display_name} />}
               {saving && <span className="text-xs text-slate-400">Enregistrement…</span>}
             </div>
-            {descriptionConflict && (
+            {descriptionLock && (
               <p className="mb-1.5 text-xs text-amber-700">
-                {descriptionConflict.display_name} modifie déjà ce champ — lecture seule le temps qu'iel termine.
+                {descriptionLock.display_name} modifie déjà ce champ — lecture seule le temps qu'iel termine.
               </p>
             )}
             <RichTextEditor
@@ -262,7 +268,7 @@ export default function EngagementDetailPage() {
                 saveDescriptionNow()
               }}
               engagementId={engagement.id}
-              readOnly={!!descriptionConflict}
+              readOnly={!!descriptionLock}
             />
           </div>
         </div>
@@ -363,6 +369,21 @@ function BaseInfoCard({
   const [error, setError] = useState<string | null>(null)
 
   const conflict = useFieldLock(engagement.id, 'infos_de_base', editing)
+  const [togglingContinu, setTogglingContinu] = useState(false)
+
+  // Bascule instantanée, indépendante du formulaire d'édition verrouillé
+  // (même logique que la météo/l'état : pas de brouillon à valider).
+  async function toggleContinu() {
+    setTogglingContinu(true)
+    try {
+      await api.patch(`/engagements/${engagement.id}`, { continu: !engagement.continu })
+      onSaved()
+    } catch {
+      // silencieux : le prochain rafraîchissement live re-synchronisera l'affichage
+    } finally {
+      setTogglingContinu(false)
+    }
+  }
 
   function startEditing() {
     setForm({
@@ -420,10 +441,26 @@ function BaseInfoCard({
           <Info label="Pilotage" value={engagement.pilotage} />
           <Info label="Contribution — élaboration du projet" value={engagement.contribution_elaboration} />
           <Info label="Contribution — directions/fonctions impactées" value={engagement.contribution_impactees} />
-          <Info
-            label="Échéance"
-            value={engagement.continu ? 'Engagement continu (pas d\'échéance)' : engagement.echeance}
-          />
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Échéance</p>
+            <p className="mt-0.5 flex items-center gap-1.5 text-slate-700">
+              {engagement.continu ? (
+                <>
+                  <InfinityIcon size={14} className="text-ville-blue" /> Tout au long du mandat
+                </>
+              ) : (
+                engagement.echeance || '—'
+              )}
+            </p>
+            <div className="mt-1.5">
+              <ToggleSwitch
+                checked={engagement.continu}
+                disabled={togglingContinu}
+                onChange={toggleContinu}
+                label="Engagement continu, tout au long du mandat (pas de date d'aboutissement)"
+              />
+            </div>
+          </div>
           <Info label="Groupe de travail" value={engagement.groupe_code ? `${engagement.groupe_code} — ${engagement.groupe_nom}` : 'Hors groupe'} />
         </div>
       </div>
@@ -504,15 +541,12 @@ function BaseInfoCard({
             placeholder={form.continu ? 'Engagement continu' : undefined}
             className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-ville-blue focus:outline-none disabled:bg-slate-50 disabled:text-slate-400"
           />
-          <label className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-500">
-            <input
-              type="checkbox"
-              checked={form.continu}
-              onChange={(e) => setForm({ ...form, continu: e.target.checked, echeance: e.target.checked ? '' : form.echeance })}
-              className="rounded border-slate-300 text-ville-blue focus:ring-ville-blue"
-            />
-            Engagement continu (pas de date d'aboutissement)
-          </label>
+          {form.continu && (
+            <p className="mt-1 text-xs text-slate-400">
+              Marqué "tout au long du mandat" — décochez la case sous l'échéance, en dehors de ce formulaire, pour
+              revenir à une échéance datée.
+            </p>
+          )}
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-slate-500">Contribution — élaboration du projet</label>
