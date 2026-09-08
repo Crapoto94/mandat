@@ -65,3 +65,13 @@ export function projetDocumentUrl(id: number, download = false): string {
   const dl = download ? '&download=1' : ''
   return `${backendOrigin}/api/projets/documents/${id}/file?token=${encodeURIComponent(getToken() || '')}${dl}`
 }
+
+/** Fichier d'une version archivée d'un document projet. */
+export function projetDocumentVersionUrl(versionId: number): string {
+  return `${backendOrigin}/api/projets/documents/versions/${versionId}/file?token=${encodeURIComponent(getToken() || '')}`
+}
+
+/** Pièce jointe embarquée dans un .msg de la base documentaire d'un projet, par index. */
+export function projetMsgAttachmentUrl(docId: number, index: number): string {
+  return `${backendOrigin}/api/projets/documents/${docId}/preview/msg/attachments/${index}?token=${encodeURIComponent(getToken() || '')}`
+}

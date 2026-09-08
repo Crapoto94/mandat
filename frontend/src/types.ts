@@ -304,11 +304,23 @@ export interface ProjetDocument {
   display_name: string
   mime_type: string | null
   size_bytes: number | null
+  version: number
   metadata: Record<string, string>
   uploaded_by: string | null
   created_at: string
   deleted_at: string | null
   deleted_by: string | null
+}
+
+export interface ProjetDocumentVersion {
+  id: number
+  document_id: number
+  version: number
+  stored_name: string
+  mime_type: string | null
+  size_bytes: number | null
+  uploaded_by: string | null
+  created_at: string
 }
 
 export interface ProjetMetadataField {

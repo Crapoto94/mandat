@@ -10,6 +10,8 @@ const crypto = require('crypto');
 const AdmZip = require('adm-zip');
 const { db } = require('../../db/pg_db');
 const docs = require('./documents.service');
+const officePreview = require('../../services/officePreview');
+const { parseMsgBuffer, extractMsgAttachment } = require('../../services/msgParser');
 const { requireAuth, requireAuthQueryOrHeader } = require('../../middleware/auth');
 const { requireProjetMembership } = require('./middleware');
 
@@ -112,7 +114,7 @@ router.post('/:id/documents', requireAuth, requireProjetMembership, upload.array
       if (parts.length) folderId = await docs.resolveFolderPath(projetId, rootFolderId, parts, author, folderCache);
     }
 
-    const row = await docs.createDocument({
+    const { document } = await docs.createDocument({
       projetId,
       folderId,
       storedName: file.filename,
@@ -121,7 +123,7 @@ router.post('/:id/documents', requireAuth, requireProjetMembership, upload.array
       sizeBytes: file.size,
       author,
     });
-    created.push(row);
+    created.push(document);
   }
   res.status(201).json(created);
 });
@@ -155,7 +157,7 @@ router.post('/:id/documents/zip', requireAuth, requireProjetMembership, upload.s
     const storedName = `${crypto.randomUUID()}${path.extname(fileName).slice(0, 10)}`;
     fs.writeFileSync(path.join(UPLOAD_DIR, storedName), entry.getData());
 
-    const row = await docs.createDocument({
+    const { document } = await docs.createDocument({
       projetId,
       folderId,
       storedName,
@@ -164,7 +166,7 @@ router.post('/:id/documents/zip', requireAuth, requireProjetMembership, upload.s
       sizeBytes: entry.header.size,
       author,
     });
-    created.push(row);
+    created.push(document);
   }
 
   fs.unlink(req.file.path, () => {}); // le zip lui-même n'est pas conservé, seul son contenu l'est
@@ -177,6 +179,14 @@ router.patch('/:id/documents/:docId', requireAuth, requireProjetMembership, asyn
   res.json(row);
 });
 
+/** Historique des versions archivées d'un document (déposer un fichier du
+ * même nom crée une nouvelle version plutôt qu'un doublon — cf. createDocument). */
+router.get('/:id/documents/:docId/versions', requireAuth, requireProjetMembership, async (req, res) => {
+  const versions = await docs.listVersions(req.params.id, req.params.docId);
+  if (versions === null) return res.status(404).json({ error: 'Document introuvable' });
+  res.json(versions);
+});
+
 router.delete('/:id/documents/:docId', requireAuth, requireProjetMembership, async (req, res) => {
   const row = await docs.softDeleteDocument(req.params.id, req.params.docId, req.user.displayName || req.user.sub);
   if (!row) return res.status(404).json({ error: 'Document introuvable' });
@@ -186,23 +196,123 @@ router.delete('/:id/documents/:docId', requireAuth, requireProjetMembership, asy
 /** Sert le fichier — auth via header OU ?token= (aperçu <img>/<iframe>). Le
  * contrôle d'accès porte sur l'appartenance au PROJET du document (pas
  * seulement son existence), sinon un membre d'un autre projet pourrait
- * deviner l'id d'un document et le récupérer. */
-router.get('/documents/:docId/file', requireAuthQueryOrHeader, async (req, res) => {
+ * deviner l'id d'un document et le récupérer. Partagé par le téléchargement
+ * et tous les aperçus (.msg, docx, xlsx, pptx) ci-dessous. */
+async function loadAccessibleDocument(req, res) {
   const row = await db.get(`SELECT * FROM projet_documents WHERE id = $1 AND deleted_at IS NULL`, [req.params.docId]);
-  if (!row) return res.status(404).json({ error: 'Fichier introuvable' });
-
+  if (!row) {
+    res.status(404).json({ error: 'Fichier introuvable' });
+    return null;
+  }
   if (req.user.role !== 'admin') {
     const projetsService = require('./projets.service');
     const member = await projetsService.isMember(row.projet_id, req.user.sub);
-    if (!member) return res.status(404).json({ error: 'Fichier introuvable' });
+    if (!member) {
+      res.status(404).json({ error: 'Fichier introuvable' });
+      return null;
+    }
   }
-
   const filePath = path.join(UPLOAD_DIR, row.stored_name);
-  if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Fichier absent du stockage' });
+  if (!fs.existsSync(filePath)) {
+    res.status(404).json({ error: 'Fichier absent du stockage' });
+    return null;
+  }
+  return { row, filePath };
+}
+
+router.get('/documents/:docId/file', requireAuthQueryOrHeader, async (req, res) => {
+  const loaded = await loadAccessibleDocument(req, res);
+  if (!loaded) return;
+  const { row, filePath } = loaded;
 
   res.setHeader('Content-Type', row.mime_type || 'application/octet-stream');
   const disposition = req.query.download ? 'attachment' : 'inline';
   res.setHeader('Content-Disposition', `${disposition}; filename*=UTF-8''${encodeURIComponent(row.original_name)}`);
+  fs.createReadStream(filePath).pipe(res);
+});
+
+/** Aperçu structuré selon le type de fichier — pour la visionneuse
+ * (PDF/image gérés directement côté frontend via /file ; .msg, docx, xlsx,
+ * pptx nécessitent un traitement serveur, d'où ces routes dédiées). */
+router.get('/documents/:docId/preview/msg', requireAuthQueryOrHeader, async (req, res) => {
+  const loaded = await loadAccessibleDocument(req, res);
+  if (!loaded) return;
+  try {
+    res.json(parseMsgBuffer(fs.readFileSync(loaded.filePath)));
+  } catch (err) {
+    res.status(500).json({ error: `Lecture du message impossible : ${err.message}` });
+  }
+});
+
+router.get('/documents/:docId/preview/msg/attachments/:idx', requireAuthQueryOrHeader, async (req, res) => {
+  const loaded = await loadAccessibleDocument(req, res);
+  if (!loaded) return;
+  try {
+    const att = extractMsgAttachment(fs.readFileSync(loaded.filePath), parseInt(req.params.idx, 10));
+    if (!att) return res.status(404).json({ error: 'Pièce jointe introuvable' });
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(att.fileName)}`);
+    res.type(path.extname(att.fileName) || 'application/octet-stream');
+    res.send(Buffer.from(att.content));
+  } catch (err) {
+    res.status(500).json({ error: `Extraction impossible : ${err.message}` });
+  }
+});
+
+router.get('/documents/:docId/preview/docx', requireAuthQueryOrHeader, async (req, res) => {
+  const loaded = await loadAccessibleDocument(req, res);
+  if (!loaded) return;
+  try {
+    res.json(await officePreview.previewDocx(fs.readFileSync(loaded.filePath)));
+  } catch (err) {
+    res.status(500).json({ error: `Aperçu impossible : ${err.message}` });
+  }
+});
+
+router.get('/documents/:docId/preview/xlsx', requireAuthQueryOrHeader, async (req, res) => {
+  const loaded = await loadAccessibleDocument(req, res);
+  if (!loaded) return;
+  try {
+    res.json(officePreview.previewXlsx(fs.readFileSync(loaded.filePath)));
+  } catch (err) {
+    res.status(500).json({ error: `Aperçu impossible : ${err.message}` });
+  }
+});
+
+router.get('/documents/:docId/preview/pptx', requireAuthQueryOrHeader, async (req, res) => {
+  const loaded = await loadAccessibleDocument(req, res);
+  if (!loaded) return;
+  try {
+    res.json(officePreview.previewPptx(fs.readFileSync(loaded.filePath)));
+  } catch (err) {
+    res.status(500).json({ error: `Aperçu impossible : ${err.message}` });
+  }
+});
+
+/** Fichier d'une version archivée (historique) — même contrôle d'accès que
+ * la version courante, via le document parent. */
+router.get('/documents/versions/:versionId/file', requireAuthQueryOrHeader, async (req, res) => {
+  const version = await db.get(
+    `SELECT v.*, d.projet_id, d.original_name, d.deleted_at AS doc_deleted_at
+     FROM projet_document_versions v JOIN projet_documents d ON d.id = v.document_id
+     WHERE v.id = $1`,
+    [req.params.versionId]
+  );
+  if (!version) return res.status(404).json({ error: 'Version introuvable' });
+
+  if (req.user.role !== 'admin') {
+    const projetsService = require('./projets.service');
+    const member = await projetsService.isMember(version.projet_id, req.user.sub);
+    if (!member) return res.status(404).json({ error: 'Version introuvable' });
+  }
+
+  const filePath = path.join(UPLOAD_DIR, version.stored_name);
+  if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Fichier absent du stockage' });
+
+  res.setHeader('Content-Type', version.mime_type || 'application/octet-stream');
+  res.setHeader(
+    'Content-Disposition',
+    `attachment; filename*=UTF-8''${encodeURIComponent(`v${version.version}_${version.original_name}`)}`
+  );
   fs.createReadStream(filePath).pipe(res);
 });
 

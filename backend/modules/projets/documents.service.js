@@ -18,11 +18,20 @@ function deleteStoredFiles(storedNames) {
   for (const name of storedNames) fs.unlink(path.join(UPLOAD_DIR, name), () => {});
 }
 
-/** Tous les fichiers (disque) d'un projet, y compris déjà en corbeille —
- * pour tout nettoyer avant une suppression définitive du projet. */
+/** Tous les fichiers (disque) d'un projet — version courante ET versions
+ * archivées de chaque document, y compris déjà en corbeille — pour tout
+ * nettoyer avant une suppression définitive du projet. */
 async function listAllStoredNames(projetId) {
-  const rows = await db.all(`SELECT stored_name FROM projet_documents WHERE projet_id = $1`, [projetId]);
-  return rows.map((r) => r.stored_name);
+  const [current, versions] = await Promise.all([
+    db.all(`SELECT stored_name FROM projet_documents WHERE projet_id = $1`, [projetId]),
+    db.all(
+      `SELECT v.stored_name FROM projet_document_versions v
+       JOIN projet_documents d ON d.id = v.document_id
+       WHERE d.projet_id = $1`,
+      [projetId]
+    ),
+  ]);
+  return [...current.map((r) => r.stored_name), ...versions.map((r) => r.stored_name)];
 }
 
 async function listFolders(projetId) {
@@ -100,27 +109,82 @@ async function folderPath(folderId) {
 
 async function deleteFolder(projetId, folderId) {
   // Récupère récursivement tous les documents sous ce dossier (lui-même et
-  // ses descendants) pour nettoyer leurs fichiers sur disque avant que le
-  // ON DELETE CASCADE ne supprime les lignes.
-  const docs = await db.all(
-    `WITH RECURSIVE sub AS (
-       SELECT id FROM projet_folders WHERE id = $1 AND projet_id = $2
-       UNION ALL
-       SELECT f.id FROM projet_folders f JOIN sub ON f.parent_id = sub.id
-     )
-     SELECT stored_name FROM projet_documents WHERE folder_id IN (SELECT id FROM sub) AND deleted_at IS NULL`,
-    [folderId, projetId]
-  );
+  // ses descendants) — version courante ET versions archivées — pour
+  // nettoyer leurs fichiers sur disque avant que le ON DELETE CASCADE ne
+  // supprime les lignes.
+  const [current, versions] = await Promise.all([
+    db.all(
+      `WITH RECURSIVE sub AS (
+         SELECT id FROM projet_folders WHERE id = $1 AND projet_id = $2
+         UNION ALL
+         SELECT f.id FROM projet_folders f JOIN sub ON f.parent_id = sub.id
+       )
+       SELECT stored_name FROM projet_documents WHERE folder_id IN (SELECT id FROM sub) AND deleted_at IS NULL`,
+      [folderId, projetId]
+    ),
+    db.all(
+      `WITH RECURSIVE sub AS (
+         SELECT id FROM projet_folders WHERE id = $1 AND projet_id = $2
+         UNION ALL
+         SELECT f.id FROM projet_folders f JOIN sub ON f.parent_id = sub.id
+       )
+       SELECT v.stored_name FROM projet_document_versions v
+       JOIN projet_documents d ON d.id = v.document_id
+       WHERE d.folder_id IN (SELECT id FROM sub)`,
+      [folderId, projetId]
+    ),
+  ]);
   const result = await db.run(`DELETE FROM projet_folders WHERE id = $1 AND projet_id = $2`, [folderId, projetId]);
-  return { deleted: result.changes > 0, storedNames: docs.map((d) => d.stored_name) };
+  return { deleted: result.changes > 0, storedNames: [...current.map((d) => d.stored_name), ...versions.map((d) => d.stored_name)] };
 }
 
+/** Dépose un fichier — si un document actif du même nom existe déjà dans le
+ * même dossier, ce dépôt en devient une NOUVELLE VERSION (l'ancienne est
+ * archivée dans projet_document_versions, son fichier jamais supprimé)
+ * plutôt qu'un second document séparé. Renvoie { document, isNewVersion,
+ * previousStoredName } — previousStoredName sert éventuellement à nettoyer
+ * un fichier tout juste uploadé qui doublonnerait au disque (jamais le cas
+ * ici : chaque upload a son propre stored_name aléatoire, donc rien à
+ * nettoyer côté nouvelle version — seule l'ancienne est archivée telle quelle). */
 async function createDocument({ projetId, folderId, storedName, originalName, mimeType, sizeBytes, author }) {
-  return db.get(
+  const folderClause = folderId ? `folder_id = $2` : `folder_id IS NULL`;
+  const params = folderId
+    ? [projetId, folderId, originalName]
+    : [projetId, originalName];
+  const existing = await db.get(
+    `SELECT * FROM projet_documents
+     WHERE projet_id = $1 AND ${folderClause} AND LOWER(original_name) = LOWER($${params.length})
+       AND deleted_at IS NULL`,
+    params
+  );
+
+  if (existing) {
+    await db.run(
+      `INSERT INTO projet_document_versions (document_id, version, stored_name, mime_type, size_bytes, uploaded_by, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [existing.id, existing.version, existing.stored_name, existing.mime_type, existing.size_bytes, existing.uploaded_by, existing.created_at]
+    );
+    const document = await db.get(
+      `UPDATE projet_documents
+       SET stored_name = $1, mime_type = $2, size_bytes = $3, uploaded_by = $4, version = version + 1, created_at = now()
+       WHERE id = $5 RETURNING *`,
+      [storedName, mimeType || null, sizeBytes || null, author || null, existing.id]
+    );
+    return { document, isNewVersion: true };
+  }
+
+  const document = await db.get(
     `INSERT INTO projet_documents (projet_id, folder_id, stored_name, original_name, display_name, mime_type, size_bytes, uploaded_by)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
     [projetId, folderId || null, storedName, originalName, baseName(originalName), mimeType || null, sizeBytes || null, author || null]
   );
+  return { document, isNewVersion: false };
+}
+
+async function listVersions(projetId, docId) {
+  const doc = await db.get(`SELECT id FROM projet_documents WHERE id = $1 AND projet_id = $2`, [docId, projetId]);
+  if (!doc) return null;
+  return db.all(`SELECT * FROM projet_document_versions WHERE document_id = $1 ORDER BY version DESC`, [docId]);
 }
 
 async function updateDocument(projetId, docId, { display_name, metadata, folder_id }) {
@@ -186,6 +250,7 @@ module.exports = {
   folderPath,
   deleteFolder,
   createDocument,
+  listVersions,
   updateDocument,
   softDeleteDocument,
   listMetadataFields,
