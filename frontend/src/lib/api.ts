@@ -59,3 +59,9 @@ export function attachmentFileUrl(id: number): string {
 export function msgAttachmentUrl(id: number, index: number): string {
   return `${backendOrigin}/api/attachments/${id}/msg/attachments/${index}?token=${encodeURIComponent(getToken() || '')}`
 }
+
+/** Fichier de la base documentaire d'un projet (cf. modules/projets/documents.routes.js). */
+export function projetDocumentUrl(id: number, download = false): string {
+  const dl = download ? '&download=1' : ''
+  return `${backendOrigin}/api/projets/documents/${id}/file?token=${encodeURIComponent(getToken() || '')}${dl}`
+}

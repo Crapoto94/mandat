@@ -6,6 +6,8 @@ data/uploads/*
 !data/uploads/.gitkeep
 data/attachments/*
 !data/attachments/.gitkeep
+data/projet-documents/*
+!data/projet-documents/.gitkeep
 .claude/settings.local.json
 
 # Identifiants SSH en clair pour le déploiement distant — ne doit jamais partir sur GitHub

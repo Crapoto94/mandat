@@ -183,7 +183,16 @@ async function update(id, patch, author) {
 async function remove(id) {
   const current = await db.get(`SELECT engagement_id FROM projets WHERE id = $1`, [id]);
   if (!current) return { ok: false, status: 404, error: 'Projet introuvable' };
+
+  // Nettoie les fichiers de la base documentaire sur disque avant que le
+  // ON DELETE CASCADE (projets → projet_documents) ne supprime les lignes
+  // qui en gardaient la trace.
+  const documentsService = require('./documents.service');
+  const storedNames = await documentsService.listAllStoredNames(id).catch(() => []);
+
   await db.run(`DELETE FROM projets WHERE id = $1`, [id]);
+  documentsService.deleteStoredFiles(storedNames);
+
   if (current.engagement_id) await recomputeEngagementAggregate(current.engagement_id);
   return { ok: true };
 }

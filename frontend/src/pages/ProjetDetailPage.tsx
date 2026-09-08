@@ -7,6 +7,7 @@ import EtatBadge from '../components/EtatBadge'
 import MeteoPicker from '../components/MeteoPicker'
 import ToggleSwitch from '../components/ToggleSwitch'
 import RichTextEditor from '../components/RichTextEditor'
+import ProjetDocuments from '../components/ProjetDocuments'
 import {
   ArrowLeft,
   Users,
@@ -160,6 +161,8 @@ export default function ProjetDetailPage() {
       </div>
 
       <MembresSection projet={projet} onChange={load} />
+
+      <ProjetDocuments projetId={projet.id} />
 
       <div className="rounded-xl border border-slate-200 bg-white p-5">
         <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800">

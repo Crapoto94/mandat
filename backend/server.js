@@ -31,6 +31,7 @@ const alertsRoutes = require('./modules/engagements/alerts.routes');
 const alertsDigestJob = require('./jobs/alertsDigest');
 const feedbackRoutes = require('./modules/feedback/feedback.routes');
 const projetsRoutes = require('./modules/projets/projets.routes');
+const projetDocumentsRoutes = require('./modules/projets/documents.routes');
 
 const app = express();
 const PORT = process.env.PORT || 5151;
@@ -79,6 +80,7 @@ app.use('/api', attachmentsRoutes); // /api/engagements/:id/attachments, /api/at
 app.use('/api/alerts', alertsRoutes); // /api/alerts/mine, POST|DELETE /api/alerts/:id
 app.use('/api/feedback', feedbackRoutes); // demandes/bugs — soumission libre, liste réservée admin
 app.use('/api/projets', projetsRoutes); // accès réservé aux membres (+ admin)
+app.use('/api/projets', projetDocumentsRoutes); // base documentaire (dossiers, fichiers, zip, métadonnées)
 
 app.use((req, res) => res.status(404).json({ error: 'Route inconnue' }));
 

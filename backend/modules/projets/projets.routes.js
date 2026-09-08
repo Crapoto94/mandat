@@ -5,24 +5,9 @@ const express = require('express');
 const service = require('./projets.service');
 const { db } = require('../../db/pg_db');
 const { requireAuth, requireAdmin } = require('../../middleware/auth');
+const { requireProjetMembership: requireMembership } = require('./middleware');
 
 const router = express.Router();
-
-/** Charge le projet et vérifie l'appartenance — 404 plutôt que 403 pour un
- * non-membre : on ne confirme même pas l'existence du projet (cohérent
- * avec "réservé aux membres", pas juste "en lecture seule pour les autres"). */
-async function requireMembership(req, res, next) {
-  const projet = await db.get(`SELECT id, engagement_id FROM projets WHERE id = $1`, [req.params.id]);
-  if (!projet) return res.status(404).json({ error: 'Projet introuvable' });
-  if (req.user.role === 'admin') {
-    req.projet = projet;
-    return next();
-  }
-  const member = await service.isMember(req.params.id, req.user.sub);
-  if (!member) return res.status(404).json({ error: 'Projet introuvable' });
-  req.projet = projet;
-  next();
-}
 
 router.get('/', requireAuth, async (req, res) => {
   const rows = await service.list({ userSub: req.user.sub, isAdmin: req.user.role === 'admin' });

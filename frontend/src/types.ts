@@ -286,6 +286,41 @@ export interface Projet {
   history?: ProjetHistoryEntry[]
 }
 
+export interface ProjetFolder {
+  id: number
+  projet_id: number
+  parent_id: number | null
+  nom: string
+  created_by: string | null
+  created_at: string
+}
+
+export interface ProjetDocument {
+  id: number
+  projet_id: number
+  folder_id: number | null
+  stored_name: string
+  original_name: string
+  display_name: string
+  mime_type: string | null
+  size_bytes: number | null
+  metadata: Record<string, string>
+  uploaded_by: string | null
+  created_at: string
+  deleted_at: string | null
+  deleted_by: string | null
+}
+
+export interface ProjetMetadataField {
+  id: number
+  projet_id: number
+  cle: string
+  libelle: string
+  type: 'texte' | 'date' | 'liste'
+  options: string[] | null
+  ordre: number
+}
+
 export interface AccessGroup {
   kind: 'niveau' | 'custom_group'
   ref_code: string
