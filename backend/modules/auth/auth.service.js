@@ -21,6 +21,25 @@ async function cacheAgent({ username, displayName, email, mobile, direction }) {
     .catch((err) => console.warn('[auth] cache agent impossible :', err.message));
 }
 
+/** Restriction d'accès par groupe (DG/DGA, Directeurs, Resp. service,
+ * groupes particuliers — cf. Admin → "Accès par groupe"). Appliquée sur
+ * toute connexion agent, LDAP ou APM (le displayName suffit pour matcher un
+ * niveau RH par nom ; employeeId/memberOfDns, disponibles seulement via le
+ * LDAP direct, affinent le matching et sont seuls utilisables pour les
+ * groupes particuliers). Renvoie un message d'erreur si refusé, sinon null.
+ * Échec de la vérification elle-même (base RH/Hub injoignable...) :
+ * n'exclut pas l'agent pour une raison technique qui ne le concerne pas. */
+async function checkAccessGroups({ employeeId, memberOfDns, displayName }) {
+  try {
+    const authorized = await accessControl.isAgentAuthorized({ employeeId, memberOfDns, displayName });
+    if (!authorized) return "Accès non autorisé — votre compte n'appartient à aucun groupe habilité";
+    return null;
+  } catch (err) {
+    console.warn('[auth] vérification accès par groupe impossible :', err.message);
+    return null;
+  }
+}
+
 /** Connexion agent Ville via LDAP direct — même méthode que le magapp/hub
  * (services/ldapAuth.js) : un seul aller-retour AD fait à la fois
  * l'authentification et la récupération des infos (direction, mail...). */
@@ -35,21 +54,12 @@ async function loginAgentViaLdap(username, password) {
     return { ok: false, status: 401, error: 'Identifiants invalides' };
   }
 
-  // Restriction d'accès par groupe (DG/DGA, Directeurs, Resp. service,
-  // groupes particuliers — cf. Admin → "Accès par groupe"). Échec de la
-  // vérification elle-même (base RH injoignable...) : on n'exclut pas
-  // l'agent pour une raison technique qui ne le concerne pas.
-  try {
-    const authorized = await accessControl.isAgentAuthorized({
-      employeeId: agent.employeeId,
-      memberOfDns: agent.memberOf,
-    });
-    if (!authorized) {
-      return { ok: false, status: 403, error: "Accès non autorisé — votre compte n'appartient à aucun groupe habilité" };
-    }
-  } catch (err) {
-    console.warn('[auth] vérification accès par groupe impossible :', err.message);
-  }
+  const accessError = await checkAccessGroups({
+    employeeId: agent.employeeId,
+    memberOfDns: agent.memberOf,
+    displayName: agent.displayName,
+  });
+  if (accessError) return { ok: false, status: 403, error: accessError };
 
   const displayName = agent.displayName || username;
   await cacheAgent({ username, displayName, email: agent.mail, mobile: agent.mobile, direction: agent.direction });
@@ -77,6 +87,11 @@ async function loginAgentViaApm(username, password) {
   const direction = infos?.company || infos?.department || infos?.physicalDeliveryOfficeName || null;
   const email = infos?.mail || infos?.email || null;
   const mobile = infos?.mobile || infos?.telephoneMobile || null;
+
+  // Pas de matricule/memberOf fiables via l'APM : seul le matching par nom
+  // (niveaux RH) s'applique ici, pas les groupes particuliers (AD).
+  const accessError = await checkAccessGroups({ displayName });
+  if (accessError) return { ok: false, status: 403, error: accessError };
 
   await cacheAgent({ username, displayName, email, mobile, direction });
 
