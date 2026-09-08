@@ -105,10 +105,10 @@ function buildFilters({ groupe_id, etat_code, meteo_code, axe, prioritaire, q, n
   return { where: clauses.length ? `WHERE ${clauses.join(' AND ')}` : '', params };
 }
 
-async function list({ direction, ...filters } = {}) {
+async function list({ direction, userSub, isAdmin, ...filters } = {}) {
   const directionCodes = direction ? await resolveDirectionCodes(direction) : undefined;
   const { where, params } = buildFilters({ ...filters, directionCodes });
-  return db.all(
+  const rows = await db.all(
     `SELECT e.*, g.code AS groupe_code, g.nom AS groupe_nom,
             et.libelle AS etat_libelle, et.couleur AS etat_couleur, et.ordre AS etat_ordre,
             ${DERNIERE_ACTIVITE_EXPR} AS derniere_activite,
@@ -122,6 +122,33 @@ async function list({ direction, ...filters } = {}) {
      ORDER BY e.numero ASC`,
     params
   );
+
+  // Aperçu des noms de projets liés — filtré aux projets visibles par le
+  // demandeur (membre, ou tout si admin), cohérent avec l'accès réservé aux
+  // membres sur les projets : le compte (projets_count) est public, les
+  // noms individuels ne le sont pas pour un non-membre.
+  const withProjets = rows.filter((r) => r.projets_count > 0);
+  if (withProjets.length) {
+    const ids = withProjets.map((r) => r.id);
+    const projetRows = isAdmin
+      ? await db.all(`SELECT id, nom, engagement_id FROM projets WHERE engagement_id = ANY($1)`, [ids])
+      : await db.all(
+          `SELECT p.id, p.nom, p.engagement_id FROM projets p
+           WHERE p.engagement_id = ANY($1)
+             AND EXISTS (SELECT 1 FROM projet_membres pm WHERE pm.projet_id = p.id AND pm.user_sub = $2)`,
+          [ids, userSub || null]
+        );
+    const byEngagement = new Map();
+    for (const p of projetRows) {
+      if (!byEngagement.has(p.engagement_id)) byEngagement.set(p.engagement_id, []);
+      byEngagement.get(p.engagement_id).push({ id: p.id, nom: p.nom });
+    }
+    for (const r of rows) r.projets_apercu = byEngagement.get(r.id) || [];
+  } else {
+    for (const r of rows) r.projets_apercu = [];
+  }
+
+  return rows;
 }
 
 /** Effectifs par période "nouveautés" (pastille sur les boutons du filtre) —

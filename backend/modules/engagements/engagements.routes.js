@@ -7,7 +7,7 @@ const { requireAuth } = require('../../middleware/auth');
 const router = express.Router();
 
 router.get('/', requireAuth, async (req, res) => {
-  const rows = await service.list(req.query);
+  const rows = await service.list({ ...req.query, userSub: req.user.sub, isAdmin: req.user.role === 'admin' });
   res.json(rows);
 });
 

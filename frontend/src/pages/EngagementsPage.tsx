@@ -319,15 +319,32 @@ export default function EngagementsPage() {
                         <InfinityIcon size={14} className="inline" />
                       </span>
                     )}
-                    {!!e.projets_count && (
-                      <span
-                        title={`Se décompose en ${e.projets_count} projet(s)`}
-                        className="ml-1.5 inline-block align-text-bottom text-ville-blue"
-                      >
-                        <FolderKanban size={14} className="inline" />
-                      </span>
-                    )}
                     <AxeTag axe={e.axe} className="mt-1" />
+                    {!!e.projets_count && (
+                      <div className="mt-1 flex flex-wrap items-center gap-1">
+                        <span
+                          title={`Se décompose en ${e.projets_count} projet(s)`}
+                          className="flex shrink-0 items-center gap-1 text-xs font-medium text-ville-blue"
+                        >
+                          <FolderKanban size={12} /> {e.projets_count} projet{e.projets_count > 1 ? 's' : ''} :
+                        </span>
+                        {e.projets_apercu?.map((p) => (
+                          <Link
+                            key={p.id}
+                            to={`/projets/${p.id}`}
+                            onClick={(ev) => ev.stopPropagation()}
+                            className="rounded-full bg-ville-blue/10 px-2 py-0.5 text-xs text-ville-blue hover:bg-ville-blue/20"
+                          >
+                            {p.nom}
+                          </Link>
+                        ))}
+                        {e.projets_count > (e.projets_apercu?.length || 0) && (
+                          <span className="text-xs text-slate-400">
+                            +{e.projets_count - (e.projets_apercu?.length || 0)} non visible(s) pour vous
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </td>
                   <td className="max-w-[120px] px-3 py-2.5 align-top text-slate-600">{e.pilotage || '—'}</td>
                   <td className="max-w-[120px] px-3 py-2.5 align-top text-slate-600">{e.contribution_elaboration || '—'}</td>
