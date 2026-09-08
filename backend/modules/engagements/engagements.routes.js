@@ -36,6 +36,13 @@ router.get('/mine', requireAuth, async (req, res) => {
   res.json({ direction: rawDirection, code: codes.join(', '), codes, engagements: rows });
 });
 
+/** Effectifs par période pour les pastilles du filtre "Nouveautés" — mêmes
+ * filtres que la liste (hors nouveautes), cf. service.nouveautesCounts. */
+router.get('/nouveautes-counts', requireAuth, async (req, res) => {
+  const counts = await service.nouveautesCounts(req.query);
+  res.json(counts);
+});
+
 router.get('/:id', requireAuth, async (req, res) => {
   const engagement = await service.getById(req.params.id);
   if (!engagement) return res.status(404).json({ error: 'Engagement introuvable' });

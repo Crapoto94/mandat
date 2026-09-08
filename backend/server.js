@@ -27,6 +27,8 @@ const timelineRoutes = require('./modules/timeline/timeline.routes');
 const meteoRoutes = require('./modules/meteo/meteo.routes');
 const attachmentsRoutes = require('./modules/attachments/attachments.routes');
 const locksRoutes = require('./modules/engagements/locks.routes');
+const alertsRoutes = require('./modules/engagements/alerts.routes');
+const alertsDigestJob = require('./jobs/alertsDigest');
 
 const app = express();
 const PORT = process.env.PORT || 5151;
@@ -72,6 +74,7 @@ app.use('/api/directions', directionsRoutes);
 app.use('/api/etats', etatsRoutes);
 app.use('/api/meteos', meteoRoutes);
 app.use('/api', attachmentsRoutes); // /api/engagements/:id/attachments, /api/attachments/:id/file
+app.use('/api/alerts', alertsRoutes); // /api/alerts/mine, POST|DELETE /api/alerts/:id
 
 app.use((req, res) => res.status(404).json({ error: 'Route inconnue' }));
 
@@ -89,4 +92,5 @@ app.listen(PORT, () => {
       console.warn('[server] ⚠️  Base de données injoignable au démarrage — vérifier .env / le service Postgres.');
     }
   });
+  alertsDigestJob.start();
 });

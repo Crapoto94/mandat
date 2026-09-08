@@ -6,7 +6,13 @@ import EtatBadge from '../components/EtatBadge'
 import AxeTag from '../components/AxeTag'
 import { MeteoBadge } from '../components/MeteoPicker'
 import { getAxeColor, axeList } from '../lib/axeColors'
-import { Star, Search, Infinity as InfinityIcon } from 'lucide-react'
+import { Star, Search, Infinity as InfinityIcon, Bell, Clock3 } from 'lucide-react'
+
+const NOUVEAUTES_OPTIONS = [
+  { value: 'today', label: "Aujourd'hui" },
+  { value: 'week', label: '7 derniers jours' },
+  { value: 'month', label: '30 derniers jours' },
+] as const
 
 export default function EngagementsPage() {
   const navigate = useNavigate()
@@ -19,6 +25,8 @@ export default function EngagementsPage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [q, setQ] = useState(params.get('q') || '')
+  const [alertedIds, setAlertedIds] = useState<Set<number>>(new Set())
+  const [nouveautesCounts, setNouveautesCounts] = useState<Record<string, number>>({})
 
   const groupeId = params.get('groupe') || ''
   const etatCode = params.get('etat') || ''
@@ -26,6 +34,7 @@ export default function EngagementsPage() {
   const prioritaire = params.get('prioritaire') || ''
   const direction = params.get('direction') || ''
   const axe = params.get('axe') || ''
+  const nouveautes = params.get('nouveautes') || ''
 
   useEffect(() => {
     api
@@ -44,7 +53,34 @@ export default function EngagementsPage() {
       .get('/directions')
       .then((res) => setDirections(res.data))
       .catch(() => {})
+    api
+      .get('/alerts/mine')
+      .then((res) => setAlertedIds(new Set(res.data)))
+      .catch(() => {})
   }, [])
+
+  async function toggleAlert(id: number) {
+    const wasAlerted = alertedIds.has(id)
+    setAlertedIds((prev) => {
+      const next = new Set(prev)
+      if (wasAlerted) next.delete(id)
+      else next.add(id)
+      return next
+    })
+    try {
+      if (wasAlerted) await api.delete(`/alerts/${id}`)
+      else await api.post(`/alerts/${id}`)
+    } catch (err) {
+      // Revert optimiste en cas d'échec (ex : compte admin sans mail connu)
+      setAlertedIds((prev) => {
+        const next = new Set(prev)
+        if (wasAlerted) next.add(id)
+        else next.delete(id)
+        return next
+      })
+      setError(apiErrorMessage(err, "Impossible de modifier l'alerte"))
+    }
+  }
 
   // Plusieurs sigles peuvent être concordés vers le même nom complet (ex.
   // DSPORT/DSPORTS/SPORT → "Direction des Sports") : le filtre se choisit
@@ -63,6 +99,7 @@ export default function EngagementsPage() {
     if (prioritaire) query.prioritaire = prioritaire
     if (direction) query.direction = direction
     if (axe) query.axe = axe
+    if (nouveautes) query.nouveautes = nouveautes
     if (params.get('q')) query.q = params.get('q')!
 
     api
@@ -70,6 +107,25 @@ export default function EngagementsPage() {
       .then((res) => setEngagements(res.data))
       .catch((err) => setError(apiErrorMessage(err, 'Impossible de charger les engagements')))
       .finally(() => setLoading(false))
+  }, [groupeId, etatCode, meteoCode, prioritaire, direction, axe, nouveautes, params])
+
+  // Pastilles du filtre "Nouveautés" : effectifs pour les 3 périodes à la
+  // fois (indépendant de la période actuellement sélectionnée), mais dans
+  // le respect des autres filtres actifs (groupe, axe...).
+  useEffect(() => {
+    const query: Record<string, string> = {}
+    if (groupeId) query.groupe_id = groupeId
+    if (etatCode) query.etat_code = etatCode
+    if (meteoCode) query.meteo_code = meteoCode
+    if (prioritaire) query.prioritaire = prioritaire
+    if (direction) query.direction = direction
+    if (axe) query.axe = axe
+    if (params.get('q')) query.q = params.get('q')!
+
+    api
+      .get('/engagements/nouveautes-counts', { params: query })
+      .then((res) => setNouveautesCounts(res.data))
+      .catch(() => {})
   }, [groupeId, etatCode, meteoCode, prioritaire, direction, axe, params])
 
   const groupTabs = useMemo(
@@ -129,6 +185,34 @@ export default function EngagementsPage() {
         })}
       </div>
 
+      <div className="flex flex-wrap items-center gap-1.5 text-xs">
+        <span className="flex items-center gap-1 text-slate-400">
+          <Clock3 size={13} /> Nouveautés :
+        </span>
+        {NOUVEAUTES_OPTIONS.map((opt) => {
+          const active = nouveautes === opt.value
+          const count = nouveautesCounts[opt.value] ?? 0
+          return (
+            <button
+              key={opt.value}
+              onClick={() => updateParam('nouveautes', active ? '' : opt.value)}
+              className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 font-medium transition-colors ${
+                active ? 'bg-ville-blue text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              {opt.label}
+              <span
+                className={`flex h-4 min-w-[1rem] items-center justify-center rounded-full px-1 text-[10px] font-semibold ${
+                  active ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-500'
+                }`}
+              >
+                {count}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+
       <div className="flex flex-wrap items-center gap-1 rounded-lg border border-slate-200 bg-white p-1">
         {groupTabs.map((tab) => (
           <button
@@ -147,7 +231,7 @@ export default function EngagementsPage() {
         <select
           value={etatCode}
           onChange={(e) => updateParam('etat', e.target.value)}
-          className="rounded-md border border-slate-300 px-2.5 py-1.5 text-sm"
+          className="max-w-[9.5rem] truncate rounded-md border border-slate-300 px-2.5 py-1.5 text-sm sm:max-w-none"
         >
           <option value="">Tous les états</option>
           {etats.map((e) => (
@@ -159,7 +243,7 @@ export default function EngagementsPage() {
         <select
           value={meteoCode}
           onChange={(e) => updateParam('meteo', e.target.value)}
-          className="rounded-md border border-slate-300 px-2.5 py-1.5 text-sm"
+          className="max-w-[9.5rem] truncate rounded-md border border-slate-300 px-2.5 py-1.5 text-sm sm:max-w-none"
         >
           <option value="">Toutes météos</option>
           {meteos.map((m) => (
@@ -172,7 +256,7 @@ export default function EngagementsPage() {
         <select
           value={direction}
           onChange={(e) => updateParam('direction', e.target.value)}
-          className="rounded-md border border-slate-300 px-2.5 py-1.5 text-sm"
+          className="max-w-[9.5rem] truncate rounded-md border border-slate-300 px-2.5 py-1.5 text-sm sm:max-w-[14rem]"
         >
           <option value="">Toutes directions</option>
           {directionOptions.map((libelle) => (
@@ -199,18 +283,18 @@ export default function EngagementsPage() {
         <p className="p-8 text-center text-slate-500">Chargement…</p>
       ) : (
         <div className="scroll-x rounded-xl border border-slate-200 bg-white">
-          <table className="w-full min-w-[1150px] text-sm">
+          <table className="w-full min-w-[880px] text-sm">
             <thead>
               <tr className="border-b border-slate-100 text-left text-xs uppercase tracking-wide text-slate-500">
-                <th className="px-4 py-3 font-medium">#</th>
-                <th className="px-4 py-3 font-medium">Engagement</th>
-                <th className="px-4 py-3 font-medium">Pilotage</th>
-                <th className="px-4 py-3 font-medium">Contribution</th>
-                <th className="px-4 py-3 font-medium">Ressources</th>
-                <th className="px-4 py-3 font-medium">Groupe</th>
-                <th className="px-4 py-3 font-medium">État</th>
-                <th className="px-4 py-3 font-medium">Météo</th>
-                <th className="px-4 py-3 font-medium"></th>
+                <th className="px-3 py-2.5 font-medium">#</th>
+                <th className="px-3 py-2.5 font-medium">Engagement</th>
+                <th className="px-3 py-2.5 font-medium">Pilotage</th>
+                <th className="px-3 py-2.5 font-medium">Contribution</th>
+                <th className="px-3 py-2.5 font-medium">Ressources</th>
+                <th className="px-3 py-2.5 font-medium">Groupe</th>
+                <th className="px-3 py-2.5 font-medium">État</th>
+                <th className="px-3 py-2.5 font-medium">Météo</th>
+                <th className="px-3 py-2.5 font-medium"></th>
               </tr>
             </thead>
             <tbody>
@@ -221,8 +305,8 @@ export default function EngagementsPage() {
                   className="cursor-pointer border-b border-slate-50 last:border-0 hover:bg-slate-50"
                   style={{ borderLeft: `3px solid ${getAxeColor(e.axe)}` }}
                 >
-                  <td className="px-4 py-3 align-top text-slate-500">{e.numero}</td>
-                  <td className="max-w-md px-4 py-3 align-top">
+                  <td className="px-3 py-2.5 align-top text-slate-500">{e.numero}</td>
+                  <td className="max-w-[240px] px-3 py-2.5 align-top">
                     <Link
                       to={`/engagements/${e.id}`}
                       onClick={(ev) => ev.stopPropagation()}
@@ -237,14 +321,14 @@ export default function EngagementsPage() {
                     )}
                     <AxeTag axe={e.axe} className="mt-1" />
                   </td>
-                  <td className="max-w-[160px] px-4 py-3 align-top text-slate-600">{e.pilotage || '—'}</td>
-                  <td className="max-w-[160px] px-4 py-3 align-top text-slate-600">{e.contribution_elaboration || '—'}</td>
-                  <td className="max-w-[160px] px-4 py-3 align-top text-slate-600">{e.contribution_impactees || '—'}</td>
-                  <td className="px-4 py-3 align-top text-slate-600">{e.groupe_code || 'Hors groupe'}</td>
-                  <td className="px-4 py-3 align-top">
+                  <td className="max-w-[120px] px-3 py-2.5 align-top text-slate-600">{e.pilotage || '—'}</td>
+                  <td className="max-w-[120px] px-3 py-2.5 align-top text-slate-600">{e.contribution_elaboration || '—'}</td>
+                  <td className="max-w-[120px] px-3 py-2.5 align-top text-slate-600">{e.contribution_impactees || '—'}</td>
+                  <td className="px-3 py-2.5 align-top text-slate-600">{e.groupe_code || 'Hors groupe'}</td>
+                  <td className="px-3 py-2.5 align-top">
                     <EtatBadge libelle={e.etat_libelle} couleur={e.etat_couleur} />
                   </td>
-                  <td className="px-4 py-3 align-top">
+                  <td className="px-3 py-2.5 align-top">
                     {e.meteo_code ? (
                       <MeteoBadge
                         meteo={{ code: e.meteo_code, libelle: e.meteo_libelle || '', emoji: e.meteo_emoji || '', couleur: e.meteo_couleur || '#64748b', ordre: 0 }}
@@ -254,8 +338,26 @@ export default function EngagementsPage() {
                       <span className="text-slate-300">—</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 align-top text-right">
-                    {e.prioritaire_plenaire && <Star size={15} className="inline text-amber-500" fill="currentColor" />}
+                  <td className="px-3 py-2.5 align-top text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      {e.prioritaire_plenaire && <Star size={15} className="text-amber-500" fill="currentColor" />}
+                      <button
+                        onClick={(ev) => {
+                          ev.stopPropagation()
+                          toggleAlert(e.id)
+                        }}
+                        title={
+                          alertedIds.has(e.id)
+                            ? "Alerte activée — un mail sera envoyé en fin de journée en cas de nouveauté"
+                            : "Activer une alerte mail (en fin de journée) sur cet engagement"
+                        }
+                        className={`rounded-md p-1 ${
+                          alertedIds.has(e.id) ? 'text-ville-blue' : 'text-slate-300 hover:text-slate-500'
+                        }`}
+                      >
+                        <Bell size={15} fill={alertedIds.has(e.id) ? 'currentColor' : 'none'} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

@@ -20,6 +20,29 @@ const EDITABLE_FIELDS = [
 
 const MAX_PRIORITAIRES_PAR_GROUPE = 3;
 
+// "Dernière activité" d'un engagement : la plus récente entre sa propre
+// dernière modification (updated_at, maintenu par trigger) et l'activité
+// sur ses tables liées (commentaires, étapes, pièces jointes non
+// supprimées) — sinon un nouveau commentaire ou une nouvelle étape
+// n'apparaîtrait jamais comme une "nouveauté". Utilisé à la fois pour le
+// filtre "nouveautés" de la liste et pour le récapitulatif quotidien des
+// alertes (cf. jobs/alertsDigest.js).
+const DERNIERE_ACTIVITE_EXPR = `GREATEST(
+  e.updated_at,
+  COALESCE((SELECT MAX(c.created_at) FROM comments c WHERE c.engagement_id = e.id), e.updated_at),
+  COALESCE((SELECT MAX(GREATEST(s.created_at, s.updated_at)) FROM engagement_steps s WHERE s.engagement_id = e.id), e.updated_at),
+  COALESCE((SELECT MAX(a.created_at) FROM engagement_attachments a WHERE a.engagement_id = e.id AND a.deleted_at IS NULL), e.updated_at)
+)`;
+
+// "Aujourd'hui" = depuis minuit ; "cette semaine"/"ce mois" = fenêtres
+// glissantes (7 / 30 derniers jours), pas le calendrier civil (donc pas de
+// saut à zéro chaque lundi ou le 1er du mois).
+const NOUVEAUTES_THRESHOLDS = {
+  today: `date_trunc('day', now())`,
+  week: `now() - interval '7 days'`,
+  month: `now() - interval '30 days'`,
+};
+
 /** Motif regex "mot isolé" (bornes non alphanumériques) pour un ou plusieurs
  * sigles en alternative — partagé entre le filtre par direction de la liste
  * des engagements et `mine()`, pour ne jamais faire matcher un sigle court
@@ -29,7 +52,7 @@ function codesToWordPattern(codes) {
   return `(^|[^A-Za-z0-9])(${alternatives})([^A-Za-z0-9]|$)`;
 }
 
-function buildFilters({ groupe_id, etat_code, meteo_code, axe, prioritaire, q, directionCodes }) {
+function buildFilters({ groupe_id, etat_code, meteo_code, axe, prioritaire, q, nouveautes, directionCodes }) {
   const clauses = [];
   const params = [];
 
@@ -75,6 +98,9 @@ function buildFilters({ groupe_id, etat_code, meteo_code, axe, prioritaire, q, d
     params.push(`%${q}%`);
     clauses.push(`(e.contenu ILIKE $${params.length} OR e.pilotage ILIKE $${params.length})`);
   }
+  if (nouveautes && NOUVEAUTES_THRESHOLDS[nouveautes]) {
+    clauses.push(`${DERNIERE_ACTIVITE_EXPR} >= ${NOUVEAUTES_THRESHOLDS[nouveautes]}`);
+  }
 
   return { where: clauses.length ? `WHERE ${clauses.join(' AND ')}` : '', params };
 }
@@ -85,6 +111,7 @@ async function list({ direction, ...filters } = {}) {
   return db.all(
     `SELECT e.*, g.code AS groupe_code, g.nom AS groupe_nom,
             et.libelle AS etat_libelle, et.couleur AS etat_couleur, et.ordre AS etat_ordre,
+            ${DERNIERE_ACTIVITE_EXPR} AS derniere_activite,
             m.libelle AS meteo_libelle, m.emoji AS meteo_emoji, m.couleur AS meteo_couleur
      FROM engagements e
      LEFT JOIN groupes g ON g.id = e.groupe_id
@@ -94,6 +121,26 @@ async function list({ direction, ...filters } = {}) {
      ORDER BY e.numero ASC`,
     params
   );
+}
+
+/** Effectifs par période "nouveautés" (pastille sur les boutons du filtre) —
+ * mêmes filtres que list() (hors nouveautes lui-même, qui n'a pas de sens à
+ * combiner avec soi-même), pour rester cohérent avec le reste de l'écran :
+ * si l'utilisateur filtre déjà par groupe/axe/etc., les compteurs reflètent
+ * ce sous-ensemble plutôt que la totalité des engagements. */
+async function nouveautesCounts({ direction, nouveautes, ...filters } = {}) {
+  const directionCodes = direction ? await resolveDirectionCodes(direction) : undefined;
+  const { where, params } = buildFilters({ ...filters, directionCodes });
+  const row = await db.get(
+    `SELECT
+       COUNT(*) FILTER (WHERE ${DERNIERE_ACTIVITE_EXPR} >= ${NOUVEAUTES_THRESHOLDS.today}) AS today,
+       COUNT(*) FILTER (WHERE ${DERNIERE_ACTIVITE_EXPR} >= ${NOUVEAUTES_THRESHOLDS.week}) AS week,
+       COUNT(*) FILTER (WHERE ${DERNIERE_ACTIVITE_EXPR} >= ${NOUVEAUTES_THRESHOLDS.month}) AS month
+     FROM engagements e
+     ${where}`,
+    params
+  );
+  return { today: Number(row.today), week: Number(row.week), month: Number(row.month) };
 }
 
 /** Casse, espaces superflus et accents neutralisés pour comparer deux noms
@@ -184,7 +231,13 @@ async function mine(directionCodes) {
             m.libelle AS meteo_libelle, m.emoji AS meteo_emoji, m.couleur AS meteo_couleur,
             (e.pilotage ~* $1) AS est_pilote,
             (e.contribution_elaboration ~* $1) AS est_contributeur,
-            (e.contribution_impactees ~* $1) AS est_ressource
+            (e.contribution_impactees ~* $1) AS est_ressource,
+            (SELECT s.date_etape FROM engagement_steps s
+             WHERE s.engagement_id = e.id AND (s.date_etape IS NULL OR s.date_etape >= CURRENT_DATE)
+             ORDER BY s.date_etape ASC NULLS LAST, s.created_at ASC LIMIT 1) AS prochaine_etape_date,
+            (SELECT s.description FROM engagement_steps s
+             WHERE s.engagement_id = e.id AND (s.date_etape IS NULL OR s.date_etape >= CURRENT_DATE)
+             ORDER BY s.date_etape ASC NULLS LAST, s.created_at ASC LIMIT 1) AS prochaine_etape_description
      FROM engagements e
      LEFT JOIN groupes g ON g.id = e.groupe_id
      LEFT JOIN etats et ON et.code = e.etat_code
@@ -434,4 +487,6 @@ module.exports = {
   normalizeKnownDirectionAliases,
   EDITABLE_FIELDS,
   MAX_PRIORITAIRES_PAR_GROUPE,
+  DERNIERE_ACTIVITE_EXPR,
+  nouveautesCounts,
 };

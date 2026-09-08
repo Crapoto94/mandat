@@ -103,7 +103,7 @@ async function sendMail({ to, subject, content, footer1, footer2, footer3, foote
       content,
       footer1: footer1 || 'Ville d’Ivry-sur-Seine',
       footer2: footer2 || 'Suivi des engagements du mandat',
-      footer3: footer3 || 'mandat@ivry94.fr',
+      footer3: footer3 || 'https://mandat.ivry.local',
       footerColor: footerColor || '#0055A4',
       ...rest,
     },

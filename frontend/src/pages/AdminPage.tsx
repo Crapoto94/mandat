@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { api, apiErrorMessage } from '../lib/api'
-import type { ActivityLogEntry, Direction, Etat, HubdsiEntry, Meteo, RoleDef, TrashedAttachment } from '../types'
+import type { ActivityLogEntry, AlertSubscription, Direction, Etat, HubdsiEntry, MailLogEntry, Meteo, RoleDef, TrashedAttachment } from '../types'
 import { fieldLabel } from '../lib/fieldLabels'
 import {
   ShieldCheck,
@@ -21,6 +21,9 @@ import {
   Paperclip,
   Pencil,
   Wand2,
+  Bell,
+  Mail,
+  Send,
 } from 'lucide-react'
 
 interface AdminAccount {
@@ -130,6 +133,10 @@ export default function AdminPage() {
       <MeteoCatalogSection onError={setError} />
 
       <TrashSection onError={setError} />
+
+      <AlertSubscriptionsSection onError={setError} />
+
+      <MailLogSection onError={setError} onNotice={setNotice} />
 
       <ActivityLogSection onError={setError} />
 
@@ -988,6 +995,175 @@ function TrashSection({ onError }: { onError: (m: string) => void }) {
             </li>
           ))}
         </ul>
+      )}
+    </section>
+  )
+}
+
+/**
+ * Qui est abonné à quel engagement (cloche "alerte" sur la liste des
+ * engagements) — groupé par engagement, pour répondre directement à "qui
+ * suit quoi" sans avoir à demander à chacun.
+ */
+function AlertSubscriptionsSection({ onError }: { onError: (m: string) => void }) {
+  const [rows, setRows] = useState<AlertSubscription[] | null>(null)
+
+  function load() {
+    api
+      .get('/admin/alert-subscriptions')
+      .then((res) => setRows(res.data))
+      .catch((err) => onError(apiErrorMessage(err, 'Abonnements indisponibles')))
+  }
+
+  useEffect(load, [])
+
+  const byEngagement = useMemo(() => {
+    const groups = new Map<number, { numero: number; contenu: string; subs: AlertSubscription[] }>()
+    for (const r of rows || []) {
+      if (!groups.has(r.engagement_id)) {
+        groups.set(r.engagement_id, { numero: r.engagement_numero, contenu: r.engagement_contenu, subs: [] })
+      }
+      groups.get(r.engagement_id)!.subs.push(r)
+    }
+    return [...groups.entries()].sort((a, b) => a[1].numero - b[1].numero)
+  }, [rows])
+
+  return (
+    <section className="rounded-xl border border-slate-200 bg-white p-5">
+      <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold text-slate-800">
+        <Bell size={16} /> Abonnements aux alertes
+      </h2>
+      <p className="mb-4 text-xs text-slate-500">
+        Qui a activé la cloche "alerte" sur quel engagement — un mail récapitulatif est envoyé en fin de journée en
+        cas de nouveauté.
+      </p>
+      {!rows?.length ? (
+        <p className="text-sm text-slate-400">Aucun abonnement pour l'instant.</p>
+      ) : (
+        <ul className="max-h-96 space-y-2 overflow-y-auto">
+          {byEngagement.map(([engagementId, group]) => (
+            <li key={engagementId} className="rounded-md bg-slate-50 px-3 py-2 text-sm">
+              <Link
+                to={`/engagements/${engagementId}`}
+                className="font-medium text-slate-700 hover:text-ville-blue hover:underline"
+              >
+                n°{group.numero} — {group.contenu.slice(0, 70)}
+                {group.contenu.length > 70 ? '…' : ''}
+              </Link>
+              <div className="mt-1 flex flex-wrap gap-1.5">
+                {group.subs.map((s) => (
+                  <span
+                    key={s.id}
+                    title={`${s.user_email || s.user_sub}${s.last_notified_at ? ` · dernière alerte reçue le ${new Date(s.last_notified_at).toLocaleString('fr-FR')}` : ' · aucune alerte reçue pour l\'instant'}`}
+                    className="rounded-full bg-white px-2 py-0.5 text-xs text-slate-600 ring-1 ring-slate-200"
+                  >
+                    {s.user_display_name || s.user_sub}
+                  </span>
+                ))}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
+/** Journal des mails envoyés (alertes quotidiennes, relances, envois
+ * manuels) — pour vérifier ce qui a réellement été envoyé et si ça a
+ * fonctionné. Inclut un bouton pour s'envoyer un exemple de récapitulatif
+ * d'alertes (engagements fictifs), utile pour vérifier le rendu du
+ * template mail sans attendre l'envoi automatique du soir. */
+function MailLogSection({ onError, onNotice }: { onError: (m: string) => void; onNotice: (m: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const [items, setItems] = useState<MailLogEntry[] | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [sendingTest, setSendingTest] = useState(false)
+
+  async function reveal() {
+    setOpen(true)
+    setBusy(true)
+    try {
+      const res = await api.get('/admin/mail-log', { params: { limit: 200 } })
+      setItems(res.data)
+    } catch (err) {
+      onError(apiErrorMessage(err, 'Journal des mails indisponible'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function sendTestDigest() {
+    setSendingTest(true)
+    try {
+      await api.post('/admin/mail-log/test-digest')
+      onNotice("Exemple de récapitulatif d'alertes envoyé — vérifiez votre boîte mail.")
+      if (open) reveal()
+    } catch (err) {
+      onError(apiErrorMessage(err, "Envoi de l'exemple impossible"))
+    } finally {
+      setSendingTest(false)
+    }
+  }
+
+  return (
+    <section className="rounded-xl border border-slate-200 bg-white p-5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold text-slate-800">
+            <Mail size={16} /> Journal des mails
+          </h2>
+          <p className="text-xs text-slate-500">Alertes quotidiennes, relances et envois manuels — succès et échecs.</p>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            onClick={sendTestDigest}
+            disabled={sendingTest}
+            className="flex items-center gap-1.5 rounded-md border border-slate-300 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-60"
+            title="M'envoyer un exemple de récapitulatif d'alertes (engagements fictifs)"
+          >
+            <Send size={13} />
+            {sendingTest ? 'Envoi…' : "M'envoyer un exemple"}
+          </button>
+          <button
+            onClick={reveal}
+            disabled={busy}
+            className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+          >
+            {busy ? 'Chargement…' : open ? 'Rafraîchir' : 'Afficher les logs'}
+          </button>
+        </div>
+      </div>
+
+      {open && items && (
+        !items.length ? (
+          <p className="mt-4 text-sm text-slate-400">Aucun mail envoyé pour l'instant.</p>
+        ) : (
+          <ul className="mt-4 max-h-[32rem] space-y-1.5 overflow-y-auto">
+            {items.map((m) => (
+              <li key={m.id} className="flex items-start gap-2 rounded-md bg-slate-50 px-3 py-2 text-sm">
+                {m.status === 'ok' ? (
+                  <CheckCircle2 size={14} className="mt-0.5 shrink-0 text-green-600" />
+                ) : (
+                  <XCircle size={14} className="mt-0.5 shrink-0 text-red-500" />
+                )}
+                <div className="min-w-0">
+                  <p className="truncate text-slate-700">
+                    <span className="font-medium">{m.subject}</span> → {m.to_email}
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    {new Date(m.created_at).toLocaleString('fr-FR')}
+                    {m.context && ` · ${m.context}`}
+                    {m.sent_by && ` · envoyé par ${m.sent_by}`}
+                    {m.status === 'error' && m.error_message && (
+                      <span className="text-red-600"> · {m.error_message}</span>
+                    )}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )
       )}
     </section>
   )

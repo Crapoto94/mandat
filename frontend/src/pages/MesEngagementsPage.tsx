@@ -5,8 +5,9 @@ import { useAuth } from '../context/AuthContext'
 import type { Engagement } from '../types'
 import EtatBadge from '../components/EtatBadge'
 import AxeTag from '../components/AxeTag'
+import { MeteoBadge } from '../components/MeteoPicker'
 import { getAxeColor } from '../lib/axeColors'
-import { UserCircle2, Compass, Users, Wrench } from 'lucide-react'
+import { UserCircle2, Compass, Users, Wrench, Infinity as InfinityIcon, ArrowRight } from 'lucide-react'
 
 type MineEngagement = Engagement & { est_pilote: boolean; est_contributeur: boolean; est_ressource: boolean }
 
@@ -83,16 +84,40 @@ export default function MesEngagementsPage() {
               <div className="mb-1.5 flex flex-wrap items-start justify-between gap-2">
                 <span className="font-medium text-slate-800">
                   n°{e.numero} — {e.contenu}
+                  {e.continu && (
+                    <span title="Engagement continu — pas d'échéance" className="ml-1.5 inline-block align-text-bottom text-slate-400">
+                      <InfinityIcon size={14} className="inline" />
+                    </span>
+                  )}
                 </span>
-                <EtatBadge libelle={e.etat_libelle} couleur={e.etat_couleur} />
+                <div className="flex items-center gap-2">
+                  {e.meteo_code && (
+                    <MeteoBadge
+                      meteo={{ code: e.meteo_code, libelle: e.meteo_libelle || '', emoji: e.meteo_emoji || '', couleur: e.meteo_couleur || '#64748b', ordre: 0 }}
+                      iconOnly
+                    />
+                  )}
+                  <EtatBadge libelle={e.etat_libelle} couleur={e.etat_couleur} />
+                </div>
               </div>
               <AxeTag axe={e.axe} className="mb-2" />
-              <div className="flex flex-wrap gap-1.5">
-                {e.est_pilote && <RoleTag icon={Compass} label="Pilote" className="bg-ville-blue/10 text-ville-blue" />}
-                {e.est_contributeur && (
-                  <RoleTag icon={Users} label="Contributrice" className="bg-purple-50 text-purple-700" />
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap gap-1.5">
+                  {e.est_pilote && <RoleTag icon={Compass} label="Pilote" className="bg-ville-blue/10 text-ville-blue" />}
+                  {e.est_contributeur && (
+                    <RoleTag icon={Users} label="Contributrice" className="bg-purple-50 text-purple-700" />
+                  )}
+                  {e.est_ressource && <RoleTag icon={Wrench} label="Ressource" className="bg-amber-50 text-amber-700" />}
+                </div>
+                {e.prochaine_etape_description && (
+                  <span className="flex max-w-full items-center gap-1 truncate text-xs text-slate-500">
+                    <ArrowRight size={11} className="shrink-0 text-slate-400" />
+                    {e.prochaine_etape_date && (
+                      <span className="shrink-0 font-medium">{new Date(e.prochaine_etape_date).toLocaleDateString('fr-FR')} —</span>
+                    )}
+                    <span className="truncate">{e.prochaine_etape_description}</span>
+                  </span>
                 )}
-                {e.est_ressource && <RoleTag icon={Wrench} label="Ressource" className="bg-amber-50 text-amber-700" />}
               </div>
             </Link>
           ))}

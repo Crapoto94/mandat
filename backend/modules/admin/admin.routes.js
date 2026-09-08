@@ -8,6 +8,7 @@ const { requireAuth, requireAdmin } = require('../../middleware/auth');
 const { importFromFiles } = require('../../scripts/import-lib');
 const apm = require('../../services/apm');
 const engagementsService = require('../engagements/engagements.service');
+const alertsDigest = require('../../jobs/alertsDigest');
 
 const router = express.Router();
 // Chemin paramétrable (cf. ATTACHMENTS_DIR dans attachments.routes.js) —
@@ -201,6 +202,48 @@ router.post('/import', upload.fields([{ name: 'suivi' }, { name: 'repartition' }
     res.json(summary);
   } catch (err) {
     res.status(500).json({ error: `Import impossible : ${err.message}` });
+  }
+});
+
+// --- Abonnements aux alertes "nouveautés" -------------------------------------
+
+/** Qui est abonné à quel engagement (cloche sur la liste des engagements) —
+ * pour que l'admin puisse voir qui suit quoi, sans avoir à demander. */
+router.get('/alert-subscriptions', async (req, res) => {
+  const rows = await db.all(
+    `SELECT ea.id, ea.engagement_id, ea.user_sub, ea.user_email, ea.user_display_name,
+            ea.created_at, ea.last_notified_at,
+            e.numero AS engagement_numero, e.contenu AS engagement_contenu
+     FROM engagement_alerts ea
+     JOIN engagements e ON e.id = ea.engagement_id
+     ORDER BY e.numero ASC, ea.user_display_name ASC`
+  );
+  res.json(rows);
+});
+
+// --- Journal des mails (alertes, relances, envois manuels) --------------------
+
+router.get('/mail-log', async (req, res) => {
+  const limit = Math.min(Number(req.query.limit) || 100, 500);
+  const rows = await db.all(
+    `SELECT id, to_email, subject, context, status, error_message, sent_by, created_at
+     FROM mail_log ORDER BY created_at DESC LIMIT $1`,
+    [limit]
+  );
+  res.json(rows);
+});
+
+/** Envoie un exemple de récapitulatif d'alertes (engagements fictifs) à
+ * l'admin connecté (ou à ?to=... si fourni) — pour vérifier le rendu réel
+ * du template mail sans attendre l'envoi automatique du soir. */
+router.post('/mail-log/test-digest', async (req, res) => {
+  const to = req.body?.to || req.user.email;
+  if (!to) return res.status(400).json({ error: 'Aucune adresse mail (ni ?to fourni, ni mail connu pour ce compte)' });
+  try {
+    const result = await alertsDigest.sendExampleDigest({ to, displayName: req.user.displayName || req.user.sub });
+    res.json(result);
+  } catch (err) {
+    res.status(502).json({ error: `Envoi impossible : ${err.message}` });
   }
 });
 

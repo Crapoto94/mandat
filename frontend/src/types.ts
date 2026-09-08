@@ -42,6 +42,9 @@ export interface Engagement {
   meteo_libelle?: string | null
   meteo_emoji?: string | null
   meteo_couleur?: string | null
+  /** Renvoyés uniquement par /engagements/mine : prochaine étape à venir (ou non datée, à défaut). */
+  prochaine_etape_date?: string | null
+  prochaine_etape_description?: string | null
   description_avancement: string | null
   prochaines_etapes: string | null
   roles_precises: string | null
@@ -175,6 +178,29 @@ export interface ActivityLogEntry {
   libelle: string
   ancienne_valeur: string | null
   nouvelle_valeur: string | null
+}
+
+export interface AlertSubscription {
+  id: number
+  engagement_id: number
+  user_sub: string
+  user_email: string | null
+  user_display_name: string | null
+  created_at: string
+  last_notified_at: string | null
+  engagement_numero: number
+  engagement_contenu: string
+}
+
+export interface MailLogEntry {
+  id: number
+  to_email: string
+  subject: string
+  context: string | null
+  status: 'ok' | 'error'
+  error_message: string | null
+  sent_by: string | null
+  created_at: string
 }
 
 export interface CoordinationTopic {

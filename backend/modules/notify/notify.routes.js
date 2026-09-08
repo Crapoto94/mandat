@@ -1,5 +1,6 @@
 const express = require('express');
 const apm = require('../../services/apm');
+const { sendMailLogged } = require('../../services/mailLog');
 const { db } = require('../../db/pg_db');
 const { requireAuth } = require('../../middleware/auth');
 
@@ -11,7 +12,7 @@ router.post('/mail', requireAuth, async (req, res) => {
     return res.status(400).json({ error: 'to, subject et content sont requis' });
   }
   try {
-    const result = await apm.sendMail({ to, subject, content });
+    const result = await sendMailLogged({ to, subject, content, context: 'manuel', sentBy: req.user.sub });
     res.json(result);
   } catch (err) {
     res.status(502).json({ error: `Envoi du mail impossible : ${err.message}` });
@@ -40,11 +41,13 @@ router.post('/engagements/:id/relance', requireAuth, async (req, res) => {
   if (!engagement) return res.status(404).json({ error: 'Engagement introuvable' });
 
   try {
-    const result = await apm.sendMail({
+    const result = await sendMailLogged({
       to,
       subject: `Suivi mandat — engagement n°${engagement.numero} : point d'avancement`,
       content: `<p>${message.replace(/\n/g, '<br/>')}</p>
                  <p><em>Engagement n°${engagement.numero} — ${engagement.contenu}</em></p>`,
+      context: 'relance',
+      sentBy: req.user.sub,
     });
     res.json(result);
   } catch (err) {

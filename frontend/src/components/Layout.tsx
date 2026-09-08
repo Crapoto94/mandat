@@ -37,7 +37,7 @@ export default function Layout() {
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
+        <div className="mx-auto flex max-w-[1600px] items-center justify-between px-4 py-3 sm:px-6">
           <div className="flex items-center gap-3">
             <img src="/logo-ivry.png" alt="Ville d'Ivry-sur-Seine" className="h-9 w-auto" />
             <div className="hidden sm:block">
@@ -114,12 +114,12 @@ export default function Layout() {
         </nav>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
+      <main className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6">
         <Outlet />
       </main>
 
       <footer className="border-t border-slate-200 px-4 py-4 sm:px-6">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
+        <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
           <p>Conception : DSI (Marc Chevalier) et Claude.</p>
           <NavLink to="/nouveautes" className="font-medium text-slate-500 hover:text-ville-blue">
             v{APP_VERSION} — Nouveautés

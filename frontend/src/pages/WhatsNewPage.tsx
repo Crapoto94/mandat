@@ -11,6 +11,8 @@ import {
   LayoutDashboard,
   ShieldCheck,
   Link2,
+  History,
+  BellRing,
 } from 'lucide-react'
 
 interface FeatureGroup {
@@ -19,14 +21,44 @@ interface FeatureGroup {
   items: string[]
 }
 
+interface VersionEntry {
+  version: string
+  date: string
+  changes: string[]
+}
+
+const VERSIONS: VersionEntry[] = [
+  {
+    version: '1.0.1',
+    date: '2026-09-08',
+    changes: [
+      "Mode collaboratif : pastille de présence (\"X est en cours de modification\") sur la description et les infos de base pendant qu'un autre utilisateur les édite",
+      "Sauvegarde instantanée de l'état d'avancement et de la description (comme la météo déjà) — plus de bouton « Enregistrer » à part sur ces champs",
+      "Mise à jour en direct pour tous les viewers : les modifications des autres apparaissent automatiquement sur la fiche, avec une pastille « Mis à jour »",
+      "Engagements « continus » (tout au long du mandat, sans date d'aboutissement) : interrupteur dédié + symbole ∞ dans la liste et sur « Mes engagements »",
+      "« Mes engagements » enrichi : météo, prochaine étape à venir et symbole continu affichés directement sur chaque carte",
+      "Filtre « Nouveautés » sur la liste des engagements (aujourd'hui / 7 derniers jours / 30 derniers jours), avec un compteur par période",
+      "Alertes par engagement : chaque agent choisit (cloche) les engagements à suivre et reçoit un mail récapitulatif en fin de journée en cas de nouveauté",
+      "Administration : liste des abonnements aux alertes par engagement, journal des mails envoyés (alertes, relances) avec statut, et envoi d'un exemple de récapitulatif",
+      "Mise en page resserrée (moins de marge perdue sur grand écran, tableaux plus lisibles sans défilement horizontal inutile)",
+    ],
+  },
+  {
+    version: '1.0',
+    date: '2026-09-07',
+    changes: ['Version initiale — voir la synthèse des fonctionnalités ci-dessous.'],
+  },
+]
+
 const FEATURES: FeatureGroup[] = [
   {
     icon: ListChecks,
     title: 'Suivi des 55 engagements du mandat',
     items: [
-      "Fiche par engagement : axe du projet, pilotage, contributions, échéance, groupe de travail — infos de base modifiables directement",
-      "État d'avancement et météo (santé/risque du sujet) éditables, avec historique des modifications (réservé aux administrateurs)",
+      "Fiche par engagement : axe du projet, pilotage, contributions, échéance ou engagement continu (tout au long du mandat), groupe de travail — infos de base modifiables directement",
+      "État d'avancement, météo (santé/risque du sujet) et description du point atteint modifiables en direct, sans bouton « Enregistrer », avec historique des modifications (réservé aux administrateurs)",
       'Description du point atteint en éditeur enrichi (mise en forme, copier-coller direct d’images)',
+      'Mode collaboratif : présence visible quand un autre utilisateur édite un champ, mise à jour en direct pour tous les viewers',
       'Fil de commentaires horodaté par engagement',
     ],
   },
@@ -36,7 +68,15 @@ const FEATURES: FeatureGroup[] = [
     items: [
       'Répartition en 3 groupes de travail (issue de la répartition CODIR), avec vues filtrées',
       "Rôles assignés à un engagement : recherche d'agent dans l'annuaire Ville + rôle choisi dans un catalogue paramétrable",
-      '« Mes engagements » : vue personnalisée listant les engagements où la direction de l’agent connecté est pilote, contributrice ou ressource, avec pastille de comptage',
+      '« Mes engagements » : vue personnalisée listant les engagements où la direction de l’agent connecté est pilote, contributrice ou ressource, avec météo, prochaine étape et pastille de comptage',
+    ],
+  },
+  {
+    icon: BellRing,
+    title: 'Nouveautés et alertes',
+    items: [
+      "Filtre « Nouveautés » sur la liste des engagements (aujourd'hui / 7 derniers jours / 30 derniers jours), avec compteur par période",
+      "Alertes individuelles par engagement (cloche) : mail récapitulatif en fin de journée des engagements suivis ayant eu de l'activité",
     ],
   },
   {
@@ -95,6 +135,7 @@ const FEATURES: FeatureGroup[] = [
       'Table de concordance des sigles de direction ↔ nom complet, synchronisable depuis le référentiel Hub DSI',
       "Outil de vérification d'un agent dans l'annuaire (identité, direction, engagements concernés), sans avoir besoin de son mot de passe",
       'Réimport des fichiers Excel sources (engagements, répartition par groupe), corbeille des pièces jointes',
+      "Liste des abonnements aux alertes par engagement, journal des mails envoyés (statut, contexte) avec envoi d'un exemple de récapitulatif",
     ],
   },
   {
@@ -124,6 +165,31 @@ export default function WhatsNewPage() {
         <p className="mt-3 text-sm text-slate-600">
           Conception : DSI (Marc Chevalier) et Claude.
         </p>
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-white p-6">
+        <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800">
+          <History size={16} className="text-ville-blue" /> Journal des versions
+        </h2>
+        <div className="space-y-5">
+          {VERSIONS.map((v) => (
+            <div key={v.version} className="border-l-2 border-ville-blue/20 pl-4">
+              <div className="mb-1.5 flex items-center gap-2">
+                <span className="rounded-full bg-ville-blue/10 px-2 py-0.5 text-xs font-semibold text-ville-blue">
+                  v{v.version}
+                </span>
+                <span className="text-xs text-slate-400">
+                  {new Date(v.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                </span>
+              </div>
+              <ul className="list-disc space-y-1 pl-4 text-sm text-slate-600">
+                {v.changes.map((c) => (
+                  <li key={c}>{c}</li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="rounded-xl border border-slate-200 bg-white p-6">
