@@ -34,6 +34,7 @@ export interface Engagement {
   contribution_elaboration: string | null
   contribution_impactees: string | null
   echeance: string | null
+  continu: boolean
   etat_code: string
   etat_libelle?: string
   etat_couleur?: string

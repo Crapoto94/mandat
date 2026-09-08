@@ -1,10 +1,12 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api, apiErrorMessage } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import type { Engagement, Etat, Groupe, Meteo } from '../types'
 import { axeList } from '../lib/axeColors'
 import { fieldLabel } from '../lib/fieldLabels'
+import { useFieldLock } from '../hooks/useFieldLock'
+import { useFieldLocks } from '../hooks/useFieldLocks'
 import EtatBadge from '../components/EtatBadge'
 import AxeTag from '../components/AxeTag'
 import RichTextEditor from '../components/RichTextEditor'
@@ -12,7 +14,12 @@ import RolesSection from '../components/RolesSection'
 import StepsTimeline from '../components/StepsTimeline'
 import AttachmentsSection from '../components/AttachmentsSection'
 import MeteoPicker from '../components/MeteoPicker'
+import EditingBadge from '../components/EditingBadge'
+import LiveUpdateFlash from '../components/LiveUpdateFlash'
 import { ArrowLeft, Star, Send, Clock, MessageSquare, Pencil, X } from 'lucide-react'
+
+const POLL_MS = 7000
+const DEBOUNCE_MS = 1500
 
 export default function EngagementDetailPage() {
   const { id } = useParams()
@@ -23,21 +30,30 @@ export default function EngagementDetailPage() {
   const [groupes, setGroupes] = useState<Groupe[]>([])
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
+  const [flash, setFlash] = useState(false)
 
-  // Champs éditables (brouillon local avant sauvegarde)
-  const [etatCode, setEtatCode] = useState('')
   const [description, setDescription] = useState('')
+  const [descriptionFocused, setDescriptionFocused] = useState(false)
   const [prioNote, setPrioNote] = useState('')
   const [commentBody, setCommentBody] = useState('')
 
+  const { lockFor } = useFieldLocks(engagement ? engagement.id : null)
+  const descriptionConflict = useFieldLock(engagement ? engagement.id : null, 'description_avancement', descriptionFocused)
+
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastLoadedDescriptionRef = useRef('')
+
+  function applyEngagement(data: Engagement, opts: { resetDrafts: boolean }) {
+    setEngagement(data)
+    if (opts.resetDrafts) {
+      setDescription(data.description_avancement || '')
+      lastLoadedDescriptionRef.current = data.description_avancement || ''
+      setPrioNote(data.prioritaire_note || '')
+    }
+  }
+
   function load() {
-    api.get(`/engagements/${id}`).then((res) => {
-      setEngagement(res.data)
-      setEtatCode(res.data.etat_code)
-      setDescription(res.data.description_avancement || '')
-      setPrioNote(res.data.prioritaire_note || '')
-    })
+    api.get(`/engagements/${id}`).then((res) => applyEngagement(res.data, { resetDrafts: true }))
   }
 
   useEffect(() => {
@@ -48,39 +64,81 @@ export default function EngagementDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
-  async function save() {
-    setSaving(true)
-    setError(null)
-    setSaved(false)
+  // Rafraîchissement live : tous les viewers voient les changements des
+  // autres, sans recharger la page. On ne touche jamais un champ en cours
+  // de saisie locale (description avec le focus) pour ne pas l'écraser.
+  useEffect(() => {
+    if (!id) return
+    const interval = setInterval(() => {
+      api
+        .get(`/engagements/${id}`)
+        .then((res) => {
+          const fresh: Engagement = res.data
+          setEngagement((prev) => {
+            if (prev && JSON.stringify(prev) === JSON.stringify(fresh)) return prev
+            setFlash(true)
+            setTimeout(() => setFlash(false), 1200)
+            return fresh
+          })
+          if (!descriptionFocused) {
+            setDescription(fresh.description_avancement || '')
+            lastLoadedDescriptionRef.current = fresh.description_avancement || ''
+          }
+        })
+        .catch(() => {})
+    }, POLL_MS)
+    return () => clearInterval(interval)
+  }, [id, descriptionFocused])
+
+  async function patchNow(patch: Record<string, unknown>) {
     try {
-      await api.patch(`/engagements/${id}`, { etat_code: etatCode, description_avancement: description })
-      setSaved(true)
-      load()
-      setTimeout(() => setSaved(false), 2500)
+      const res = await api.patch(`/engagements/${id}`, patch)
+      applyEngagement(res.data, { resetDrafts: false })
+      return true
     } catch (err) {
       setError(apiErrorMessage(err, 'Sauvegarde impossible'))
-    } finally {
-      setSaving(false)
+      return false
     }
   }
 
+  // État et météo : instantané, sans bouton "Enregistrer" (comme le reste
+  // de la fiche devrait l'être — pas de brouillon à valider séparément).
+  async function setEtat(code: string) {
+    await patchNow({ etat_code: code })
+  }
   async function setMeteo(code: string | null) {
-    try {
-      await api.patch(`/engagements/${id}`, { meteo_code: code })
-      load()
-    } catch (err) {
-      setError(apiErrorMessage(err, 'Impossible de mettre à jour la météo'))
-    }
+    await patchNow({ meteo_code: code })
+  }
+
+  function onDescriptionChange(html: string) {
+    setDescription(html)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(async () => {
+      if (html === lastLoadedDescriptionRef.current) return
+      setSaving(true)
+      const ok = await patchNow({ description_avancement: html })
+      setSaving(false)
+      if (ok) lastLoadedDescriptionRef.current = html
+    }, DEBOUNCE_MS)
+  }
+
+  async function saveDescriptionNow() {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    if (description === lastLoadedDescriptionRef.current) return
+    setSaving(true)
+    const ok = await patchNow({ description_avancement: description })
+    setSaving(false)
+    if (ok) lastLoadedDescriptionRef.current = description
   }
 
   async function togglePrioritaire() {
     if (!engagement) return
     try {
-      await api.patch(`/engagements/${id}/prioritaire`, {
+      const res = await api.patch(`/engagements/${id}/prioritaire`, {
         prioritaire: !engagement.prioritaire_plenaire,
         note: prioNote,
       })
-      load()
+      applyEngagement(res.data, { resetDrafts: false })
     } catch (err) {
       setError(apiErrorMessage(err, 'Impossible de mettre à jour le marquage prioritaire'))
     }
@@ -88,9 +146,10 @@ export default function EngagementDetailPage() {
 
   async function savePrioNote() {
     if (!engagement?.prioritaire_plenaire) return
+    await patchNow({ prioritaire: true, note: prioNote }).catch(() => {})
     try {
-      await api.patch(`/engagements/${id}/prioritaire`, { prioritaire: true, note: prioNote })
-      load()
+      const res = await api.patch(`/engagements/${id}/prioritaire`, { prioritaire: true, note: prioNote })
+      applyEngagement(res.data, { resetDrafts: false })
     } catch (err) {
       setError(apiErrorMessage(err, 'Sauvegarde impossible'))
     }
@@ -110,13 +169,18 @@ export default function EngagementDetailPage() {
 
   if (!engagement) return <p className="p-8 text-center text-slate-500">Chargement…</p>
 
+  const descriptionLock = lockFor('description_avancement')
+  const infosBaseLock = lockFor('infos_de_base')
+
   return (
     <div className="space-y-6">
+      <LiveUpdateFlash show={flash} />
+
       <Link to="/engagements" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-ville-blue">
         <ArrowLeft size={15} /> Retour à la liste
       </Link>
 
-      <BaseInfoCard engagement={engagement} groupes={groupes} onSaved={load} />
+      <BaseInfoCard engagement={engagement} groupes={groupes} onSaved={load} lockHolder={infosBaseLock} />
 
       {/* Marquage prioritaire plénière */}
       <div className={`rounded-xl border p-5 ${engagement.prioritaire_plenaire ? 'border-amber-300 bg-amber-50' : 'border-slate-200 bg-white'}`}>
@@ -154,7 +218,7 @@ export default function EngagementDetailPage() {
         )}
       </div>
 
-      {/* Fiche d'avancement éditable */}
+      {/* Fiche d'avancement — tout est instantané, plus de brouillon à valider */}
       <div className="rounded-xl border border-slate-200 bg-white p-5">
         <h2 className="mb-4 text-sm font-semibold text-slate-800">Point d'avancement</h2>
         <div className="space-y-4">
@@ -162,8 +226,8 @@ export default function EngagementDetailPage() {
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-500">État d'avancement</label>
               <select
-                value={etatCode}
-                onChange={(e) => setEtatCode(e.target.value)}
+                value={engagement.etat_code}
+                onChange={(e) => setEtat(e.target.value)}
                 className="w-full max-w-xs rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-ville-blue focus:outline-none"
               >
                 {etats.map((e) => (
@@ -179,19 +243,28 @@ export default function EngagementDetailPage() {
             </div>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">Description — point atteint</label>
-            <RichTextEditor value={description} onChange={setDescription} engagementId={engagement.id} />
+            <div className="mb-1 flex items-center gap-2">
+              <label className="block text-xs font-medium text-slate-500">Description — point atteint</label>
+              {descriptionLock && <EditingBadge displayName={descriptionLock.display_name} />}
+              {saving && <span className="text-xs text-slate-400">Enregistrement…</span>}
+            </div>
+            {descriptionConflict && (
+              <p className="mb-1.5 text-xs text-amber-700">
+                {descriptionConflict.display_name} modifie déjà ce champ — lecture seule le temps qu'iel termine.
+              </p>
+            )}
+            <RichTextEditor
+              value={description}
+              onChange={onDescriptionChange}
+              onFocus={() => setDescriptionFocused(true)}
+              onBlur={() => {
+                setDescriptionFocused(false)
+                saveDescriptionNow()
+              }}
+              engagementId={engagement.id}
+              readOnly={!!descriptionConflict}
+            />
           </div>
-        </div>
-        <div className="mt-4 flex items-center gap-3">
-          <button
-            onClick={save}
-            disabled={saving}
-            className="rounded-md bg-ville-blue px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60"
-          >
-            {saving ? 'Enregistrement…' : 'Enregistrer'}
-          </button>
-          {saved && <span className="text-sm text-green-600">Enregistré ✓</span>}
         </div>
         {error && <p className="mt-3 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</p>}
         {engagement.updated_by && (
@@ -268,10 +341,12 @@ function BaseInfoCard({
   engagement,
   groupes,
   onSaved,
+  lockHolder,
 }: {
   engagement: Engagement
   groupes: Groupe[]
   onSaved: () => void
+  lockHolder: { display_name: string } | null
 }) {
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState({
@@ -282,9 +357,12 @@ function BaseInfoCard({
     contribution_elaboration: engagement.contribution_elaboration || '',
     contribution_impactees: engagement.contribution_impactees || '',
     echeance: engagement.echeance || '',
+    continu: engagement.continu,
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const conflict = useFieldLock(engagement.id, 'infos_de_base', editing)
 
   function startEditing() {
     setForm({
@@ -295,6 +373,7 @@ function BaseInfoCard({
       contribution_elaboration: engagement.contribution_elaboration || '',
       contribution_impactees: engagement.contribution_impactees || '',
       echeance: engagement.echeance || '',
+      continu: engagement.continu,
     })
     setError(null)
     setEditing(true)
@@ -325,6 +404,7 @@ function BaseInfoCard({
             <AxeTag axe={engagement.axe} className="mt-2" />
           </div>
           <div className="flex items-center gap-2">
+            {lockHolder && <EditingBadge displayName={lockHolder.display_name} />}
             <EtatBadge libelle={engagement.etat_libelle} couleur={engagement.etat_couleur} />
             <button
               onClick={startEditing}
@@ -340,7 +420,10 @@ function BaseInfoCard({
           <Info label="Pilotage" value={engagement.pilotage} />
           <Info label="Contribution — élaboration du projet" value={engagement.contribution_elaboration} />
           <Info label="Contribution — directions/fonctions impactées" value={engagement.contribution_impactees} />
-          <Info label="Échéance" value={engagement.echeance} />
+          <Info
+            label="Échéance"
+            value={engagement.continu ? 'Engagement continu (pas d\'échéance)' : engagement.echeance}
+          />
           <Info label="Groupe de travail" value={engagement.groupe_code ? `${engagement.groupe_code} — ${engagement.groupe_nom}` : 'Hors groupe'} />
         </div>
       </div>
@@ -357,6 +440,13 @@ function BaseInfoCard({
           <X size={16} />
         </button>
       </div>
+
+      {conflict && (
+        <p className="rounded-md bg-amber-50 p-2 text-xs text-amber-700">
+          {conflict.display_name} modifie déjà les infos de base de cet engagement — attends qu'iel termine avant
+          d'enregistrer, pour ne pas écraser son travail.
+        </p>
+      )}
 
       <div>
         <label className="mb-1 block text-xs font-medium text-slate-500">Nom de l'engagement</label>
@@ -410,8 +500,19 @@ function BaseInfoCard({
           <input
             value={form.echeance}
             onChange={(e) => setForm({ ...form, echeance: e.target.value })}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-ville-blue focus:outline-none"
+            disabled={form.continu}
+            placeholder={form.continu ? 'Engagement continu' : undefined}
+            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-ville-blue focus:outline-none disabled:bg-slate-50 disabled:text-slate-400"
           />
+          <label className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-500">
+            <input
+              type="checkbox"
+              checked={form.continu}
+              onChange={(e) => setForm({ ...form, continu: e.target.checked, echeance: e.target.checked ? '' : form.echeance })}
+              className="rounded border-slate-300 text-ville-blue focus:ring-ville-blue"
+            />
+            Engagement continu (pas de date d'aboutissement)
+          </label>
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-slate-500">Contribution — élaboration du projet</label>
@@ -435,7 +536,7 @@ function BaseInfoCard({
       <div className="flex items-center gap-2">
         <button
           type="submit"
-          disabled={saving}
+          disabled={saving || !!conflict}
           className="rounded-md bg-ville-blue px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60"
         >
           {saving ? 'Enregistrement…' : 'Enregistrer'}
@@ -460,4 +561,3 @@ function Info({ label, value }: { label: string; value?: string | null }) {
     </div>
   )
 }
-

@@ -6,7 +6,7 @@ import EtatBadge from '../components/EtatBadge'
 import AxeTag from '../components/AxeTag'
 import { MeteoBadge } from '../components/MeteoPicker'
 import { getAxeColor, axeList } from '../lib/axeColors'
-import { Star, Search } from 'lucide-react'
+import { Star, Search, Infinity as InfinityIcon } from 'lucide-react'
 
 export default function EngagementsPage() {
   const navigate = useNavigate()
@@ -25,6 +25,7 @@ export default function EngagementsPage() {
   const meteoCode = params.get('meteo') || ''
   const prioritaire = params.get('prioritaire') || ''
   const direction = params.get('direction') || ''
+  const axe = params.get('axe') || ''
 
   useEffect(() => {
     api
@@ -61,6 +62,7 @@ export default function EngagementsPage() {
     if (meteoCode) query.meteo_code = meteoCode
     if (prioritaire) query.prioritaire = prioritaire
     if (direction) query.direction = direction
+    if (axe) query.axe = axe
     if (params.get('q')) query.q = params.get('q')!
 
     api
@@ -68,7 +70,7 @@ export default function EngagementsPage() {
       .then((res) => setEngagements(res.data))
       .catch((err) => setError(apiErrorMessage(err, 'Impossible de charger les engagements')))
       .finally(() => setLoading(false))
-  }, [groupeId, etatCode, meteoCode, prioritaire, direction, params])
+  }, [groupeId, etatCode, meteoCode, prioritaire, direction, axe, params])
 
   const groupTabs = useMemo(
     () => [{ id: '', label: 'Tous' }, ...groupes.map((g) => ({ id: String(g.id), label: g.code })), { id: 'none', label: 'Hors groupe' }],
@@ -104,13 +106,27 @@ export default function EngagementsPage() {
         </form>
       </div>
 
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
-        {axeList().map((axe) => (
-          <span key={axe} className="flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: getAxeColor(axe) }} />
-            {axe}
-          </span>
-        ))}
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-xs">
+        {axeList().map((a) => {
+          const active = axe === a
+          return (
+            <button
+              key={a}
+              onClick={() => updateParam('axe', active ? '' : a)}
+              className={`flex items-center gap-1.5 rounded-full px-2 py-1 transition-colors ${
+                active ? 'text-white' : 'text-slate-500 hover:bg-slate-100'
+              }`}
+              style={active ? { backgroundColor: getAxeColor(a) } : undefined}
+              title={active ? 'Cliquer pour retirer ce filtre' : `Filtrer sur « ${a} »`}
+            >
+              <span
+                className="h-2 w-2 shrink-0 rounded-full"
+                style={{ backgroundColor: active ? '#fff' : getAxeColor(a) }}
+              />
+              {a}
+            </button>
+          )
+        })}
       </div>
 
       <div className="flex flex-wrap items-center gap-1 rounded-lg border border-slate-200 bg-white p-1">
@@ -214,6 +230,11 @@ export default function EngagementsPage() {
                     >
                       {e.contenu}
                     </Link>
+                    {e.continu && (
+                      <span title="Engagement continu — pas d'échéance" className="ml-1.5 inline-block align-text-bottom text-slate-400">
+                        <InfinityIcon size={14} className="inline" />
+                      </span>
+                    )}
                     <AxeTag axe={e.axe} className="mt-1" />
                   </td>
                   <td className="max-w-[160px] px-4 py-3 align-top text-slate-600">{e.pilotage || '—'}</td>
@@ -225,7 +246,10 @@ export default function EngagementsPage() {
                   </td>
                   <td className="px-4 py-3 align-top">
                     {e.meteo_code ? (
-                      <MeteoBadge meteo={{ code: e.meteo_code, libelle: e.meteo_libelle || '', emoji: e.meteo_emoji || '', couleur: e.meteo_couleur || '#64748b', ordre: 0 }} />
+                      <MeteoBadge
+                        meteo={{ code: e.meteo_code, libelle: e.meteo_libelle || '', emoji: e.meteo_emoji || '', couleur: e.meteo_couleur || '#64748b', ordre: 0 }}
+                        iconOnly
+                      />
                     ) : (
                       <span className="text-slate-300">—</span>
                     )}

@@ -9,12 +9,15 @@ interface Props {
   value: string
   onChange: (html: string) => void
   onBlur?: () => void
+  onFocus?: () => void
   placeholder?: string
   /** Si fourni, active le copier/coller et l'insertion d'images (uploadées comme pièce jointe). */
   engagementId?: number
+  /** Lecture seule (ex : verrouillé par un autre utilisateur en édition simultanée). */
+  readOnly?: boolean
 }
 
-export default function RichTextEditor({ value, onChange, onBlur, placeholder, engagementId }: Props) {
+export default function RichTextEditor({ value, onChange, onBlur, onFocus, placeholder, engagementId, readOnly }: Props) {
   const [uploading, setUploading] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -40,7 +43,15 @@ export default function RichTextEditor({ value, onChange, onBlur, placeholder, e
     content: value || '',
     editorProps: {
       attributes: {
-        class: 'prose-sm max-w-none min-h-[100px] px-3 py-2 text-sm focus:outline-none [&_p]:m-0 [&_ul]:my-1 [&_ol]:my-1 [&_img]:my-2 [&_img]:max-h-80 [&_img]:rounded-md',
+        // Tailwind (preflight) retire le style de liste par défaut des ul/ol
+        // (list-style: none, marge/padding à 0) : sans les restaurer ici, les
+        // listes de l'éditeur n'affichent ni puce ni numérotation.
+        class:
+          'prose-sm max-w-none min-h-[100px] px-3 py-2 text-sm focus:outline-none ' +
+          '[&_p]:m-0 [&_img]:my-2 [&_img]:max-h-80 [&_img]:rounded-md ' +
+          '[&_ul]:my-1 [&_ul]:list-disc [&_ul]:pl-5 ' +
+          '[&_ol]:my-1 [&_ol]:list-decimal [&_ol]:pl-5 ' +
+          '[&_li]:my-0.5 [&_ul_ul]:list-[circle] [&_ol_ol]:list-[lower-alpha]',
         'data-placeholder': placeholder || '',
       },
       handlePaste: (view, event) => {
@@ -58,15 +69,21 @@ export default function RichTextEditor({ value, onChange, onBlur, placeholder, e
     },
     onUpdate: ({ editor }) => onChange(editor.getHTML()),
     onBlur: () => onBlur?.(),
+    onFocus: () => onFocus?.(),
   })
 
   // Resynchronise l'éditeur si la valeur change depuis l'extérieur (ex.
-  // rechargement de la fiche) sans perdre le focus/curseur en cours d'édition.
+  // rechargement de la fiche, mise à jour live par un autre utilisateur)
+  // sans perdre le focus/curseur en cours d'édition.
   useEffect(() => {
     if (editor && value !== editor.getHTML() && !editor.isFocused) {
       editor.commands.setContent(value || '')
     }
   }, [value, editor])
+
+  useEffect(() => {
+    if (editor) editor.setEditable(!readOnly)
+  }, [editor, readOnly])
 
   async function pickImage(file: File | null) {
     if (!file || !editor) return
@@ -78,7 +95,7 @@ export default function RichTextEditor({ value, onChange, onBlur, placeholder, e
   if (!editor) return null
 
   return (
-    <div className="rounded-md border border-slate-300 focus-within:border-ville-blue">
+    <div className={`rounded-md border border-slate-300 focus-within:border-ville-blue ${readOnly ? 'bg-slate-50 opacity-75' : ''}`}>
       <div className="flex items-center gap-1 border-b border-slate-200 bg-slate-50 px-2 py-1">
         <ToolbarButton active={editor.isActive('bold')} onClick={() => editor.chain().focus().toggleBold().run()}>
           <Bold size={14} />

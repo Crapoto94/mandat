@@ -9,6 +9,7 @@ const EDITABLE_FIELDS = [
   'contribution_elaboration',
   'contribution_impactees',
   'echeance',
+  'continu',
   'etat_code',
   'description_avancement',
   'prochaines_etapes',

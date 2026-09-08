@@ -27,8 +27,15 @@ export default function MeteoPicker({ meteos, value, onChange }: Props) {
   )
 }
 
-export function MeteoBadge({ meteo }: { meteo: Meteo | null | undefined }) {
+export function MeteoBadge({ meteo, iconOnly }: { meteo: Meteo | null | undefined; iconOnly?: boolean }) {
   if (!meteo) return null
+  if (iconOnly) {
+    return (
+      <span className="text-base" title={meteo.libelle}>
+        {meteo.emoji}
+      </span>
+    )
+  }
   return (
     <span
       className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
