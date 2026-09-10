@@ -272,7 +272,9 @@ router.patch('/access-groups', async (req, res) => {
 });
 
 /** Membres d'un groupe (niveau : requête RH directe ; groupe particulier :
- * résolu en direct via LDAP, donc nécessite AD_HOST configuré). */
+ * résolu en direct via LDAP si AD_HOST est configuré côté mandat, sinon via
+ * l'API Hub DSI d'AppDSI qui a toujours sa propre config AD — cf.
+ * accessControl.js#getCustomGroupMembers). */
 router.get('/access-groups/:kind/:refCode/members', async (req, res) => {
   try {
     const members = await accessControl.getGroupMembers(req.params.kind, req.params.refCode);

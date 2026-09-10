@@ -113,13 +113,42 @@ async function setEnabled(kind, refCode, enabled, updatedBy) {
   );
 }
 
+/** Membres d'un groupe particulier (AD) : LDAP direct si mandat a sa propre
+ * config (AD_HOST…), sinon repli sur AppDSI via l'API Hub DSI — AppDSI a
+ * toujours sa config AD et sait résoudre aussi bien un groupe de sécurité
+ * "local" (ex. Directeurs) qu'un groupe basé sur une liste de diffusion AD
+ * (ex. Secrétaires de directions, cf. encadrants.controller.js côté AppDSI),
+ * alors que le LDAP direct de mandat est optionnel et souvent pas configuré
+ * en prod. Les deux applis partagent la même table hub.custom_groups (même
+ * id), donc pas de traduction à faire côté identifiant.
+ */
+async function getCustomGroupMembers(grp) {
+  const ldapAuth = require('./ldapAuth');
+  if (ldapAuth.ldapConfigured()) {
+    try {
+      return await ldapAuth.listGroupMembers(grp.ad_group_dn);
+    } catch (err) {
+      console.warn('[accessControl] LDAP direct en échec pour', grp.name, '— repli Hub DSI :', err.message);
+    }
+  }
+  const hubdsi = require('./hubdsi');
+  const result = await hubdsi.getCustomGroupMembers(grp.id);
+  if (result.error) throw new Error(`groupe "${grp.name}" indisponible (LDAP direct non configuré et Hub DSI injoignable : ${result.error})`);
+  return (result.data.members || []).map((m) => ({
+    sAMAccountName: m.username || null,
+    displayName: m.displayName || null,
+    mail: m.email || null,
+    title: m.title || null,
+    direction: m.department || null,
+  }));
+}
+
 async function getGroupMembers(kind, refCode) {
   if (kind === 'niveau') return listNiveauMembers(refCode);
   if (kind === 'custom_group') {
-    const grp = await db.get(`SELECT ad_group_dn, ad_group_cn, name FROM hub.custom_groups WHERE id = $1`, [refCode]);
+    const grp = await db.get(`SELECT id, ad_group_dn, ad_group_cn, name FROM hub.custom_groups WHERE id = $1`, [refCode]);
     if (!grp) return [];
-    const ldapAuth = require('./ldapAuth');
-    return ldapAuth.listGroupMembers(grp.ad_group_dn);
+    return getCustomGroupMembers(grp);
   }
   return [];
 }
@@ -173,4 +202,13 @@ async function isAgentAuthorized({ employeeId, memberOfDns, displayName }) {
   return false;
 }
 
-module.exports = { NIVEAU_DEFS, listNiveauMembers, listCustomGroups, listGroupsForAdmin, setEnabled, getGroupMembers, isAgentAuthorized };
+/** Un DG/DGA ou Directeur a par défaut des droits d'édition sur les
+ * engagements et leurs projets enfants (cf. services/permissions.js) —
+ * indépendant de l'activation "accès à l'appli" par niveau (ici c'est un
+ * droit métier, pas une autorisation de connexion) : on regarde toujours
+ * les deux niveaux RH, activés ou non pour la connexion. */
+async function isDgOuDirecteur(displayName) {
+  return (await matchesNiveauByName('dg_dga', displayName)) || (await matchesNiveauByName('directeurs', displayName));
+}
+
+module.exports = { NIVEAU_DEFS, listNiveauMembers, listCustomGroups, listGroupsForAdmin, setEnabled, getGroupMembers, isAgentAuthorized, isDgOuDirecteur };
