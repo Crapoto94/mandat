@@ -16,12 +16,12 @@ function hubConfigured() {
  * admin plutôt qu'un message générique, pour diagnostiquer sans avoir à
  * consulter les logs du conteneur.
  */
-async function hub(path) {
+async function hub(path, timeout = 8000) {
   if (!hubConfigured()) return { error: 'Hub DSI non configuré (HUBDSI_API_URL / HUBDSI_API_KEY manquants)' };
   try {
     const { data } = await axios.get(`${HUB_URL}${path}`, {
       headers: { 'X-API-Key': HUB_KEY },
-      timeout: 8000,
+      timeout,
     });
     return { data };
   } catch (err) {
@@ -97,6 +97,23 @@ async function getElus() {
 }
 
 /**
+ * Membres d'un « groupe particulier » (hub.custom_groups, table partagée avec
+ * AppDSI) résolus côté AppDSI plutôt qu'en LDAP direct depuis mandat — AppDSI
+ * a sa propre configuration AD (table `ad_settings`) et sait déjà résoudre
+ * aussi bien un groupe de sécurité classique qu'un groupe basé sur une liste
+ * de diffusion AD (cf. encadrants.controller.js#searchADGroupMembersByDN),
+ * alors que mandat n'a pas forcément AD_HOST/AD_BASE_DN configurés (cf.
+ * services/ldapAuth.js). Évite de dupliquer/mal-configurer cette
+ * connectivité côté mandat pour un besoin déjà couvert par le Hub.
+ */
+async function getCustomGroupMembers(id) {
+  // Timeout plus large que les autres appels : côté AppDSI, la résolution
+  // passe par une recherche LDAP batchée (CN par lots de 50) qui peut
+  // dépasser les 8s par défaut sur un groupe conséquent.
+  return hub(`/api/admin/rh/encadrants/custom-groups/${encodeURIComponent(id)}/members`, 20000);
+}
+
+/**
  * Normalise une réponse Hub DSI (organigramme potentiellement imbriqué sur
  * plusieurs niveaux — DGA > direction > service > secteur —, sous des noms
  * de champs non garantis) en paires {code, libelle, parentCode} : parcourt
@@ -156,4 +173,4 @@ function normalizeDirections(raw, rootParentCode = null) {
   return found;
 }
 
-module.exports = { hubConfigured, getDirectionsServices, getElus, normalizeDirections };
+module.exports = { hubConfigured, getDirectionsServices, getElus, getCustomGroupMembers, normalizeDirections };
