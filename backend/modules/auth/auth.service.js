@@ -29,9 +29,9 @@ async function cacheAgent({ username, displayName, email, mobile, direction }) {
  * groupes particuliers). Renvoie un message d'erreur si refusé, sinon null.
  * Échec de la vérification elle-même (base RH/Hub injoignable...) :
  * n'exclut pas l'agent pour une raison technique qui ne le concerne pas. */
-async function checkAccessGroups({ employeeId, memberOfDns, displayName }) {
+async function checkAccessGroups({ employeeId, memberOfDns, username, displayName, email }) {
   try {
-    const authorized = await accessControl.isAgentAuthorized({ employeeId, memberOfDns, displayName });
+    const authorized = await accessControl.isAgentAuthorized({ employeeId, memberOfDns, username, displayName, email });
     if (!authorized) return "Accès non autorisé — votre compte n'appartient à aucun groupe habilité";
     return null;
   } catch (err) {
@@ -57,7 +57,9 @@ async function loginAgentViaLdap(username, password) {
   const accessError = await checkAccessGroups({
     employeeId: agent.employeeId,
     memberOfDns: agent.memberOf,
+    username: agent.sAMAccountName || username,
     displayName: agent.displayName,
+    email: agent.mail,
   });
   if (accessError) return { ok: false, status: 403, error: accessError };
 
@@ -88,9 +90,10 @@ async function loginAgentViaApm(username, password) {
   const email = infos?.mail || infos?.email || null;
   const mobile = infos?.mobile || infos?.telephoneMobile || null;
 
-  // Pas de matricule/memberOf fiables via l'APM : seul le matching par nom
-  // (niveaux RH) s'applique ici, pas les groupes particuliers (AD).
-  const accessError = await checkAccessGroups({ displayName });
+  // Pas de matricule/memberOf fiables via l'APM : les niveaux RH matchent
+  // par nom, et les groupes particuliers (AD) par repli sur la liste des
+  // membres résolue via le Hub DSI (sAMAccountName/e-mail/displayName).
+  const accessError = await checkAccessGroups({ username, displayName, email });
   if (accessError) return { ok: false, status: 403, error: accessError };
 
   await cacheAgent({ username, displayName, email, mobile, direction });

@@ -168,15 +168,44 @@ async function matchesNiveauByName(code, displayName) {
   });
 }
 
+/** L'agent appartient-il à un groupe particulier ? Voie directe (DN présent
+ * dans memberOf, uniquement via LDAP direct) ou, sinon, repli sur la liste
+ * des membres résolue via getCustomGroupMembers (LDAP direct ou Hub DSI) —
+ * indispensable pour le parcours APM, où memberOf n'est jamais disponible
+ * (sinon aucun groupe particulier ne pourrait jamais matcher, cf. prod où
+ * AD_HOST n'est pas configuré). Le rapprochement se fait sur des identifiants
+ * fiables (sAMAccountName exact, e-mail, puis displayName normalisé). */
+async function matchesCustomGroup(grp, { memberOfDns, username, displayName, email }) {
+  if (Array.isArray(memberOfDns) && grp.ad_group_dn && memberOfDns.includes(grp.ad_group_dn)) return true;
+
+  const members = await getCustomGroupMembers(grp).catch((err) => {
+    console.warn('[accessControl] membres du groupe', grp.name, 'indisponibles :', err.message);
+    return [];
+  });
+  const uname = String(username || '').toLowerCase().trim();
+  const mail = String(email || '').toLowerCase().trim();
+  const norm = normalizeName(displayName);
+  return members.some((m) => {
+    const mUser = String(m.sAMAccountName || '').toLowerCase().trim();
+    if (uname && mUser && mUser === uname) return true;
+    const mMail = String(m.mail || '').toLowerCase().trim();
+    if (mail && mMail && mMail === mail) return true;
+    const mNorm = normalizeName(m.displayName);
+    return Boolean(norm && mNorm && norm === mNorm);
+  });
+}
+
 /** Autorise ou non un agent authentifié (les comptes admin locaux sont
  * toujours autorisés, en amont, avant cet appel). Si aucun groupe n'est
  * activé, personne n'est autorisé — verrouillage explicite demandé.
  * @param {object} info
  * @param {string} [info.employeeId] - matricule, fiable seulement via LDAP direct
  * @param {string[]} [info.memberOfDns] - appartenances AD, fiable seulement via LDAP direct
- * @param {string} [info.displayName] - toujours disponible (APM ou LDAP) : repli pour les niveaux RH
+ * @param {string} [info.username] - sAMAccountName, disponible sur les deux parcours
+ * @param {string} [info.displayName] - toujours disponible (APM ou LDAP)
+ * @param {string} [info.email] - disponible sur les deux parcours
  */
-async function isAgentAuthorized({ employeeId, memberOfDns, displayName }) {
+async function isAgentAuthorized({ employeeId, memberOfDns, username, displayName, email }) {
   const enabled = await db.all(`SELECT kind, ref_code FROM access_groups WHERE enabled = true`);
   if (!enabled.length) return false;
 
@@ -194,9 +223,11 @@ async function isAgentAuthorized({ employeeId, memberOfDns, displayName }) {
         if (row) return true;
       }
       if (await matchesNiveauByName(def.code, displayName).catch(() => false)) return true;
-    } else if (g.kind === 'custom_group' && Array.isArray(memberOfDns)) {
-      const grp = await db.get(`SELECT ad_group_dn FROM hub.custom_groups WHERE id = $1`, [g.ref_code]).catch(() => null);
-      if (grp && memberOfDns.includes(grp.ad_group_dn)) return true;
+    } else if (g.kind === 'custom_group') {
+      const grp = await db
+        .get(`SELECT id, ad_group_dn, ad_group_cn, name FROM hub.custom_groups WHERE id = $1`, [g.ref_code])
+        .catch(() => null);
+      if (grp && (await matchesCustomGroup(grp, { memberOfDns, username, displayName, email }).catch(() => false))) return true;
     }
   }
   return false;
