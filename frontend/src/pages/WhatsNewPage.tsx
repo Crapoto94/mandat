@@ -34,6 +34,18 @@ interface VersionEntry {
 
 const VERSIONS: VersionEntry[] = [
   {
+    version: '1.1.0',
+    date: '2026-11-17',
+    changes: [
+      "Nouveau : REX Canicule 2026 — espace de travail collaboratif du CODIR pour le retour d'expérience de la canicule (menu « REX Canicule »)",
+      "Retours d'expérience par thématique (constat, ce qui a fonctionné, à améliorer, mesures 2027, pilotage, décision) avec discussion, historique et position de chaque direction",
+      "Plan d'actions rattachable aux engagements du mandat : la fiche d'un engagement affiche désormais le REX qui le concerne",
+      "Réflexes communs par moment (avant la saison, vigilance orange, rouge, après l'épisode), validés direction par direction, avec une vue fiche imprimable",
+      "Suivi des travaux de confort d'été et d'hiver, et synthèse (compte à rebours avant la saison 2027, participation des directions, pastille « à traiter » dans le menu)",
+      "Base documentaire partagée entre projets et engagements, rôles assignés avec niveaux d'accès (consultation, modification, administration) et disposition des modules réglable sur chaque fiche",
+    ],
+  },
+  {
     version: '1.0.1',
     date: '2026-09-08',
     changes: [

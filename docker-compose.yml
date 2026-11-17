@@ -34,6 +34,10 @@ services:
       - PORT=5151
       - UPLOADS_DIR=/app/data/uploads
       - ATTACHMENTS_DIR=/app/data/attachments
+      # Base documentaire unifiée (projets + engagements) : doit rester dans le volume
+      # ./data, sinon les fichiers seraient perdus à chaque rebuild du conteneur.
+      - DOC_STORAGE_DIR=/app/data/documents
+      - PROJET_DOCUMENTS_DIR=/app/data/projet-documents
     volumes:
       - ./data:/app/data
 
