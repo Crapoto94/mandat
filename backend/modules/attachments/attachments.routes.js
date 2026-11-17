@@ -10,6 +10,7 @@ const crypto = require('crypto');
 const { db } = require('../../db/pg_db');
 const { requireAuth, requireAuthQueryOrHeader, requireAdmin } = require('../../middleware/auth');
 const { parseMsgBuffer, extractMsgAttachment } = require('../../services/msgParser');
+const officePreview = require('../../services/officePreview');
 
 const router = express.Router();
 
@@ -149,14 +150,15 @@ router.get('/attachments/:id/msg', requireAuthQueryOrHeader, async (req, res) =>
   const filePath = path.join(UPLOAD_DIR, row.stored_name);
   if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Fichier absent du stockage' });
   try {
-    const parsed = parseMsgBuffer(fs.readFileSync(filePath));
+    const parsed = await parseMsgBuffer(fs.readFileSync(filePath));
     res.json(parsed);
   } catch (err) {
     res.status(500).json({ error: `Lecture du message impossible : ${err.message}` });
   }
 });
 
-/** Pièce jointe embarquée dans un .msg, par index (cf. msg.attachments[].index). */
+/** Pièce jointe embarquée dans un .msg, par index (cf. msg.attachments[].index)
+ * — servie "inline" par défaut (aperçu PDF/image direct) sauf `?download=1`. */
 router.get('/attachments/:id/msg/attachments/:idx', requireAuthQueryOrHeader, async (req, res) => {
   const row = await db.get(`SELECT * FROM engagement_attachments WHERE id = $1`, [req.params.id]);
   if (!row) return res.status(404).json({ error: 'Fichier introuvable' });
@@ -165,11 +167,33 @@ router.get('/attachments/:id/msg/attachments/:idx', requireAuthQueryOrHeader, as
   try {
     const att = extractMsgAttachment(fs.readFileSync(filePath), parseInt(req.params.idx, 10));
     if (!att) return res.status(404).json({ error: 'Pièce jointe introuvable' });
-    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(att.fileName)}`);
-    res.type(path.extname(att.fileName) || 'application/octet-stream');
+    const disposition = req.query.download ? 'attachment' : 'inline';
+    res.setHeader('Content-Disposition', `${disposition}; filename*=UTF-8''${encodeURIComponent(att.fileName)}`);
+    res.type(att.mimeType || path.extname(att.fileName) || 'application/octet-stream');
     res.send(Buffer.from(att.content));
   } catch (err) {
     res.status(500).json({ error: `Extraction impossible : ${err.message}` });
+  }
+});
+
+/** Aperçu structuré d'une pièce jointe embarquée dans un .msg, elle-même
+ * docx/xlsx/pptx. */
+router.get('/attachments/:id/msg/attachments/:idx/preview/:kind', requireAuthQueryOrHeader, async (req, res) => {
+  const row = await db.get(`SELECT * FROM engagement_attachments WHERE id = $1`, [req.params.id]);
+  if (!row) return res.status(404).json({ error: 'Fichier introuvable' });
+  const filePath = path.join(UPLOAD_DIR, row.stored_name);
+  if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Fichier absent du stockage' });
+  const { kind } = req.params;
+  if (!['docx', 'xlsx', 'pptx'].includes(kind)) return res.status(400).json({ error: 'Type non pris en charge' });
+  try {
+    const att = extractMsgAttachment(fs.readFileSync(filePath), parseInt(req.params.idx, 10));
+    if (!att) return res.status(404).json({ error: 'Pièce jointe introuvable' });
+    const buffer = Buffer.from(att.content);
+    if (kind === 'docx') res.json(await officePreview.previewDocx(buffer));
+    else if (kind === 'xlsx') res.json(officePreview.previewXlsx(buffer));
+    else res.json(officePreview.previewPptx(buffer));
+  } catch (err) {
+    res.status(500).json({ error: `Aperçu impossible : ${err.message}` });
   }
 });
 

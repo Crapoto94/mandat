@@ -55,9 +55,11 @@ export function attachmentFileUrl(id: number): string {
   return `${backendOrigin}/api/attachments/${id}/file?token=${encodeURIComponent(getToken() || '')}`
 }
 
-/** Pièce jointe embarquée dans un .msg (cf. DocumentViewer), par index. */
-export function msgAttachmentUrl(id: number, index: number): string {
-  return `${backendOrigin}/api/attachments/${id}/msg/attachments/${index}?token=${encodeURIComponent(getToken() || '')}`
+/** Pièce jointe embarquée dans un .msg (cf. DocumentViewer), par index —
+ * servie "inline" par défaut (aperçu) ; `download` force le téléchargement. */
+export function msgAttachmentUrl(id: number, index: number, download = false): string {
+  const dl = download ? '&download=1' : ''
+  return `${backendOrigin}/api/attachments/${id}/msg/attachments/${index}?token=${encodeURIComponent(getToken() || '')}${dl}`
 }
 
 /** Fichier de la base documentaire d'un projet (cf. modules/projets/documents.routes.js). */
@@ -71,7 +73,10 @@ export function projetDocumentVersionUrl(versionId: number): string {
   return `${backendOrigin}/api/projets/documents/versions/${versionId}/file?token=${encodeURIComponent(getToken() || '')}`
 }
 
-/** Pièce jointe embarquée dans un .msg de la base documentaire d'un projet, par index. */
-export function projetMsgAttachmentUrl(docId: number, index: number): string {
-  return `${backendOrigin}/api/projets/documents/${docId}/preview/msg/attachments/${index}?token=${encodeURIComponent(getToken() || '')}`
+/** Pièce jointe embarquée dans un .msg de la base documentaire d'un projet,
+ * par index — servie "inline" par défaut (aperçu) ; `download` force le
+ * téléchargement. */
+export function projetMsgAttachmentUrl(docId: number, index: number, download = false): string {
+  const dl = download ? '&download=1' : ''
+  return `${backendOrigin}/api/projets/documents/${docId}/preview/msg/attachments/${index}?token=${encodeURIComponent(getToken() || '')}${dl}`
 }

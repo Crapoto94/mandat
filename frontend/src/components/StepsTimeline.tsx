@@ -7,9 +7,10 @@ interface Props {
   engagementId: number
   steps: EngagementStep[]
   onChange: () => void
+  canEdit?: boolean
 }
 
-export default function StepsTimeline({ engagementId, steps, onChange }: Props) {
+export default function StepsTimeline({ engagementId, steps, onChange, canEdit = true }: Props) {
   const [date, setDate] = useState('')
   const [description, setDescription] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -57,9 +58,11 @@ export default function StepsTimeline({ engagementId, steps, onChange }: Props) 
                   </p>
                   <p className="text-sm text-slate-800">{s.description}</p>
                 </div>
-                <button onClick={() => remove(s.id)} className="shrink-0 text-slate-400 hover:text-red-600" title="Supprimer">
-                  <X size={14} />
-                </button>
+                {canEdit && (
+                  <button onClick={() => remove(s.id)} className="shrink-0 text-slate-400 hover:text-red-600" title="Supprimer">
+                    <X size={14} />
+                  </button>
+                )}
               </div>
             </li>
           ))}
@@ -67,6 +70,7 @@ export default function StepsTimeline({ engagementId, steps, onChange }: Props) 
       )}
       {!steps.length && <p className="mb-4 text-sm text-slate-400">Aucune étape renseignée pour l'instant.</p>}
 
+      {canEdit && (
       <form onSubmit={submit} className="flex flex-wrap items-end gap-2 border-t border-slate-100 pt-4">
         <div>
           <label className="mb-1 block text-xs font-medium text-slate-500">Date (optionnelle)</label>
@@ -95,6 +99,7 @@ export default function StepsTimeline({ engagementId, steps, onChange }: Props) 
           Ajouter
         </button>
       </form>
+      )}
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
     </div>
   )

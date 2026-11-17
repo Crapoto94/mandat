@@ -3,6 +3,7 @@ const service = require('./engagements.service');
 const proposalsService = require('./proposals.service');
 const projetsService = require('../projets/projets.service');
 const { requireAuth } = require('../../middleware/auth');
+const { effectiveLevel, atLeast } = require('../../services/permissions');
 
 const router = express.Router();
 
@@ -52,11 +53,11 @@ router.get('/:id', requireAuth, async (req, res) => {
   // est public, mais la liste elle-même n'expose que les projets dont
   // l'utilisateur est membre (ou tout si admin) — cf. accès réservé aux
   // membres sur les projets.
-  const projetsLies = await projetsService.listForEngagement(req.params.id, {
-    userSub: req.user.sub,
-    isAdmin: req.user.role === 'admin',
-  });
-  res.json({ ...engagement, projetsLies });
+  const [projetsLies, myAccessLevel] = await Promise.all([
+    projetsService.listForEngagement(req.params.id, { userSub: req.user.sub, isAdmin: req.user.role === 'admin' }),
+    effectiveLevel({ user: req.user, owner: { engagementId: Number(req.params.id) } }),
+  ]);
+  res.json({ ...engagement, projetsLies, myAccessLevel });
 });
 
 /**
@@ -69,8 +70,13 @@ router.patch('/:id', requireAuth, async (req, res) => {
   const author = req.user.displayName || req.user.sub;
   const body = { ...(req.body || {}) };
   const proposalsCreated = [];
+  const engagementId = Number(req.params.id);
 
   if (req.user.role !== 'admin') {
+    // Champs "sensibles" (pilotage/contributions) : jamais appliqués
+    // directement par un non-admin, toujours transformés en proposition —
+    // ce mécanisme reste ouvert à tout agent ayant accès à la fiche (même
+    // en simple consultation, "proposer" n'est pas "écrire").
     const restrictedKeys = Object.keys(body).filter((k) => proposalsService.RESTRICTED_FIELDS.includes(k));
     if (restrictedKeys.length) {
       const current = await service.getById(req.params.id);
@@ -86,6 +92,10 @@ router.patch('/:id', requireAuth, async (req, res) => {
   }
 
   if (Object.keys(body).length) {
+    const level = await effectiveLevel({ user: req.user, owner: { engagementId } });
+    if (!atLeast(level, 'modification')) {
+      return res.status(403).json({ error: 'Droits insuffisants pour modifier cet engagement' });
+    }
     const result = await service.update(req.params.id, body, author);
     if (!result.ok) return res.status(result.status).json({ error: result.error });
   }
@@ -98,6 +108,10 @@ router.patch('/:id', requireAuth, async (req, res) => {
 router.patch('/:id/prioritaire', requireAuth, async (req, res) => {
   const { prioritaire, note } = req.body || {};
   const author = req.user.displayName || req.user.sub;
+  const level = await effectiveLevel({ user: req.user, owner: { engagementId: Number(req.params.id) } });
+  if (!atLeast(level, 'modification')) {
+    return res.status(403).json({ error: 'Droits insuffisants pour modifier cet engagement' });
+  }
   const result = await service.setPrioritaire(req.params.id, Boolean(prioritaire), note, author);
   if (!result.ok) return res.status(result.status).json({ error: result.error });
   res.json(result.engagement);

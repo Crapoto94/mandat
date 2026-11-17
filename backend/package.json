@@ -9,9 +9,11 @@
     "dev": "node --watch server.js",
     "migrate": "node scripts/migrate.js",
     "import": "node scripts/import-excel.js",
-    "seed-admin": "node scripts/seed-admin.js"
+    "seed-admin": "node scripts/seed-admin.js",
+    "seed-rex": "node scripts/seed-rex-canicule.js"
   },
   "dependencies": {
+    "@iarna/rtf-to-html": "^1.1.0",
     "@kenjiuno/msgreader": "^1.28.0",
     "adm-zip": "^0.6.0",
     "axios": "^1.7.9",

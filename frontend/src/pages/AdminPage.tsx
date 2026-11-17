@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { api, apiErrorMessage } from '../lib/api'
-import type { AccessGroup, AccessGroupMember, ActivityLogEntry, AlertSubscription, Direction, Etat, FeedbackEntry, FieldProposal, HubdsiEntry, MailLogEntry, Meteo, RoleDef, TrashedAttachment } from '../types'
+import type { AccessGroup, AccessGroupMember, ActivityLogEntry, AlertSubscription, Direction, Etat, FeedbackEntry, FieldProposal, HubdsiEntry, MailLogEntry, Meteo, NiveauAcces, RoleDef, TrashedAttachment, TrashedProjetDocument } from '../types'
 import { fieldLabel } from '../lib/fieldLabels'
+import { useDialogs } from '../hooks/useDialogs'
 import {
   ShieldCheck,
   Upload,
@@ -146,6 +147,8 @@ export default function AdminPage() {
 
       <TrashSection onError={setError} />
 
+      <ProjetDocumentsTrashSection onError={setError} />
+
       <AlertSubscriptionsSection onError={setError} />
 
       <ProposalsSection onError={setError} onNotice={setNotice} />
@@ -176,6 +179,7 @@ function DirectionsSection({
   const [modes, setModes] = useState<Record<string, 'select' | typeof CUSTOM>>({})
   const [syncing, setSyncing] = useState(false)
   const [normalizing, setNormalizing] = useState(false)
+  const { confirmAsync, dialog } = useDialogs()
 
   function load() {
     Promise.all([api.get('/directions'), api.get('/directions/hubdsi-referentiel')]).then(([dirsRes, hubRes]) => {
@@ -257,13 +261,14 @@ function DirectionsSection({
   }
 
   async function normalizeAliases() {
-    if (
-      !confirm(
+    const ok = await confirmAsync({
+      title: 'Uniformiser les sigles',
+      message:
         "Uniformiser les sigles connus (ex. DSPORT/SPORT/Dsports → DSPORTS) dans tous les engagements ? " +
-          'Cette action réécrit le texte des engagements concernés et supprime les sigles alias devenus obsolètes.'
-      )
-    )
-      return
+        'Cette action réécrit le texte des engagements concernés et supprime les sigles alias devenus obsolètes.',
+      confirmLabel: 'Uniformiser',
+    })
+    if (!ok) return
     setNormalizing(true)
     try {
       const res = await api.post('/admin/directions/normalize-aliases')
@@ -421,13 +426,21 @@ function DirectionsSection({
           </tbody>
         </table>
       </div>
+      {dialog}
     </section>
   )
+}
+
+const NIVEAU_LABELS: Record<string, string> = {
+  consultation: 'Consultation',
+  modification: 'Modification',
+  administration: 'Administration',
 }
 
 function RolesCatalogSection({ onError }: { onError: (m: string) => void }) {
   const [roles, setRoles] = useState<RoleDef[]>([])
   const [newLabel, setNewLabel] = useState('')
+  const [newNiveau, setNewNiveau] = useState<NiveauAcces>('modification')
 
   function load() {
     api.get('/roles').then((res) => setRoles(res.data))
@@ -439,11 +452,21 @@ function RolesCatalogSection({ onError }: { onError: (m: string) => void }) {
     e.preventDefault()
     if (!newLabel.trim()) return
     try {
-      await api.post('/roles', { libelle: newLabel.trim(), ordre: roles.length + 1 })
+      await api.post('/roles', { libelle: newLabel.trim(), ordre: roles.length + 1, niveau_acces: newNiveau })
       setNewLabel('')
+      setNewNiveau('modification')
       load()
     } catch (err) {
       onError(apiErrorMessage(err, 'Création impossible'))
+    }
+  }
+
+  async function setNiveau(id: number, niveau_acces: NiveauAcces) {
+    try {
+      await api.patch(`/roles/${id}`, { niveau_acces })
+      load()
+    } catch (err) {
+      onError(apiErrorMessage(err, 'Modification impossible'))
     }
   }
 
@@ -460,13 +483,26 @@ function RolesCatalogSection({ onError }: { onError: (m: string) => void }) {
     <section className="rounded-xl border border-slate-200 bg-white p-5">
       <h2 className="mb-1 text-sm font-semibold text-slate-800">Catalogue des rôles</h2>
       <p className="mb-4 text-xs text-slate-500">
-        Rôles proposés lors de l'assignation d'un agent sur un engagement (fiche engagement → « Rôles assignés »).
+        Rôles proposés lors de l'assignation d'un agent sur un engagement ou un projet (module « Rôles assignés »).
+        Le <strong>niveau d'accès</strong> détermine les droits que porte ce rôle : consultation (lecture seule),
+        modification (édition), administration (édition + gestion des membres/rôles + suppression).
       </p>
       <ul className="mb-4 space-y-1.5">
         {roles.map((r) => (
-          <li key={r.id} className="flex items-center justify-between rounded-md bg-slate-50 px-3 py-1.5 text-sm">
-            {r.libelle}
-            <button onClick={() => remove(r.id)} className="text-slate-400 hover:text-red-600" title="Supprimer">
+          <li key={r.id} className="flex items-center justify-between gap-2 rounded-md bg-slate-50 px-3 py-1.5 text-sm">
+            <span className="min-w-0 flex-1 truncate">{r.libelle}</span>
+            <select
+              value={r.niveau_acces}
+              onChange={(e) => setNiveau(r.id, e.target.value as NiveauAcces)}
+              className="shrink-0 rounded border border-slate-300 px-1.5 py-1 text-xs"
+            >
+              {Object.entries(NIVEAU_LABELS).map(([v, label]) => (
+                <option key={v} value={v}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            <button onClick={() => remove(r.id)} className="shrink-0 text-slate-400 hover:text-red-600" title="Supprimer">
               <Trash2 size={14} />
             </button>
           </li>
@@ -479,6 +515,17 @@ function RolesCatalogSection({ onError }: { onError: (m: string) => void }) {
           placeholder="Nouveau rôle (ex : Décisionnaire)"
           className="flex-1 rounded-md border border-slate-300 px-2.5 py-1.5 text-sm focus:border-ville-blue focus:outline-none"
         />
+        <select
+          value={newNiveau}
+          onChange={(e) => setNewNiveau(e.target.value as NiveauAcces)}
+          className="rounded-md border border-slate-300 px-2.5 py-1.5 text-sm"
+        >
+          {Object.entries(NIVEAU_LABELS).map(([v, label]) => (
+            <option key={v} value={v}>
+              {label}
+            </option>
+          ))}
+        </select>
         <button
           type="submit"
           className="flex items-center gap-1.5 rounded-md bg-ville-blue px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
@@ -1094,6 +1141,7 @@ function NewAdminForm({ onCreated }: { onCreated: () => void }) {
  */
 function TrashSection({ onError }: { onError: (m: string) => void }) {
   const [items, setItems] = useState<TrashedAttachment[]>([])
+  const { confirmAsync, dialog } = useDialogs()
 
   function load() {
     api
@@ -1114,7 +1162,13 @@ function TrashSection({ onError }: { onError: (m: string) => void }) {
   }
 
   async function purge(id: number, name: string) {
-    if (!confirm(`Purger définitivement "${name}" ? Cette action supprime aussi le fichier, irréversible.`)) return
+    const ok = await confirmAsync({
+      title: 'Purger définitivement',
+      message: `Purger définitivement "${name}" ? Cette action supprime aussi le fichier, irréversible.`,
+      confirmLabel: 'Purger',
+      danger: true,
+    })
+    if (!ok) return
     try {
       await api.delete(`/admin/attachments/${id}/purge`)
       load()
@@ -1166,6 +1220,92 @@ function TrashSection({ onError }: { onError: (m: string) => void }) {
           ))}
         </ul>
       )}
+      {dialog}
+    </section>
+  )
+}
+
+function ProjetDocumentsTrashSection({ onError }: { onError: (m: string) => void }) {
+  const [items, setItems] = useState<TrashedProjetDocument[]>([])
+  const { confirmAsync, dialog } = useDialogs()
+
+  function load() {
+    api
+      .get('/projets/admin/documents/trash')
+      .then((res) => setItems(res.data))
+      .catch((err) => onError(apiErrorMessage(err)))
+  }
+
+  useEffect(load, [])
+
+  async function restore(id: number) {
+    try {
+      await api.post(`/projets/admin/documents/${id}/restore`)
+      load()
+    } catch (err) {
+      onError(apiErrorMessage(err, 'Restauration impossible'))
+    }
+  }
+
+  async function purge(id: number, name: string) {
+    const ok = await confirmAsync({
+      title: 'Purger définitivement',
+      message: `Purger définitivement "${name}" ? Cette action supprime aussi le fichier (et ses versions archivées), irréversible.`,
+      confirmLabel: 'Purger',
+      danger: true,
+    })
+    if (!ok) return
+    try {
+      await api.delete(`/projets/admin/documents/${id}/purge`)
+      load()
+    } catch (err) {
+      onError(apiErrorMessage(err, 'Purge impossible'))
+    }
+  }
+
+  return (
+    <section className="rounded-xl border border-slate-200 bg-white p-5">
+      <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold text-slate-800">
+        <Trash2 size={16} /> Corbeille des documents (projets)
+      </h2>
+      <p className="mb-4 text-xs text-slate-500">
+        Un document supprimé depuis la base documentaire d'un projet reste ici, restaurable — le fichier n'est jamais
+        touché tant qu'il n'est pas purgé définitivement.
+      </p>
+      {!items.length ? (
+        <p className="text-sm text-slate-400">La corbeille est vide.</p>
+      ) : (
+        <ul className="space-y-1.5">
+          {items.map((d) => (
+            <li key={d.id} className="flex items-center justify-between gap-2 rounded-md bg-slate-50 px-3 py-2 text-sm">
+              <div className="min-w-0">
+                <p className="truncate font-medium text-slate-700">{d.display_name}</p>
+                <p className="text-xs text-slate-400">
+                  Projet « {d.projet_nom} » · supprimé par {d.deleted_by} le{' '}
+                  {d.deleted_at && new Date(d.deleted_at).toLocaleString('fr-FR')}
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <button
+                  onClick={() => restore(d.id)}
+                  className="flex items-center gap-1 text-xs font-medium text-ville-blue hover:underline"
+                  title="Restaurer"
+                >
+                  <RotateCcw size={13} /> Restaurer
+                </button>
+                <button
+                  onClick={() => purge(d.id, d.display_name)}
+                  className="flex items-center gap-1 text-xs font-medium text-red-600 hover:underline"
+                  title="Purger définitivement"
+                >
+                  <Trash2 size={13} /> Purger
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      {dialog}
     </section>
   )
 }

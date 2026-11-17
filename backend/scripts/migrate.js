@@ -25,15 +25,33 @@ async function run() {
     const applied = new Set(
       (await client.query(`SELECT filename FROM "${SCHEMA}".schema_migrations`)).rows.map((r) => r.filename)
     );
-    const files = fs.readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith('.sql')).sort();
+    // .sql (DDL/DML pur) et .js (étapes qui touchent aussi le disque, ex.
+    // copie de fichiers lors d'une réorganisation de stockage) partagent le
+    // même ordre numéroté et le même suivi.
+    const files = fs.readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith('.sql') || f.endsWith('.js')).sort();
 
     for (const file of files) {
       if (applied.has(file)) {
         console.log(`[migrate] ${file} — déjà appliquée`);
         continue;
       }
-      const sql = fs.readFileSync(path.join(MIGRATIONS_DIR, file), 'utf8').replace(/__SCHEMA__/g, SCHEMA);
       console.log(`[migrate] application de ${file} (schéma "${SCHEMA}")...`);
+      if (file.endsWith('.js')) {
+        // Une migration .js gère elle-même sa propre logique (et sa propre
+        // idempotence si elle touche le disque, cf. commentaire en tête de
+        // chaque fichier) — pas de transaction SQL globale ici, juste le
+        // marquage "appliquée" une fois terminée sans erreur.
+        try {
+          const step = require(path.join(MIGRATIONS_DIR, file));
+          await step.run({ client, schema: SCHEMA });
+          await client.query(`INSERT INTO "${SCHEMA}".schema_migrations (filename) VALUES ($1)`, [file]);
+          console.log(`[migrate] ${file} — OK`);
+        } catch (err) {
+          throw new Error(`Échec de la migration ${file} : ${err.message}`);
+        }
+        continue;
+      }
+      const sql = fs.readFileSync(path.join(MIGRATIONS_DIR, file), 'utf8').replace(/__SCHEMA__/g, SCHEMA);
       await client.query('BEGIN');
       try {
         await client.query(sql);

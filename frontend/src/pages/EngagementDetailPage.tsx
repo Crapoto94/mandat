@@ -8,14 +8,18 @@ import { stripHtml } from '../lib/text'
 import { fieldLabel } from '../lib/fieldLabels'
 import { useFieldLock } from '../hooks/useFieldLock'
 import { useFieldLocks } from '../hooks/useFieldLocks'
+import { useModuleLayout } from '../hooks/useModuleLayout'
 import EtatBadge from '../components/EtatBadge'
 import AxeTag from '../components/AxeTag'
 import RichTextEditor from '../components/RichTextEditor'
-import RolesSection from '../components/RolesSection'
+import RolesModule from '../components/RolesModule'
+import DocumentsModule from '../components/DocumentsModule'
+import ModuleFrame from '../components/ModuleFrame'
+import ModuleSettingsModal from '../components/ModuleSettingsModal'
 import StepsTimeline from '../components/StepsTimeline'
-import AttachmentsSection from '../components/AttachmentsSection'
 import MeteoPicker, { MeteoBadge } from '../components/MeteoPicker'
 import ToggleSwitch from '../components/ToggleSwitch'
+import RexEngagementBox from '../components/rex/RexEngagementBox'
 import EditingBadge from '../components/EditingBadge'
 import LiveUpdateFlash from '../components/LiveUpdateFlash'
 import {
@@ -28,11 +32,24 @@ import {
   X,
   Infinity as InfinityIcon,
   FolderKanban,
+  Folder,
+  Users,
+  GitCommitHorizontal,
   Plus,
+  Settings,
 } from 'lucide-react'
+import type { ModuleOwner } from '../types'
+import { atLeast } from '../lib/access'
 
 const POLL_MS = 7000
 const DEBOUNCE_MS = 1500
+const DEFAULT_MODULE_ORDER = ['roles', 'documents', 'steps', 'comments']
+const MODULE_META: Record<string, { title: string; icon: React.ComponentType<{ size?: number; className?: string }> }> = {
+  roles: { title: 'Rôles assignés', icon: Users },
+  documents: { title: 'Documents', icon: Folder },
+  steps: { title: 'Étapes', icon: GitCommitHorizontal },
+  comments: { title: 'Échanges', icon: MessageSquare },
+}
 
 export default function EngagementDetailPage() {
   const { id } = useParams()
@@ -44,11 +61,18 @@ export default function EngagementDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [flash, setFlash] = useState(false)
+  const [moduleSettingsOpen, setModuleSettingsOpen] = useState(false)
 
   const [description, setDescription] = useState('')
   const [descriptionFocused, setDescriptionFocused] = useState(false)
   const [prioNote, setPrioNote] = useState('')
   const [commentBody, setCommentBody] = useState('')
+
+  // Construit à partir du paramètre d'URL (disponible dès le premier rendu,
+  // avant même que `engagement` soit chargé) : évite d'appeler ce hook
+  // après un retour anticipé conditionnel plus bas (règle des hooks React).
+  const owner: ModuleOwner = { kind: 'engagement', id: Number(id) }
+  const { layout, toggle, reorder } = useModuleLayout(owner, DEFAULT_MODULE_ORDER)
 
   const { lockFor } = useFieldLocks(engagement ? engagement.id : null)
   // Détient/heartbeat notre propre verrou pendant l'édition — la valeur de
@@ -189,6 +213,8 @@ export default function EngagementDetailPage() {
 
   const descriptionLock = lockFor('description_avancement')
   const infosBaseLock = lockFor('infos_de_base')
+  const canEdit = atLeast(engagement.myAccessLevel, 'modification')
+  const canAdminister = atLeast(engagement.myAccessLevel, 'administration')
 
   return (
     <div className="space-y-6">
@@ -198,7 +224,7 @@ export default function EngagementDetailPage() {
         <ArrowLeft size={15} /> Retour à la liste
       </Link>
 
-      <BaseInfoCard engagement={engagement} groupes={groupes} onSaved={load} lockHolder={infosBaseLock} />
+      <BaseInfoCard engagement={engagement} groupes={groupes} onSaved={load} lockHolder={infosBaseLock} canEdit={canEdit} />
 
       {/* Marquage prioritaire plénière */}
       <div className={`rounded-xl border p-5 ${engagement.prioritaire_plenaire ? 'border-amber-300 bg-amber-50' : 'border-slate-200 bg-white'}`}>
@@ -209,7 +235,7 @@ export default function EngagementDetailPage() {
           </div>
           <button
             onClick={togglePrioritaire}
-            disabled={!engagement.groupe_id}
+            disabled={!engagement.groupe_id || !canEdit}
             className={`rounded-md px-3 py-1.5 text-sm font-medium ${
               engagement.prioritaire_plenaire
                 ? 'bg-white text-amber-700 ring-1 ring-amber-300 hover:bg-amber-100'
@@ -252,7 +278,7 @@ export default function EngagementDetailPage() {
               <select
                 value={engagement.etat_code}
                 onChange={(e) => setEtat(e.target.value)}
-                disabled={!!engagement.projetsLies?.length}
+                disabled={!!engagement.projetsLies?.length || !canEdit}
                 className="w-full max-w-xs rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-ville-blue focus:outline-none disabled:bg-slate-50 disabled:text-slate-400"
               >
                 {etats.map((e) => (
@@ -268,7 +294,7 @@ export default function EngagementDetailPage() {
                 meteos={meteos}
                 value={engagement.meteo_code}
                 onChange={setMeteo}
-                disabled={!!engagement.projetsLies?.length}
+                disabled={!!engagement.projetsLies?.length || !canEdit}
               />
             </div>
           </div>
@@ -292,7 +318,7 @@ export default function EngagementDetailPage() {
                 saveDescriptionNow()
               }}
               engagementId={engagement.id}
-              readOnly={!!descriptionLock}
+              readOnly={!!descriptionLock || !canEdit}
             />
           </div>
         </div>
@@ -307,36 +333,69 @@ export default function EngagementDetailPage() {
 
       <ProjetsLiesPanel engagementId={engagement.id} projets={engagement.projetsLies || []} onLinked={load} />
 
-      <RolesSection engagementId={engagement.id} roles={engagement.roles || []} onChange={load} />
+      <RexEngagementBox engagementId={engagement.id} />
 
-      <StepsTimeline engagementId={engagement.id} steps={engagement.steps || []} onChange={load} />
-
-      <AttachmentsSection engagementId={engagement.id} attachments={engagement.attachments || []} onChange={load} />
-
-      {/* Commentaires */}
-      <div className="rounded-xl border border-slate-200 bg-white p-5">
-        <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800">
-          <MessageSquare size={16} /> Échanges ({engagement.comments?.length || 0})
-        </h2>
-        <div className="mb-4 space-y-3">
-          {engagement.comments?.map((c) => (
-            <CommentItem key={c.id} comment={c} canEdit={!!c.author_sub && c.author_sub === user?.sub} onChanged={load} />
-          ))}
-          {!engagement.comments?.length && <p className="text-sm text-slate-400">Aucun échange pour l'instant.</p>}
-        </div>
-        <form onSubmit={submitComment} className="flex items-start gap-2">
-          <textarea
-            value={commentBody}
-            onChange={(e) => setCommentBody(e.target.value)}
-            placeholder={`Écrire un commentaire en tant que ${user?.displayName}...`}
-            rows={2}
-            className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-ville-blue focus:outline-none"
-          />
-          <button type="submit" className="rounded-md bg-ville-blue p-2.5 text-white hover:opacity-90">
-            <Send size={16} />
-          </button>
-        </form>
+      <div className="flex justify-end">
+        <button
+          onClick={() => setModuleSettingsOpen(true)}
+          className="flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-ville-blue"
+        >
+          <Settings size={13} /> Modules de la fiche
+        </button>
       </div>
+
+      {layout.map((entry) => {
+        const m = MODULE_META[entry.module_key]
+        if (!m) return null
+        return (
+          <ModuleFrame
+            key={entry.module_key}
+            moduleKey={entry.module_key}
+            title={m.title}
+            icon={m.icon}
+            enabled={entry.enabled}
+            onToggle={() => toggle(entry.module_key)}
+            onReorder={reorder}
+          >
+            {entry.module_key === 'roles' && (
+              <RolesModule owner={owner} roles={engagement.roles || []} onChange={load} canAdminister={canAdminister} />
+            )}
+            {entry.module_key === 'documents' && <DocumentsModule owner={owner} canEdit={canEdit} canAdminister={canAdminister} />}
+            {entry.module_key === 'steps' && (
+              <StepsTimeline engagementId={engagement.id} steps={engagement.steps || []} onChange={load} canEdit={canEdit} />
+            )}
+            {entry.module_key === 'comments' && (
+              <div className="rounded-xl border border-slate-200 bg-white p-5">
+                <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800">
+                  <MessageSquare size={16} /> Échanges ({engagement.comments?.length || 0})
+                </h2>
+                <div className="mb-4 space-y-3">
+                  {engagement.comments?.map((c) => (
+                    <CommentItem key={c.id} comment={c} canEdit={!!c.author_sub && c.author_sub === user?.sub && canEdit} onChanged={load} />
+                  ))}
+                  {!engagement.comments?.length && <p className="text-sm text-slate-400">Aucun échange pour l'instant.</p>}
+                </div>
+                {canEdit ? (
+                  <form onSubmit={submitComment} className="flex items-start gap-2">
+                    <textarea
+                      value={commentBody}
+                      onChange={(e) => setCommentBody(e.target.value)}
+                      placeholder={`Écrire un commentaire en tant que ${user?.displayName}...`}
+                      rows={2}
+                      className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-ville-blue focus:outline-none"
+                    />
+                    <button type="submit" className="rounded-md bg-ville-blue p-2.5 text-white hover:opacity-90">
+                      <Send size={16} />
+                    </button>
+                  </form>
+                ) : (
+                  <p className="text-xs text-slate-400">Accès en consultation seule.</p>
+                )}
+              </div>
+            )}
+          </ModuleFrame>
+        )
+      })}
 
       {/* Historique */}
       {user?.role === 'admin' && !!engagement.history?.length && (
@@ -356,6 +415,16 @@ export default function EngagementDetailPage() {
           </ul>
         </div>
       )}
+
+      {moduleSettingsOpen && (
+        <ModuleSettingsModal
+          layout={layout}
+          moduleMeta={MODULE_META}
+          toggle={toggle}
+          reorder={reorder}
+          onClose={() => setModuleSettingsOpen(false)}
+        />
+      )}
     </div>
   )
 }
@@ -366,11 +435,13 @@ function BaseInfoCard({
   groupes,
   onSaved,
   lockHolder,
+  canEdit,
 }: {
   engagement: Engagement
   groupes: Groupe[]
   onSaved: () => void
   lockHolder: { display_name: string } | null
+  canEdit: boolean
 }) {
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState({
@@ -484,7 +555,7 @@ function BaseInfoCard({
             <button
               onClick={startEditing}
               className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-ville-blue"
-              title="Modifier les infos de base"
+              title={canEdit ? 'Modifier les infos de base' : 'Consultation seule — proposer une modification du pilotage/des contributions'}
             >
               <Pencil size={15} />
             </button>
@@ -518,16 +589,16 @@ function BaseInfoCard({
                 value={echeanceDraft}
                 onChange={(e) => setEcheanceDraft(e.target.value)}
                 onBlur={saveEcheance}
-                disabled={savingEcheance}
+                disabled={savingEcheance || !canEdit}
                 placeholder="ex : 2028, T3 2030, juin 2029..."
                 title="Une échéance vague (année, trimestre, mois) est tout à fait valable — pas besoin d'une date précise"
-                className="mt-0.5 w-full rounded-md border border-transparent px-0 py-0.5 text-sm text-slate-700 hover:border-slate-200 focus:border-ville-blue focus:px-2 focus:py-1 focus:outline-none"
+                className="mt-0.5 w-full rounded-md border border-transparent px-0 py-0.5 text-sm text-slate-700 hover:border-slate-200 focus:border-ville-blue focus:px-2 focus:py-1 focus:outline-none disabled:text-slate-400"
               />
             )}
             <div className="mt-1.5">
               <ToggleSwitch
                 checked={engagement.continu}
-                disabled={togglingContinu}
+                disabled={togglingContinu || !canEdit}
                 onChange={toggleContinu}
                 label="Engagement continu, tout au long du mandat (pas de date d'aboutissement)"
               />
@@ -557,12 +628,20 @@ function BaseInfoCard({
         </p>
       )}
 
+      {!canEdit && (
+        <p className="rounded-md bg-amber-50 p-2 text-xs text-amber-700">
+          Accès en consultation seule : seuls le pilotage et les contributions restent modifiables (sous forme de
+          proposition, à valider par un administrateur).
+        </p>
+      )}
+
       <div>
         <label className="mb-1 block text-xs font-medium text-slate-500">Nom de l'engagement</label>
         <input
           value={form.contenu}
           onChange={(e) => setForm({ ...form, contenu: e.target.value })}
-          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-ville-blue focus:outline-none"
+          disabled={!canEdit}
+          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-ville-blue focus:outline-none disabled:bg-slate-50 disabled:text-slate-400"
         />
       </div>
 
@@ -572,7 +651,8 @@ function BaseInfoCard({
           <select
             value={form.axe}
             onChange={(e) => setForm({ ...form, axe: e.target.value })}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-ville-blue focus:outline-none"
+            disabled={!canEdit}
+            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-ville-blue focus:outline-none disabled:bg-slate-50 disabled:text-slate-400"
           >
             {axeList().map((a) => (
               <option key={a} value={a}>
@@ -586,7 +666,8 @@ function BaseInfoCard({
           <select
             value={form.groupe_id ?? ''}
             onChange={(e) => setForm({ ...form, groupe_id: e.target.value ? Number(e.target.value) : null })}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-ville-blue focus:outline-none"
+            disabled={!canEdit}
+            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-ville-blue focus:outline-none disabled:bg-slate-50 disabled:text-slate-400"
           >
             <option value="">Hors groupe</option>
             {groupes.map((g) => (

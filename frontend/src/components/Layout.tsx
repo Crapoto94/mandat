@@ -12,6 +12,7 @@ import {
   LogOut,
   GitCommitHorizontal,
   UserCircle2,
+  Thermometer,
 } from 'lucide-react'
 
 const navItems = [
@@ -21,6 +22,7 @@ const navItems = [
   // Projets : route active (voir App.tsx), volontairement pas encore dans
   // le menu — endpoint/pages gardés pour un accès direct par lien.
   { to: '/coordination', label: 'Coordination', icon: MessageSquareWarning },
+  { to: '/rex-canicule', label: 'REX Canicule', icon: Thermometer, badge: 'rex' as const },
   { to: '/timeline', label: 'Timeline', icon: GitCommitHorizontal },
   { to: '/plenaire', label: 'Plénière', icon: Presentation },
 ]
@@ -28,12 +30,21 @@ const navItems = [
 export default function Layout() {
   const { user, logout } = useAuth()
   const [mineCount, setMineCount] = useState<number | null>(null)
+  const [rexCount, setRexCount] = useState<number | null>(null)
 
   useEffect(() => {
     api
       .get('/engagements/mine')
       .then((res) => setMineCount(res.data.engagements?.length ?? null))
       .catch(() => setMineCount(null)) // direction inconnue/non répertoriée : pas de pastille, silencieux
+  }, [user])
+
+  // Pastille REX Canicule : ce qui attend la direction de l'agent (actions, réflexes, sujets pilotés).
+  useEffect(() => {
+    api
+      .get('/rex/mine')
+      .then((res) => setRexCount(res.data.total ?? null))
+      .catch(() => setRexCount(null))
   }, [user])
 
   return (
@@ -63,6 +74,7 @@ export default function Layout() {
                 <Icon size={16} />
                 {label}
                 {badge === 'mine' && !!mineCount && <NavBadge count={mineCount} />}
+                {badge === 'rex' && !!rexCount && <NavBadge count={rexCount} />}
               </NavLink>
             ))}
             {user?.role === 'admin' && (
@@ -111,6 +123,7 @@ export default function Layout() {
               <Icon size={16} />
               {label}
               {badge === 'mine' && !!mineCount && <NavBadge count={mineCount} />}
+              {badge === 'rex' && !!rexCount && <NavBadge count={rexCount} />}
             </NavLink>
           ))}
         </nav>

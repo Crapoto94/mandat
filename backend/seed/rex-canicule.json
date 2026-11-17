@@ -1,0 +1,2265 @@
+{
+ "source": [
+  "Canicules 2026 - tableau REX.docx (c/r des échanges du 14 octobre 2026)",
+  "Tableau travaux confort été et hiver 2026.xlsx"
+ ],
+ "saison_cible": "2027-05-01",
+ "thematiques": [
+  {
+   "partie": 1,
+   "ordre": 1,
+   "titre": "Plan Communal de Sauvegarde",
+   "description": null
+  },
+  {
+   "partie": 1,
+   "ordre": 2,
+   "titre": "Conditions de travail des agents",
+   "description": null
+  },
+  {
+   "partie": 2,
+   "ordre": 1,
+   "titre": "Adaptabilité des équipements publics sensibles à la canicule",
+   "description": "Cela concerne en premier lieu les écoles, les équipements de la petite enfance et les résidences autonomie pour les personnes âgées (RPA). Au-delà du bâtiment, les espaces publics sont aussi concernés, en particulier les cours d'école."
+  },
+  {
+   "partie": 2,
+   "ordre": 2,
+   "titre": "Adaptabilité des autres équipements publics à la canicule",
+   "description": null
+  },
+  {
+   "partie": 2,
+   "ordre": 3,
+   "titre": "Cas de la piscine municipale",
+   "description": null
+  },
+  {
+   "partie": 3,
+   "ordre": 1,
+   "titre": "Evènementiels",
+   "description": null
+  },
+  {
+   "partie": 3,
+   "ordre": 2,
+   "titre": "Dans l’espace public",
+   "description": null
+  },
+  {
+   "partie": 3,
+   "ordre": 3,
+   "titre": "Personnes vulnérables",
+   "description": null
+  }
+ ],
+ "sujets": [
+  {
+   "partie": 1,
+   "thematique": "Plan Communal de Sauvegarde",
+   "ordre": 1,
+   "libelle": "Système d’alerte – réception et diffusion",
+   "constat": "Alertes par la Préfecture du Val de marne",
+   "a_fonctionne": "Alertes arrivent chez DGS, DGST, Cabinet du maire",
+   "a_ameliorer": "Situation des we ou la nuit",
+   "mesures": "Intégrer le gardien de la mairie aux alertes pour diffusion :\n• DG\n• Cabinet\n• Cadre d’astreinte",
+   "pilotage": "DG, DCOM",
+   "decision": null,
+   "origine": "tableau"
+  },
+  {
+   "partie": 1,
+   "thematique": "Plan Communal de Sauvegarde",
+   "ordre": 2,
+   "libelle": "Cellule de crise",
+   "constat": "Déclenchement du PCS le 28 mai avec 1ère réunion associant DG, DRH, DIRCOM, DSI, DCCAS, DDU et DAC",
+   "a_fonctionne": "Mise en place de la cellule de crise dès l’alerte ORANGE – Le PCS est resté activé jusqu’au 15 août",
+   "a_ameliorer": "La diffusion des alertes aux directions et services, la circulation des décisions et arbitrages (coordination)",
+   "mesures": "Diffusion systématique de alertes aux directions\nVoir la fréquence des réunions de point d’étape – établir des c/r à diffuser",
+   "pilotage": "DG",
+   "decision": null,
+   "origine": "tableau"
+  },
+  {
+   "partie": 1,
+   "thematique": "Plan Communal de Sauvegarde",
+   "ordre": 3,
+   "libelle": "Alerte des habitants",
+   "constat": "Transmission des alertes à la Dircom",
+   "a_fonctionne": "Information donnée sur les différents canaux numériques de la commune",
+   "a_ameliorer": "Le point d’entrée des alertes à la Dircom\nComment informer les publics éloignés (fracture numérique, SDF…)",
+   "mesures": "Désigner un.e./des référent.e.s à la Dircom\nComment informer les publics éloignés ?",
+   "pilotage": "DCOM",
+   "decision": null,
+   "origine": "tableau"
+  },
+  {
+   "partie": 1,
+   "thematique": "Plan Communal de Sauvegarde",
+   "ordre": 4,
+   "libelle": "Stationnement/ pollution à l’ozone",
+   "constat": "Les fortes canicules peuvent s’accompagner de pollutions atmosphériques à l’ozone en lien avec le trafic routier",
+   "a_fonctionne": null,
+   "a_ameliorer": "Déclenchement automatique de la règle de la gratuité du stationnement résidentiel en fonction du niveau de la canicule ?",
+   "mesures": "A étudier par la DEP de l’intérêt de cette mesure.",
+   "pilotage": "DEP",
+   "decision": null,
+   "origine": "tableau"
+  },
+  {
+   "partie": 1,
+   "thematique": "Conditions de travail des agents",
+   "ordre": 1,
+   "libelle": "Évolution des horaires des agents",
+   "constat": "Adaptation des horaires pour les collègues travaillant sur l’espace public, infirmières, aides à domicile, dans les bureaux. Exemple des maisons de quartiers : jusqu'à samedi 27 inclus maintien de la fermeture de Gagarine et fermeture des autres à 16h15, organisation d'une permanence téléphonique jusqu'à 18h30",
+   "a_fonctionne": "Production de notes/messages de mise à jour régulièrement en fonction des alertes/situations comme pour les maisons de quartier",
+   "a_ameliorer": "Revoir les modes de communication auprès de l’ensemble des agents, certains n’étant pas informés\nPas de décision de mise en œuvre au coup par coup\nConstat d’appels en DG de responsables sur la marche à suivre",
+   "mesures": "Retravailler sur la note sur les modalités d’adaptation :\n• des horaires en fonction des durées prévisible de canicule – ORANGE en particulier\n• du nombre de jours télétravaillés tout en maintenant une permanence tournante",
+   "pilotage": "DRH",
+   "decision": null,
+   "origine": "tableau"
+  },
+  {
+   "partie": 1,
+   "thematique": "Conditions de travail des agents",
+   "ordre": 2,
+   "libelle": "Jours travaillés en fonction des ponts pour la propreté",
+   "constat": "Avec le pont du 14 juillet, pas d’équipes de propreté sur l’espace public le lundi – pas d’intervention sur l’espace public pendant 3 jours consécutifs",
+   "a_fonctionne": null,
+   "a_ameliorer": "Assurer une intervention sur l’espace public (propreté) plus régulière, de même que les partenaires SEPUR et GOSB",
+   "mesures": "Tout au long de l’année, assurer des interventions sur la propreté de la ville 6 jours/7",
+   "pilotage": "DG, DRH, DEP",
+   "decision": null,
+   "origine": "tableau"
+  },
+  {
+   "partie": 1,
+   "thematique": "Conditions de travail des agents",
+   "ordre": 3,
+   "libelle": "Conditions d’exercices des missions des agents (1) : vêtement de travail et accessoire",
+   "constat": "Constat que certains vêtements ne sont pas adaptés aux fortes chaleurs, en particulier pour les collègues techniques travaillant en intérieur",
+   "a_fonctionne": "Dotation pour l’ensemble des agents de gourde",
+   "a_ameliorer": "Revoir certaines donations plus adaptées aux conditions climatiques",
+   "mesures": "Réflexions en cours/avancées entre DRH et service Achats – test des vêtements à venir pour déploiement avant l’été 2027",
+   "pilotage": "DRH",
+   "decision": null,
+   "origine": "tableau"
+  },
+  {
+   "partie": 1,
+   "thematique": "Conditions de travail des agents",
+   "ordre": 4,
+   "libelle": "Conditions d’exercices des missions des agents (2) : ventilateurs",
+   "constat": "Manque de ventilateurs dans certains espaces/bureaux",
+   "a_fonctionne": "Rachat et distributions de ventilateurs en urgence en fonction des demandes",
+   "a_ameliorer": "Les directions/services doivent s’assurer qu’elles ne disposent pas de stocks de ventilateurs « dormants »",
+   "mesures": "D’ici fin d’année, recensement des demandes pour commandes",
+   "pilotage": "DSF, DAJCP",
+   "decision": null,
+   "origine": "tableau"
+  },
+  {
+   "partie": 1,
+   "thematique": "Conditions de travail des agents",
+   "ordre": 5,
+   "libelle": "Accès aux centres techniques pour utilisation véhicules",
+   "constat": "Constat pendant la période des congés des difficultés à accéder à certains sites en l’absence du gardien titulaire en particulier les we : Garage, Centre Technique Rigaud",
+   "a_fonctionne": null,
+   "a_ameliorer": null,
+   "mesures": "Revoir les processus d’accès aux centres techniques y compris l’accès aux pompes du Garage",
+   "pilotage": "DEP",
+   "decision": null,
+   "origine": "tableau"
+  },
+  {
+   "partie": 2,
+   "thematique": "Adaptabilité des équipements publics sensibles à la canicule",
+   "ordre": 1,
+   "libelle": "Les équipements sensibles (1) : les écoles",
+   "constat": "Fermeture de l’ensemble des écoles du 24 au 26 juin 2026 en raison des fortes chaleurs dans les établissements scolaires",
+   "a_fonctionne": null,
+   "a_ameliorer": "• Proposer un lieu rafraichi dans chaque école (salle de restauration scolaire, salle polyvalente)\n• Faire que les cours d’écoles ne soient plus des îlots de chaleur (végétalisation)",
+   "mesures": "Etude diagnostics en cours sur 10 groupes scolaires avec Banque des Territoires\nExtension sur les autres groupes par d’autres études\nDiagnostics précisant travaux à mener et coûts\nObjectifs des premiers travaux d’adaptation dès février 2027\nRéflexion végétalisation des cours d’écoles à engager.",
+   "pilotage": "DBC, DSALE",
+   "decision": null,
+   "origine": "tableau"
+  },
+  {
+   "partie": 2,
+   "thematique": "Adaptabilité des équipements publics sensibles à la canicule",
+   "ordre": 2,
+   "libelle": "Les équipements sensibles (2) : les crèches",
+   "constat": "Fermetures les 25 et 26 juin à 15H00",
+   "a_fonctionne": null,
+   "a_ameliorer": "• Proposer un ou des lieux rafraichis",
+   "mesures": "A l’instar des écoles, étude diagnostic à mener sur les 6 équipements de la Petite Enfance",
+   "pilotage": "DBC, Service Petite Enfance",
+   "decision": null,
+   "origine": "tableau"
+  },
+  {
+   "partie": 2,
+   "thematique": "Adaptabilité des équipements publics sensibles à la canicule",
+   "ordre": 3,
+   "libelle": "Les équipements sensibles (3) : les résidences autonomie",
+   "constat": "Remontée au DCCAS des fortes chaleurs dans les logements, y compris coursives de Chevaleret",
+   "a_fonctionne": "Les salles rafraichies, une dans chaque résidence",
+   "a_ameliorer": "La situation dans les logements",
+   "mesures": "A l’instar des écoles, étude diagnostic à mener sur les 2 résidences pour personnes âgées.",
+   "pilotage": "DBC, DCCAS",
+   "decision": null,
+   "origine": "tableau"
+  },
+  {
+   "partie": 2,
+   "thematique": "Adaptabilité des autres équipements publics à la canicule",
+   "ordre": 1,
+   "libelle": "Bâtiments publics actuels tels maison de quartier, centres techniques et administratifs, équipements culturels…",
+   "constat": "Fermeture d’une maison de quartier Gagarine\nAdaptation des horaires avec permanence",
+   "a_fonctionne": "Dotation de ventilateurs pour rafraichir les espaces",
+   "a_ameliorer": "Isolation de certains bâtiments",
+   "mesures": "A l’instar des écoles, des diagnostics seront réalisés sur certains bâtiments, permettant d’apporter des mesures correctives",
+   "pilotage": "DBC",
+   "decision": null,
+   "origine": "tableau"
+  },
+  {
+   "partie": 2,
+   "thematique": "Adaptabilité des autres équipements publics à la canicule",
+   "ordre": 2,
+   "libelle": "Futurs bâtiments publics",
+   "constat": "Plusieurs projets sont à venir ou en cours :\n• Groupe scolaire O. Bancic\n• 3ème groupe scolaire Ivry Confluences\n• Nouvelle maison de quartier -Centre-Ville/Gagarine\n• Futur CTM\n• Futur espace démarche (Jeanne Hachette)\n• Futur conservatoire",
+   "a_fonctionne": null,
+   "a_ameliorer": null,
+   "mesures": "Intégrer dès les cahiers des charges de consultation les extrêmes climatiques pour la conception des bâtiments.",
+   "pilotage": "DBC, DAJCP",
+   "decision": null,
+   "origine": "tableau"
+  },
+  {
+   "partie": 2,
+   "thematique": "Cas de la piscine municipale",
+   "ordre": 1,
+   "libelle": "Piscine municipale : fermeture pour entretien en période de canicule",
+   "constat": "La piscine a été fermée courant juin pour entretien lors de la seconde canicule du 17 au 30 juin",
+   "a_fonctionne": null,
+   "a_ameliorer": null,
+   "mesures": "S’assurer que les fermetures pour entretien n’interviennent pas lors des potentielles périodes de canicule de mai à septembre",
+   "pilotage": "DSPORT",
+   "decision": null,
+   "origine": "tableau"
+  },
+  {
+   "partie": 3,
+   "thematique": "Evènementiels",
+   "ordre": 1,
+   "libelle": "Evènementiels à l’initiative de la ville : Ivry en Fêtes, 14 juillet, fêtes de quartiers….",
+   "constat": "Annulation du deuxième jour d’Ivry en Fêtes le 21 juin\nAnnulation du 14 juillet",
+   "a_fonctionne": "Processus d’information le 20 juin auprès de l’ensemble des participants.",
+   "a_ameliorer": "En fonction d’un niveau attendu de canicule, automatiser les annulations et reports éventuels",
+   "mesures": "Définir une méthode de prise de décision d’annulation de tel ou tel type d’évènements",
+   "pilotage": "Cabinet, DG",
+   "decision": null,
+   "origine": "tableau"
+  },
+  {
+   "partie": 3,
+   "thematique": "Evènementiels",
+   "ordre": 2,
+   "libelle": "Autres évènements à l’initiative d’associations, collectifs….",
+   "constat": "Suppression, report de plusieurs manifestations comme la fête du sentier des Vignes, la brocante du DAL – des arrêtés du maire ont été pris (26 juin 2026) abrogeant les précédents concernant l’espace public",
+   "a_fonctionne": null,
+   "a_ameliorer": "La communication en amont avec les associations/ collectifs",
+   "mesures": "Principes de déclenchement automatique d’une abrogation de l’arrêté en cas de fores majeures dont les extrêmes climatiques, à intégrer dans les arrêtés du maire autorisant l’occupation du domaine public",
+   "pilotage": "Cabinet, DG, DDAC, DEP, DAJCP",
+   "decision": null,
+   "origine": "tableau"
+  },
+  {
+   "partie": 3,
+   "thematique": "Dans l’espace public",
+   "ordre": 1,
+   "libelle": "Ouverture des parcs fermés la nuit",
+   "constat": "Nuits très chaudes sur une longue période, propositions d’ouvrir certains parcs fermés la nuit",
+   "a_fonctionne": "Ouvertures de 3 parcs/squares – des Alliés, Chevaleret, Monmousseau lors des jours de vigilance ROUGE. Ces ouvertures ont été très appréciées par les familles",
+   "a_ameliorer": null,
+   "mesures": "Réfléchir à d’autres parcs/squares à ouvrir la nuit.\nEtendre l’ouverture à la vigilance ORANGE",
+   "pilotage": "DDAC, DCOM",
+   "decision": null,
+   "origine": "tableau"
+  },
+  {
+   "partie": 3,
+   "thematique": "Dans l’espace public",
+   "ordre": 2,
+   "libelle": "Rafraichir les espaces publics",
+   "constat": "Avec la canicule , nombreuses demandes portant sur l’installation d’équipements pour rafraichir divers espaces publics",
+   "a_fonctionne": null,
+   "a_ameliorer": "Constat en mai, puis en juin que certains brumisateurs ne fonctionnent pas, idem pour les fontaines à eau ou autres fontaines, de l’absence de système dans certains espaces publics (square…)",
+   "mesures": "Chaque espace public doit disposer d’un système de brumisateurs et fontaines à eau de même que les écoles\nVérification en amont du fonctionnement des équipements, par l’achat et le stockage de matériel pour parer à des situations particulières comme Ivry en Fêtes.\nFontaines ornementales qui participent au rafraichissement de la ville en fonctionnement (ce qui n’était pas le cas cet été) : Fontaine Wallace, du métro, des Petits Bois",
+   "pilotage": "DEP, DDAC, DBC, DSALE",
+   "decision": null,
+   "origine": "tableau"
+  },
+  {
+   "partie": 3,
+   "thematique": "Dans l’espace public",
+   "ordre": 3,
+   "libelle": "Pratique sportive extérieur",
+   "constat": "Recommandations de limiter/interdire la pratique sportive",
+   "a_fonctionne": null,
+   "a_ameliorer": null,
+   "mesures": null,
+   "pilotage": null,
+   "decision": null,
+   "origine": "tableau"
+  },
+  {
+   "partie": 3,
+   "thematique": "Personnes vulnérables",
+   "ordre": 1,
+   "libelle": "Sur l’espace public",
+   "constat": "Population SDF, dans les squats et autres campements",
+   "a_fonctionne": "• intervention des médiateurs à la rencontre des SDF pour distribution d’eau, de couvertures de survie",
+   "a_ameliorer": null,
+   "mesures": null,
+   "pilotage": null,
+   "decision": null,
+   "origine": "tableau"
+  },
+  {
+   "partie": 3,
+   "thematique": "Personnes vulnérables",
+   "ordre": 2,
+   "libelle": "Suivi par le CCAS",
+   "constat": "Appel tous les jours 7 jours/7 des personnes inscrites sur le registre des personnes vulnérables",
+   "a_fonctionne": "Point de situation journalier à la préfecture du Val de Marne",
+   "a_ameliorer": "Ces missions portent sur un nombre restreint de personnels avec intégration de donnée sur les décès, les bouches à incendie ouvertes….",
+   "mesures": "La circulaire préfectorale de juillet 2026 conduit à repenser notre action envers les personnes vulnérables : sur le contenu du fichier avec son extension, sur les conditions d’accueil des personnes vulnérables avec la création et l’équipement de lieu et des personnels dédiés - renforcement du dispositif ORSEC – Chaleurs extrêmes « CHALEX »*",
+   "pilotage": "DG, DCCAS, DSANTE, DCOM",
+   "decision": null,
+   "origine": "tableau"
+  },
+  {
+   "partie": 3,
+   "thematique": "Personnes vulnérables",
+   "ordre": 3,
+   "libelle": "Adaptabilité de certains équipements publics pour accueillir des publics vulnérables (ou pas)",
+   "constat": "Nous avions informé la Préfecture de Val de Marne sur les équipements publics disposant de salles rafraichis comme le Robespierre qui s’est avéré en définitive inopérant. Réparation du système défaillant début septembre",
+   "a_fonctionne": null,
+   "a_ameliorer": null,
+   "mesures": "Identifier les équipements publics pouvant jouer ce rôle moyennant travaux d’adaptation\nA défaut, solliciter certaines écoles d’ingénieurs ? gestionnaires de bureaux équipées de clim ? Hôtel Mercure ?",
+   "pilotage": null,
+   "decision": null,
+   "origine": "tableau"
+  },
+  {
+   "partie": 1,
+   "thematique": "Plan Communal de Sauvegarde",
+   "ordre": 5,
+   "libelle": "Suivi du Plan Vague de Chaleur et remontées d'informations",
+   "constat": "Un formulaire est rempli chaque jour par la DCCAS pour la Préfecture 94 avant 15h : décès, personnes vulnérables, lieux rafraîchis ouverts au public, bouches à incendie ouvertes…\nMultiples boucles WhatsApp « où on peut s'y perdre » ; difficultés à diffuser l'information et à obtenir des retours sur la fermeture / l'ouverture des équipements publics.",
+   "a_fonctionne": null,
+   "a_ameliorer": "Coordination de la remontée des informations entre directions.",
+   "mesures": "• Intégrer le suivi du Plan Vague de Chaleur (indicateurs) à la thématique PCS.\n• Travailler avec la DSI sur un formulaire permettant aux directions des remontées d'informations régulières.",
+   "pilotage": "DCCAS, DSI",
+   "decision": null,
+   "origine": "cr"
+  },
+  {
+   "partie": 1,
+   "thematique": "Plan Communal de Sauvegarde",
+   "ordre": 6,
+   "libelle": "Protocole avec l'Éducation nationale et accueil des enfants",
+   "constat": "Un protocole dédié, co-signé ville / Éducation nationale, fixe la conduite à tenir lors des canicules pour l'accueil des enfants.",
+   "a_fonctionne": null,
+   "a_ameliorer": "Faire classe à l'extérieur au regard des chaleurs dans certains bâtiments à forte inertie ?",
+   "mesures": "• Annexer ce protocole au PCS (à confirmer).",
+   "pilotage": null,
+   "decision": null,
+   "origine": "cr"
+  },
+  {
+   "partie": 1,
+   "thematique": "Plan Communal de Sauvegarde",
+   "ordre": 7,
+   "libelle": "Horaires d'ouverture des équipements publics en période de canicule",
+   "constat": "Exemple des crèches ouvertes dès 7h45 au lieu de 9h00 : l'adaptation des horaires des équipements a été abordée.",
+   "a_fonctionne": null,
+   "a_ameliorer": null,
+   "mesures": "• Définir la règle d'adaptation des horaires d'ouverture des équipements selon le niveau de vigilance.",
+   "pilotage": null,
+   "decision": null,
+   "origine": "cr"
+  },
+  {
+   "partie": 1,
+   "thematique": "Plan Communal de Sauvegarde",
+   "ordre": 8,
+   "libelle": "Partenariat avec des associations agréées de Protection Civile",
+   "constat": null,
+   "a_fonctionne": null,
+   "a_ameliorer": null,
+   "mesures": "• Construire un partenariat avec des associations agréées de Protection Civile (renfort de secouristes, centres d'accueil).",
+   "pilotage": null,
+   "decision": null,
+   "origine": "cr"
+  },
+  {
+   "partie": 1,
+   "thematique": "Conditions de travail des agents",
+   "ordre": 6,
+   "libelle": "Automatisation des mesures selon le niveau et le jour de vigilance",
+   "constat": "Ce n'est pas la même chose d'avoir une vigilance ORANGE / ROUGE un vendredi qu'un lundi. La question de l'automatisation de la mise en œuvre des actions (horaires de travail et autres) a été soulevée.",
+   "a_fonctionne": null,
+   "a_ameliorer": null,
+   "mesures": "• Construire une grille « niveau de vigilance × jour de la semaine » déclenchant automatiquement les mesures.\n• Une réunion spécifique sur la thématique « conditions de travail » est proposée.",
+   "pilotage": "DRH",
+   "decision": null,
+   "origine": "cr"
+  },
+  {
+   "partie": 1,
+   "thematique": "Conditions de travail des agents",
+   "ordre": 7,
+   "libelle": "Locaux en surchauffe (Lamant, CCAS, accueils du public)",
+   "constat": "Situation des accueils du public et de locaux en surchauffe comme Lamant ou le CCAS.",
+   "a_fonctionne": null,
+   "a_ameliorer": null,
+   "mesures": "• Recenser les locaux administratifs en surchauffe et prioriser les solutions (stores, brasseurs d'air, relocalisation d'accueils).",
+   "pilotage": null,
+   "decision": null,
+   "origine": "cr"
+  },
+  {
+   "partie": 1,
+   "thematique": "Conditions de travail des agents",
+   "ordre": 8,
+   "libelle": "Santé des agents pendant et après la canicule",
+   "constat": "L'impact de la canicule sur la santé des agents a été abordé, pendant l'épisode mais aussi dans les semaines qui ont suivi (collègues fatigué·es par les fortes chaleurs).",
+   "a_fonctionne": null,
+   "a_ameliorer": null,
+   "mesures": "• Prévoir un suivi / un point santé des agents après l'épisode (médecine de prévention).",
+   "pilotage": null,
+   "decision": null,
+   "origine": "cr"
+  },
+  {
+   "partie": 2,
+   "thematique": "Adaptabilité des équipements publics sensibles à la canicule",
+   "ordre": 4,
+   "libelle": "Seuils, lieux refuges et usages des bâtiments",
+   "constat": "Questions posées : seuils avec prise des températures, nécessité de lieux refuges, usages (comment aérer le bâtiment le matin, éviter l'entrée de chaleur).",
+   "a_fonctionne": null,
+   "a_ameliorer": "Concilier végétalisation des cours (plantation d'arbres) et risques liés au vent (tempête de fin août 2026). Dissocier l'adaptation hors période scolaire et pendant la période scolaire.",
+   "mesures": "• Définir des seuils de température déclenchant des mesures dans chaque équipement sensible.\n• Rédiger des consignes d'usage des bâtiments (aération matinale, protection solaire).",
+   "pilotage": null,
+   "decision": null,
+   "origine": "cr"
+  },
+  {
+   "partie": 2,
+   "thematique": "Adaptabilité des équipements publics sensibles à la canicule",
+   "ordre": 5,
+   "libelle": "Études d'adaptation : Banque des Territoires, Cerema (PAPI), autre prestataire, SPL GOSB",
+   "constat": "Trois ordres d'études : Banque des Territoires sur 10 groupes scolaires (diagnostic, propositions chiffrées) ; Cerema dans le cadre du PAPI pour les équipements en zones inondables ; un autre prestataire pour les équipements restants. La SPL du territoire GOSB a fait une offre de service pour la végétalisation des cours d'écoles et des espaces publics.",
+   "a_fonctionne": null,
+   "a_ameliorer": null,
+   "mesures": "• Ajouter le CMS dans les études / travaux d'adaptabilité à la canicule.",
+   "pilotage": "DBC",
+   "decision": null,
+   "origine": "cr"
+  },
+  {
+   "partie": 2,
+   "thematique": "Adaptabilité des autres équipements publics à la canicule",
+   "ordre": 3,
+   "libelle": "Fermeture du CMPP et cohérence des messages aux publics vulnérables",
+   "constat": "Ajouter la fermeture du CMPP à l'état des faits. Divergence entre les annonces aux publics vulnérables (« ne pas sortir ») et les rendez-vous programmés au CMPP.",
+   "a_fonctionne": null,
+   "a_ameliorer": null,
+   "mesures": "• Prévoir une règle commune de report / maintien des rendez-vous en période de vigilance.",
+   "pilotage": null,
+   "decision": null,
+   "origine": "cr"
+  },
+  {
+   "partie": 2,
+   "thematique": "Adaptabilité des autres équipements publics à la canicule",
+   "ordre": 4,
+   "libelle": "Cartographie des équipements adaptés et maillage des salles ouvertes",
+   "constat": null,
+   "a_fonctionne": null,
+   "a_ameliorer": null,
+   "mesures": "• Établir une cartographie des équipements publics plus ou moins adaptés aux fortes chaleurs.\n• Mailler les salles d'activités qu'il serait possible de maintenir ouvertes (associations).",
+   "pilotage": null,
+   "decision": null,
+   "origine": "cr"
+  },
+  {
+   "partie": 2,
+   "thematique": "Adaptabilité des autres équipements publics à la canicule",
+   "ordre": 5,
+   "libelle": "Maintenance préventive des équipements (frigos, climatisation…)",
+   "constat": "8 réfrigérateurs ont connu des surchauffes en juin.",
+   "a_fonctionne": null,
+   "a_ameliorer": null,
+   "mesures": "• Anticiper la maintenance des équipements sensibles (frigos, groupes froids) avant les périodes chaudes.",
+   "pilotage": null,
+   "decision": null,
+   "origine": "cr"
+  },
+  {
+   "partie": 3,
+   "thematique": "Dans l’espace public",
+   "ordre": 4,
+   "libelle": "Bouches à incendie ouvertes",
+   "constat": "Les bornes à incendie sont normalement équipées d'un système évitant leur ouverture ; constat malgré tout de l'ouverture de certaines.",
+   "a_fonctionne": null,
+   "a_ameliorer": null,
+   "mesures": "• Revoir le système anti-ouverture ; articuler avec le comptage demandé dans le formulaire préfectoral quotidien.",
+   "pilotage": null,
+   "decision": null,
+   "origine": "cr"
+  },
+  {
+   "partie": 3,
+   "thematique": "Dans l’espace public",
+   "ordre": 5,
+   "libelle": "Piscines de rue",
+   "constat": "Un thème n'a pas été abordé lors des échanges : les piscines de rue.",
+   "a_fonctionne": null,
+   "a_ameliorer": null,
+   "mesures": "• À compléter par les directions concernées.",
+   "pilotage": null,
+   "decision": null,
+   "origine": "cr"
+  },
+  {
+   "partie": 3,
+   "thematique": "Personnes vulnérables",
+   "ordre": 4,
+   "libelle": "Centres d'accueil rafraîchis (circulaire préfectorale de juillet)",
+   "constat": "La circulaire préfectorale de juillet pose : ouvrir un ou plusieurs centres d'accueil ; comment les équiper (matériel, stock d'eau) ; avec quel personnel formé aux premiers secours ; selon quels horaires (le top est donné par le Préfet) ; utiliser les ressources de santé existantes (CMS) ; faire appel à un prestataire type Sécurité Civile. Risque que l'État se désengage des publics vivant dans l'espace public (mise à l'abri).\nUne réunion spécifique sur cette thématique a été organisée courant novembre.",
+   "a_fonctionne": null,
+   "a_ameliorer": null,
+   "mesures": null,
+   "pilotage": "DG, DCCAS, DSANTE, DCOM",
+   "decision": null,
+   "origine": "cr"
+  }
+ ],
+ "comments": [
+  {
+   "cible_type": "thematique",
+   "thematique": "Plan Communal de Sauvegarde",
+   "body": "Intégrer dans la thématique le suivi du Plan Vague de Chaleur (indicateurs) – formulaire rempli chaque jour par la DCCAS pour transmission à la Préfecture 94 avant 15h, avec des données sur le nombre de décès, les personnes vulnérables, les lieux rafraîchis ouverts au public, mais aussi le nombre de bouches à incendie ouvertes… Nécessité d'une coordination de remontée des infos.",
+   "author_name": "C/R des échanges du 14 octobre 2026",
+   "is_cr": true
+  },
+  {
+   "cible_type": "thematique",
+   "thematique": "Plan Communal de Sauvegarde",
+   "body": "Annexer au PCS (?) le protocole dédié avec l'Éducation nationale co-signé ville / Éducation nationale sur la conduite à tenir lors des canicules sur l'accueil des enfants ; faire des classes à l'extérieur au regard des chaleurs dans certains bâtiments à forte inertie ?",
+   "author_name": "C/R des échanges du 14 octobre 2026",
+   "is_cr": true
+  },
+  {
+   "cible_type": "thematique",
+   "thematique": "Plan Communal de Sauvegarde",
+   "body": "Sujet d'ouverture des équipements publics abordé, avec l'adaptation des horaires, comme pour les crèches ouvertes dès 7h45 au lieu de 9h00.",
+   "author_name": "C/R des échanges du 14 octobre 2026",
+   "is_cr": true
+  },
+  {
+   "cible_type": "thematique",
+   "thematique": "Plan Communal de Sauvegarde",
+   "body": "Travailler sur un formulaire avec la DSI permettant aux directions des remontées d'informations régulières. Renvoie à l'existence de multiples boucles WhatsApp « où on peut s'y perdre ». Difficultés dans la diffusion des informations, mais aussi pour avoir des retours sur la fermeture / ouverture des équipements publics.",
+   "author_name": "C/R des échanges du 14 octobre 2026",
+   "is_cr": true
+  },
+  {
+   "cible_type": "thematique",
+   "thematique": "Plan Communal de Sauvegarde",
+   "body": "Partenariat à construire avec des associations agréées Protection Civile.",
+   "author_name": "C/R des échanges du 14 octobre 2026",
+   "is_cr": true
+  },
+  {
+   "cible_type": "thematique",
+   "thematique": "Conditions de travail des agents",
+   "body": "Nombreux échanges sur les horaires de travail : situation des collègues intervenant lors des évènements, horaires décalés (comme en Espagne), nombre de jours de télétravail, situation des accueils du public, locaux en surchauffe comme Lamant, CCAS… Rappel de la production d'une note à l'attention des services / directions, amendée au fur et à mesure des remontées de terrain ; objectif de la reprendre par un travail collectif. La question de l'automatisation de la mise en œuvre des actions (horaires de travail et autres) a été soulevée : ce n'est pas la même chose d'avoir une vigilance ORANGE / ROUGE un vendredi qu'un lundi. → Il est proposé l'organisation d'une réunion spécifique sur cette thématique.",
+   "author_name": "C/R des échanges du 14 octobre 2026",
+   "is_cr": true
+  },
+  {
+   "cible_type": "thematique",
+   "thematique": "Conditions de travail des agents",
+   "body": "La question des vêtements de travail a aussi été abordée, avec la démarche en cours par la DRH pour les collègues en charge de l'entretien des bâtiments (entre 400 et 500 agents).",
+   "author_name": "C/R des échanges du 14 octobre 2026",
+   "is_cr": true
+  },
+  {
+   "cible_type": "thematique",
+   "thematique": "Conditions de travail des agents",
+   "body": "L'impact de la canicule sur la santé des agents a aussi été abordé, pendant la canicule mais aussi dans les semaines qui ont suivi, avec des collègues notamment fatigué·es par les fortes chaleurs.",
+   "author_name": "C/R des échanges du 14 octobre 2026",
+   "is_cr": true
+  },
+  {
+   "cible_type": "thematique",
+   "thematique": "Adaptabilité des équipements publics sensibles à la canicule",
+   "body": "Dans l'état des faits, rajouter la fermeture du CMPP. Concernant les usagers du CMPP, constat d'une divergence entre les annonces auprès des publics vulnérables de ne pas sortir et les rendez-vous programmés au CMPP.",
+   "author_name": "C/R des échanges du 14 octobre 2026",
+   "is_cr": true
+  },
+  {
+   "cible_type": "thematique",
+   "thematique": "Adaptabilité des équipements publics sensibles à la canicule",
+   "body": "Il est proposé de rajouter le CMS dans les études / travaux d'adaptabilité à la canicule. Les études sont de 3 ordres : Banque des Territoires sur 10 groupes scolaires (diagnostic, propositions chiffrées d'intervention) ; Cerema dans le cadre du PAPI (Programme d'Actions de Prévention des Inondations) pour les équipements en zones inondables (extension aux canicules) ; un autre prestataire pour les équipements n'entrant pas dans les 2 premières études. La SPL du territoire GOSB a par ailleurs fait une offre de service pour la végétalisation des cours d'écoles et des espaces publics. Concernant les équipements scolaires, il convient de dissocier l'adaptation hors et pendant la période scolaire.",
+   "author_name": "C/R des échanges du 14 octobre 2026",
+   "is_cr": true
+  },
+  {
+   "cible_type": "thematique",
+   "thematique": "Adaptabilité des équipements publics sensibles à la canicule",
+   "body": "Question des seuils avec la prise des températures, nécessité des lieux refuges, usages (comment aérer le bâtiment le matin, comment éviter l'entrée de chaleur), comment concilier végétalisation des cours et plantation d'arbres avec les risques liés au vent (comme fin août 2026 avec la tempête).",
+   "author_name": "C/R des échanges du 14 octobre 2026",
+   "is_cr": true
+  },
+  {
+   "cible_type": "thematique",
+   "thematique": "Adaptabilité des autres équipements publics à la canicule",
+   "body": "Proposition d'établir une cartographie des équipements publics plus / moins adaptés aux fortes chaleurs, et un maillage des salles d'activités qu'il serait possible de maintenir ouvertes (associations).",
+   "author_name": "C/R des échanges du 14 octobre 2026",
+   "is_cr": true
+  },
+  {
+   "cible_type": "thematique",
+   "thematique": "Adaptabilité des autres équipements publics à la canicule",
+   "body": "La question de la maintenance des équipements tels que les frigos a aussi été abordée – 8 ont connu des surchauffes en juin.",
+   "author_name": "C/R des échanges du 14 octobre 2026",
+   "is_cr": true
+  },
+  {
+   "cible_type": "thematique",
+   "thematique": "Adaptabilité des autres équipements publics à la canicule",
+   "body": "Rappel que des travaux ont eu lieu cet été dans un certain nombre d'équipements publics (brasseurs d'air et autres) – voir l'onglet « Travaux ».",
+   "author_name": "C/R des échanges du 14 octobre 2026",
+   "is_cr": true
+  },
+  {
+   "cible_type": "thematique",
+   "thematique": "Evènementiels",
+   "body": "Question posée concernant l'uniformisation de l'annulation des évènements si nécessaire.",
+   "author_name": "C/R des échanges du 14 octobre 2026",
+   "is_cr": true
+  },
+  {
+   "cible_type": "thematique",
+   "thematique": "Dans l’espace public",
+   "body": "Un travail est en cours entre les services PLCI / DEP sur une cartographie des espaces équipés / à équiper en brumisateurs et fontaines à boire. Importance d'anticiper la maintenance de ces équipements afin qu'ils soient opérationnels avant les périodes chaudes (mai). Concernant les bornes à incendie, elles sont normalement équipées d'un système qui évite de les ouvrir ; constat malgré tout de l'ouverture de certaines. Système à revoir.",
+   "author_name": "C/R des échanges du 14 octobre 2026",
+   "is_cr": true
+  },
+  {
+   "cible_type": "thematique",
+   "thematique": "Dans l’espace public",
+   "body": "Un thème n'a pas été abordé : les piscines de rue. À compléter.",
+   "author_name": "C/R des échanges du 14 octobre 2026",
+   "is_cr": true
+  },
+  {
+   "cible_type": "thematique",
+   "thematique": "Personnes vulnérables",
+   "body": "La circulaire préfectorale de juillet est abordée avec les sujets suivants : ouvrir un ou plusieurs centres d'accueil, comment l'équiper (matériel, stock d'eau…), avec quel personnel formé aux premiers secours, selon quels horaires (le top est donné par le Préfet), utiliser les ressources existantes en matière de santé (CMS), faire appel à un prestataire type Sécurité Civile, autres…, risque que l'État se désengage des publics vivant dans l'espace public dont il a la charge (mise à l'abri). → Une réunion spécifique sur cette thématique a été organisée courant novembre.",
+   "author_name": "C/R des échanges du 14 octobre 2026",
+   "is_cr": true
+  },
+  {
+   "cible_type": "thematique",
+   "thematique": "Personnes vulnérables",
+   "body": "Juillet 2026 : annonce du renforcement du dispositif ORSEC « chaleurs extrêmes » (CHALEX) – mobilisation de l'ensemble des acteurs publics et privés pour assurer une prise en charge adaptée des populations, notamment les plus vulnérables, et garantir une information claire sur les comportements à adopter. Déclinaison à l'échelon communal (PCS) : inclure un volet chaleurs extrêmes. Vigilance orange : « aller-vers » (accompagnement des personnes vulnérables) ; vigilance orange / rouge : « aller-vers renforcé » ; vigilance rouge : « sortir de » (extraction des plus vulnérables de leur environnement inadapté aux canicules extrêmes).",
+   "author_name": "C/R des échanges du 14 octobre 2026",
+   "is_cr": true
+  }
+ ],
+ "links": [
+  {
+   "sujet": "Les équipements sensibles (1) : les écoles",
+   "engagements": [
+    {
+     "numero": 33,
+     "motif": "Végétalisation des cours d'école pour lutter contre les épisodes de canicule : objectif explicite du REX (cours = îlots de chaleur)."
+    },
+    {
+     "numero": 35,
+     "motif": "Réhabilitations thermiques du bâti : les diagnostics 10 groupes scolaires alimentent le programme de rénovation."
+    },
+    {
+     "numero": 46,
+     "motif": "Moyens dus aux élèves ivryen·nes : conditions d'accueil dans les écoles pendant les canicules."
+    }
+   ]
+  },
+  {
+   "sujet": "Les équipements sensibles (2) : les crèches",
+   "engagements": [
+    {
+     "numero": 35,
+     "motif": "Réhabilitation thermique du bâti : diagnostic à mener sur les 6 crèches."
+    },
+    {
+     "numero": 51,
+     "motif": "Nouvelles crèches (ZAC Confluence, Gagarine) : intégrer les extrêmes climatiques dès la conception."
+    }
+   ]
+  },
+  {
+   "sujet": "Les équipements sensibles (3) : les résidences autonomie",
+   "engagements": [
+    {
+     "numero": 5,
+     "motif": "Place des seniors dans la ville : résidences autonomie, chaleur dans les logements et coursives."
+    },
+    {
+     "numero": 25,
+     "motif": "Accès aux soins et santé publique : publics fragiles exposés à la canicule."
+    }
+   ]
+  },
+  {
+   "sujet": "Bâtiments publics actuels tels maison de quartier, centres techniques et administratifs, équipements culturels…",
+   "engagements": [
+    {
+     "numero": 22,
+     "motif": "Maisons de quartier : fermeture de Gagarine, horaires adaptés, permanence."
+    },
+    {
+     "numero": 35,
+     "motif": "Réhabilitations thermiques du bâti (isolation, protections solaires)."
+    }
+   ]
+  },
+  {
+   "sujet": "Futurs bâtiments publics",
+   "engagements": [
+    {
+     "numero": 35,
+     "motif": "Neutralité carbone / réhabilitation thermique : cahiers des charges climat."
+    },
+    {
+     "numero": 36,
+     "motif": "Cœur de ville et centre Jeanne Hachette (futur espace démarches)."
+    },
+    {
+     "numero": 50,
+     "motif": "Futur conservatoire et école d'arts plastiques : conception résiliente aux extrêmes climatiques."
+    },
+    {
+     "numero": 51,
+     "motif": "Crèche supplémentaire ZAC Confluence : conception résiliente aux extrêmes climatiques."
+    }
+   ]
+  },
+  {
+   "sujet": "Piscine municipale : fermeture pour entretien en période de canicule",
+   "engagements": [
+    {
+     "numero": 48,
+     "motif": "Piscine plus moderne et plus adaptée en centre-ville : la piscine actuelle a fermé pour entretien pendant la 2e canicule."
+    }
+   ]
+  },
+  {
+   "sujet": "Ouverture des parcs fermés la nuit",
+   "engagements": [
+    {
+     "numero": 34,
+     "motif": "Espace vert en bord de Seine / parcs et squares : extension des horaires d'ouverture en période chaude."
+    },
+    {
+     "numero": 36,
+     "motif": "Cœur de ville avec davantage d'espaces verts."
+    }
+   ]
+  },
+  {
+   "sujet": "Rafraichir les espaces publics",
+   "engagements": [
+    {
+     "numero": 33,
+     "motif": "Végétalisation de la ville et des cours d'école."
+    },
+    {
+     "numero": 34,
+     "motif": "Espaces verts en bord de Seine : fraîcheur, fontaines."
+    }
+   ]
+  },
+  {
+   "sujet": "Jours travaillés en fonction des ponts pour la propreté",
+   "engagements": [
+    {
+     "numero": 45,
+     "motif": "Réorganiser et optimiser le nettoyage des espaces publics (propreté 6 j/7)."
+    }
+   ]
+  },
+  {
+   "sujet": "Stationnement/ pollution à l’ozone",
+   "engagements": [
+    {
+     "numero": 43,
+     "motif": "Santé environnementale : transparence sur les émissions et pollution à l'ozone."
+    },
+    {
+     "numero": 39,
+     "motif": "Mobilités alternatives : stationnement et circulation en période de pic de pollution."
+    }
+   ]
+  },
+  {
+   "sujet": "Evènementiels à l’initiative de la ville : Ivry en Fêtes, 14 juillet, fêtes de quartiers….",
+   "engagements": [
+    {
+     "numero": 47,
+     "motif": "Soutien à la vie culturelle et sportive : annulation d'Ivry en Fêtes et du 14 juillet."
+    }
+   ]
+  },
+  {
+   "sujet": "Pratique sportive extérieur",
+   "engagements": [
+    {
+     "numero": 47,
+     "motif": "Vie sportive de la ville : cadre de la pratique extérieure en vigilance."
+    },
+    {
+     "numero": 49,
+     "motif": "Rénovation annuelle d'un terrain sportif : conditions de pratique en été."
+    }
+   ]
+  },
+  {
+   "sujet": "Sur l’espace public",
+   "engagements": [
+    {
+     "numero": 26,
+     "motif": "Bains-douches, bagagerie, laverie : réponse aux publics en grande précarité."
+    },
+    {
+     "numero": 23,
+     "motif": "Droit à être hébergé·e : risque de désengagement de l'État sur la mise à l'abri."
+    }
+   ]
+  },
+  {
+   "sujet": "Suivi par le CCAS",
+   "engagements": [
+    {
+     "numero": 25,
+     "motif": "Accès aux soins et santé publique."
+    },
+    {
+     "numero": 5,
+     "motif": "Place des seniors : appel quotidien des personnes inscrites au registre."
+    },
+    {
+     "numero": 26,
+     "motif": "Dispositifs pour les personnes en grande précarité."
+    }
+   ]
+  },
+  {
+   "sujet": "Centres d'accueil rafraîchis (circulaire préfectorale de juillet)",
+   "engagements": [
+    {
+     "numero": 25,
+     "motif": "Offre de santé publique (CMS) mobilisable dans les centres d'accueil."
+    },
+    {
+     "numero": 26,
+     "motif": "Accueil et services de première nécessité (eau, hygiène) pour les plus précaires."
+    },
+    {
+     "numero": 23,
+     "motif": "Mise à l'abri des personnes relevant de l'État."
+    }
+   ]
+  },
+  {
+   "sujet": "Adaptabilité de certains équipements publics pour accueillir des publics vulnérables (ou pas)",
+   "engagements": [
+    {
+     "numero": 25,
+     "motif": "Accueil de publics fragiles dans des salles rafraîchies."
+    }
+   ]
+  },
+  {
+   "sujet": "Études d'adaptation : Banque des Territoires, Cerema (PAPI), autre prestataire, SPL GOSB",
+   "engagements": [
+    {
+     "numero": 35,
+     "motif": "Études et diagnostics thermiques du patrimoine."
+    },
+    {
+     "numero": 33,
+     "motif": "SPL GOSB : offre de service sur la végétalisation des cours d'écoles."
+    }
+   ]
+  },
+  {
+   "sujet": "Bouches à incendie ouvertes",
+   "engagements": [
+    {
+     "numero": 45,
+     "motif": "Entretien et exploitation de l'espace public."
+    }
+   ]
+  },
+  {
+   "sujet": "Maintenance préventive des équipements (frigos, climatisation…)",
+   "engagements": [
+    {
+     "numero": 35,
+     "motif": "Entretien du bâti et des équipements techniques."
+    }
+   ]
+  }
+ ],
+ "actions": [
+  {
+   "sujet": "Système d’alerte – réception et diffusion",
+   "thematique": "Plan Communal de Sauvegarde",
+   "titre": "Intégrer le gardien de la mairie aux alertes pour diffusion (DG, Cabinet, cadre d'astreinte)",
+   "description": null,
+   "pilote_direction": "DG, DCOM",
+   "echeance": "2027-04-30",
+   "echeance_texte": "Avant la saison 2027",
+   "priorite": "haute",
+   "origine": "cr",
+   "engagements": []
+  },
+  {
+   "sujet": "Cellule de crise",
+   "thematique": "Plan Communal de Sauvegarde",
+   "titre": "Diffuser systématiquement les alertes aux directions",
+   "description": null,
+   "pilote_direction": "DG",
+   "echeance": "2027-04-30",
+   "echeance_texte": "Avant la saison 2027",
+   "priorite": "haute",
+   "origine": "cr",
+   "engagements": []
+  },
+  {
+   "sujet": "Cellule de crise",
+   "thematique": "Plan Communal de Sauvegarde",
+   "titre": "Fixer la fréquence des réunions de point d'étape et diffuser un compte rendu à chaque réunion",
+   "description": null,
+   "pilote_direction": "DG",
+   "echeance": "2027-04-30",
+   "echeance_texte": "Avant la saison 2027",
+   "priorite": "normale",
+   "origine": "cr",
+   "engagements": []
+  },
+  {
+   "sujet": "Alerte des habitants",
+   "thematique": "Plan Communal de Sauvegarde",
+   "titre": "Désigner un·e ou des référent·es à la Dircom pour les alertes",
+   "description": null,
+   "pilote_direction": "DCOM",
+   "echeance": "2027-04-30",
+   "echeance_texte": "Avant la saison 2027",
+   "priorite": "haute",
+   "origine": "cr",
+   "engagements": []
+  },
+  {
+   "sujet": "Alerte des habitants",
+   "thematique": "Plan Communal de Sauvegarde",
+   "titre": "Définir comment informer les publics éloignés (fracture numérique, personnes sans domicile)",
+   "description": null,
+   "pilote_direction": "DCOM, DCCAS",
+   "echeance": "2027-04-30",
+   "echeance_texte": "Avant la saison 2027",
+   "priorite": "normale",
+   "origine": "cr",
+   "engagements": []
+  },
+  {
+   "sujet": "Stationnement/ pollution à l’ozone",
+   "thematique": "Plan Communal de Sauvegarde",
+   "titre": "Étudier l'intérêt de la gratuité automatique du stationnement résidentiel selon le niveau de canicule",
+   "description": null,
+   "pilote_direction": "DEP",
+   "echeance": null,
+   "echeance_texte": "À étudier",
+   "priorite": "normale",
+   "origine": "cr",
+   "engagements": [
+    {
+     "numero": 39,
+     "motif": "Mobilités et stationnement."
+    }
+   ]
+  },
+  {
+   "sujet": "Suivi du Plan Vague de Chaleur et remontées d'informations",
+   "thematique": "Plan Communal de Sauvegarde",
+   "titre": "Concevoir avec la DSI un formulaire unique de remontée d'informations quotidiennes (remplace les boucles WhatsApp)",
+   "description": null,
+   "pilote_direction": "DCCAS, DSI",
+   "echeance": "2027-03-31",
+   "echeance_texte": "Avant la saison 2027",
+   "priorite": "haute",
+   "origine": "cr",
+   "engagements": []
+  },
+  {
+   "sujet": "Protocole avec l'Éducation nationale et accueil des enfants",
+   "thematique": "Plan Communal de Sauvegarde",
+   "titre": "Décider de l'annexion au PCS du protocole Éducation nationale et fixer les règles de classes à l'extérieur",
+   "description": null,
+   "pilote_direction": null,
+   "echeance": "2027-03-31",
+   "echeance_texte": "Avant la saison 2027",
+   "priorite": "normale",
+   "origine": "analyse",
+   "engagements": []
+  },
+  {
+   "sujet": "Horaires d'ouverture des équipements publics en période de canicule",
+   "thematique": "Plan Communal de Sauvegarde",
+   "titre": "Définir une règle d'adaptation des horaires d'ouverture des équipements (ex. crèches dès 7h45) par niveau de vigilance",
+   "description": null,
+   "pilote_direction": null,
+   "echeance": "2027-04-15",
+   "echeance_texte": "Avant la saison 2027",
+   "priorite": "normale",
+   "origine": "analyse",
+   "engagements": []
+  },
+  {
+   "sujet": "Partenariat avec des associations agréées de Protection Civile",
+   "thematique": "Plan Communal de Sauvegarde",
+   "titre": "Identifier et solliciter les associations agréées de Protection Civile pour un partenariat",
+   "description": null,
+   "pilote_direction": null,
+   "echeance": "2027-04-15",
+   "echeance_texte": "Avant la saison 2027",
+   "priorite": "normale",
+   "origine": "analyse",
+   "engagements": []
+  },
+  {
+   "sujet": "Évolution des horaires des agents",
+   "thematique": "Conditions de travail des agents",
+   "titre": "Retravailler la note sur l'adaptation des horaires selon la durée prévisible de canicule (ORANGE en particulier)",
+   "description": null,
+   "pilote_direction": "DRH",
+   "echeance": "2027-03-31",
+   "echeance_texte": "Avant la saison 2027",
+   "priorite": "haute",
+   "origine": "cr",
+   "engagements": []
+  },
+  {
+   "sujet": "Évolution des horaires des agents",
+   "thematique": "Conditions de travail des agents",
+   "titre": "Retravailler la note sur le nombre de jours de télétravail tout en maintenant une permanence tournante",
+   "description": null,
+   "pilote_direction": "DRH",
+   "echeance": "2027-03-31",
+   "echeance_texte": "Avant la saison 2027",
+   "priorite": "normale",
+   "origine": "cr",
+   "engagements": []
+  },
+  {
+   "sujet": "Évolution des horaires des agents",
+   "thematique": "Conditions de travail des agents",
+   "titre": "Revoir les modes de communication auprès de l'ensemble des agents (certains n'étaient pas informés)",
+   "description": null,
+   "pilote_direction": "DRH, DCOM",
+   "echeance": "2027-04-15",
+   "echeance_texte": "Avant la saison 2027",
+   "priorite": "normale",
+   "origine": "analyse",
+   "engagements": []
+  },
+  {
+   "sujet": "Automatisation des mesures selon le niveau et le jour de vigilance",
+   "thematique": "Conditions de travail des agents",
+   "titre": "Organiser la réunion spécifique « conditions de travail » et produire une grille niveau × jour de vigilance",
+   "description": null,
+   "pilote_direction": "DRH",
+   "echeance": "2027-01-31",
+   "echeance_texte": "Réunion à organiser",
+   "priorite": "haute",
+   "origine": "cr",
+   "engagements": []
+  },
+  {
+   "sujet": "Jours travaillés en fonction des ponts pour la propreté",
+   "thematique": "Conditions de travail des agents",
+   "titre": "Assurer une intervention de propreté 6 jours sur 7 tout au long de l'année (Ville, SEPUR, GOSB)",
+   "description": null,
+   "pilote_direction": "DG, DRH, DEP",
+   "echeance": "2027-04-30",
+   "echeance_texte": "Avant la saison 2027",
+   "priorite": "normale",
+   "origine": "cr",
+   "engagements": [
+    {
+     "numero": 45,
+     "motif": "Réorganiser et optimiser le nettoyage des espaces publics."
+    }
+   ]
+  },
+  {
+   "sujet": "Conditions d’exercices des missions des agents (1) : vêtement de travail et accessoire",
+   "thematique": "Conditions de travail des agents",
+   "titre": "Tester les vêtements de travail adaptés et les déployer avant l'été 2027 (400 à 500 agents d'entretien des bâtiments)",
+   "description": null,
+   "pilote_direction": "DRH",
+   "echeance": "2027-06-01",
+   "echeance_texte": "Avant l'été 2027",
+   "priorite": "haute",
+   "origine": "cr",
+   "engagements": []
+  },
+  {
+   "sujet": "Conditions d’exercices des missions des agents (2) : ventilateurs",
+   "thematique": "Conditions de travail des agents",
+   "titre": "Recenser les demandes de ventilateurs et vérifier l'absence de stocks « dormants » dans les directions",
+   "description": null,
+   "pilote_direction": "DSF, DAJCP",
+   "echeance": "2026-12-31",
+   "echeance_texte": "D'ici fin d'année",
+   "priorite": "haute",
+   "origine": "cr",
+   "engagements": []
+  },
+  {
+   "sujet": "Conditions d’exercices des missions des agents (2) : ventilateurs",
+   "thematique": "Conditions de travail des agents",
+   "titre": "Commander les ventilateurs recensés avant la saison",
+   "description": null,
+   "pilote_direction": "DSF, DAJCP",
+   "echeance": "2027-03-31",
+   "echeance_texte": "Avant la saison 2027",
+   "priorite": "normale",
+   "origine": "analyse",
+   "engagements": []
+  },
+  {
+   "sujet": "Accès aux centres techniques pour utilisation véhicules",
+   "thematique": "Conditions de travail des agents",
+   "titre": "Revoir les processus d'accès aux centres techniques (Garage, CT Rigaud), y compris l'accès aux pompes, les week-ends et congés",
+   "description": null,
+   "pilote_direction": "DEP",
+   "echeance": "2027-04-30",
+   "echeance_texte": "Avant la saison 2027",
+   "priorite": "normale",
+   "origine": "cr",
+   "engagements": []
+  },
+  {
+   "sujet": "Santé des agents pendant et après la canicule",
+   "thematique": "Conditions de travail des agents",
+   "titre": "Prévoir un point santé / suivi des agents après un épisode de canicule",
+   "description": null,
+   "pilote_direction": "DRH",
+   "echeance": "2027-04-30",
+   "echeance_texte": "Avant la saison 2027",
+   "priorite": "normale",
+   "origine": "analyse",
+   "engagements": []
+  },
+  {
+   "sujet": "Locaux en surchauffe (Lamant, CCAS, accueils du public)",
+   "thematique": "Conditions de travail des agents",
+   "titre": "Recenser les locaux administratifs en surchauffe et proposer des solutions priorisées",
+   "description": null,
+   "pilote_direction": "DBC, DRH",
+   "echeance": "2027-02-28",
+   "echeance_texte": "Hiver 2026-27",
+   "priorite": "normale",
+   "origine": "analyse",
+   "engagements": []
+  },
+  {
+   "sujet": "Les équipements sensibles (1) : les écoles",
+   "thematique": "Adaptabilité des équipements publics sensibles à la canicule",
+   "titre": "Mener les diagnostics sur 10 groupes scolaires (Banque des Territoires) et chiffrer les interventions",
+   "description": null,
+   "pilote_direction": "DBC, DSALE",
+   "echeance": "2027-02-28",
+   "echeance_texte": "Diagnostics en cours",
+   "priorite": "haute",
+   "origine": "cr",
+   "engagements": [
+    {
+     "numero": 35,
+     "motif": "Rénovation thermique du bâti."
+    }
+   ]
+  },
+  {
+   "sujet": "Les équipements sensibles (1) : les écoles",
+   "thematique": "Adaptabilité des équipements publics sensibles à la canicule",
+   "titre": "Réaliser les premiers travaux d'adaptation des écoles",
+   "description": null,
+   "pilote_direction": "DBC, DSALE",
+   "echeance": "2027-02-28",
+   "echeance_texte": "Dès février 2027",
+   "priorite": "haute",
+   "origine": "cr",
+   "engagements": [
+    {
+     "numero": 33,
+     "motif": "Cours d'école et épisodes de canicule."
+    }
+   ]
+  },
+  {
+   "sujet": "Les équipements sensibles (1) : les écoles",
+   "thematique": "Adaptabilité des équipements publics sensibles à la canicule",
+   "titre": "Étendre les diagnostics aux autres groupes scolaires par d'autres études",
+   "description": null,
+   "pilote_direction": "DBC, DSALE",
+   "echeance": "2027-06-30",
+   "echeance_texte": "2027",
+   "priorite": "normale",
+   "origine": "cr",
+   "engagements": []
+  },
+  {
+   "sujet": "Les équipements sensibles (1) : les écoles",
+   "thematique": "Adaptabilité des équipements publics sensibles à la canicule",
+   "titre": "Proposer un lieu rafraîchi dans chaque école (salle de restauration, salle polyvalente)",
+   "description": null,
+   "pilote_direction": "DBC, DSALE",
+   "echeance": "2027-05-01",
+   "echeance_texte": "Avant la saison 2027",
+   "priorite": "haute",
+   "origine": "cr",
+   "engagements": []
+  },
+  {
+   "sujet": "Les équipements sensibles (1) : les écoles",
+   "thematique": "Adaptabilité des équipements publics sensibles à la canicule",
+   "titre": "Engager la réflexion sur la végétalisation des cours d'écoles (arbres et risque de vent, offre SPL GOSB)",
+   "description": null,
+   "pilote_direction": "DBC, DSALE",
+   "echeance": "2027-06-30",
+   "echeance_texte": "2027",
+   "priorite": "normale",
+   "origine": "cr",
+   "engagements": [
+    {
+     "numero": 33,
+     "motif": "Végétalisation des cours d'école."
+    }
+   ]
+  },
+  {
+   "sujet": "Les équipements sensibles (2) : les crèches",
+   "thematique": "Adaptabilité des équipements publics sensibles à la canicule",
+   "titre": "Lancer l'étude diagnostic des 6 équipements de la Petite Enfance et proposer des lieux rafraîchis",
+   "description": null,
+   "pilote_direction": "DBC",
+   "echeance": "2027-03-31",
+   "echeance_texte": "Avant la saison 2027",
+   "priorite": "haute",
+   "origine": "cr",
+   "engagements": []
+  },
+  {
+   "sujet": "Les équipements sensibles (3) : les résidences autonomie",
+   "thematique": "Adaptabilité des équipements publics sensibles à la canicule",
+   "titre": "Lancer l'étude diagnostic des 2 résidences autonomie (logements, coursives) et équiper une salle rafraîchie par résidence",
+   "description": null,
+   "pilote_direction": "DBC, DCCAS",
+   "echeance": "2027-03-31",
+   "echeance_texte": "Avant la saison 2027",
+   "priorite": "haute",
+   "origine": "cr",
+   "engagements": []
+  },
+  {
+   "sujet": "Bâtiments publics actuels tels maison de quartier, centres techniques et administratifs, équipements culturels…",
+   "thematique": "Adaptabilité des autres équipements publics à la canicule",
+   "titre": "Réaliser des diagnostics sur les autres bâtiments (maisons de quartier, centres techniques et administratifs, équipements culturels)",
+   "description": null,
+   "pilote_direction": "DBC",
+   "echeance": "2027-06-30",
+   "echeance_texte": "2027",
+   "priorite": "normale",
+   "origine": "cr",
+   "engagements": []
+  },
+  {
+   "sujet": "Futurs bâtiments publics",
+   "thematique": "Adaptabilité des autres équipements publics à la canicule",
+   "titre": "Intégrer les extrêmes climatiques dans les cahiers des charges de consultation des futurs bâtiments",
+   "description": null,
+   "pilote_direction": "DBC, DAJCP",
+   "echeance": "2027-03-31",
+   "echeance_texte": "Avant les prochaines consultations",
+   "priorite": "haute",
+   "origine": "cr",
+   "engagements": [
+    {
+     "numero": 51,
+     "motif": "Nouvelles crèches."
+    },
+    {
+     "numero": 50,
+     "motif": "Futur conservatoire."
+    }
+   ]
+  },
+  {
+   "sujet": "Études d'adaptation : Banque des Territoires, Cerema (PAPI), autre prestataire, SPL GOSB",
+   "thematique": "Adaptabilité des équipements publics sensibles à la canicule",
+   "titre": "Intégrer le CMS dans les études / travaux d'adaptabilité",
+   "description": null,
+   "pilote_direction": "DBC",
+   "echeance": "2027-01-31",
+   "echeance_texte": "À court terme",
+   "priorite": "normale",
+   "origine": "cr",
+   "engagements": []
+  },
+  {
+   "sujet": "Seuils, lieux refuges et usages des bâtiments",
+   "thematique": "Adaptabilité des équipements publics sensibles à la canicule",
+   "titre": "Fixer des seuils de température et des consignes d'usage des bâtiments (aération matinale, protection solaire)",
+   "description": null,
+   "pilote_direction": null,
+   "echeance": "2027-04-15",
+   "echeance_texte": "Avant la saison 2027",
+   "priorite": "normale",
+   "origine": "analyse",
+   "engagements": []
+  },
+  {
+   "sujet": "Fermeture du CMPP et cohérence des messages aux publics vulnérables",
+   "thematique": "Adaptabilité des autres équipements publics à la canicule",
+   "titre": "Définir une règle de report / maintien des rendez-vous du CMPP en cohérence avec les annonces aux publics vulnérables",
+   "description": null,
+   "pilote_direction": null,
+   "echeance": "2027-04-15",
+   "echeance_texte": "Avant la saison 2027",
+   "priorite": "normale",
+   "origine": "analyse",
+   "engagements": []
+  },
+  {
+   "sujet": "Cartographie des équipements adaptés et maillage des salles ouvertes",
+   "thematique": "Adaptabilité des autres équipements publics à la canicule",
+   "titre": "Établir la cartographie des équipements publics adaptés / non adaptés aux fortes chaleurs",
+   "description": null,
+   "pilote_direction": null,
+   "echeance": "2027-03-31",
+   "echeance_texte": "Avant la saison 2027",
+   "priorite": "haute",
+   "origine": "cr",
+   "engagements": []
+  },
+  {
+   "sujet": "Maintenance préventive des équipements (frigos, climatisation…)",
+   "thematique": "Adaptabilité des autres équipements publics à la canicule",
+   "titre": "Planifier la maintenance des frigos et groupes froids avant mai (8 frigos en surchauffe en juin 2026)",
+   "description": null,
+   "pilote_direction": "DBC",
+   "echeance": "2027-04-30",
+   "echeance_texte": "Avant mai 2027",
+   "priorite": "haute",
+   "origine": "cr",
+   "engagements": []
+  },
+  {
+   "sujet": "Piscine municipale : fermeture pour entretien en période de canicule",
+   "thematique": "Cas de la piscine municipale",
+   "titre": "Programmer les fermetures pour entretien hors de la période mai-septembre",
+   "description": null,
+   "pilote_direction": "DSPORT",
+   "echeance": "2027-04-30",
+   "echeance_texte": "Avant la saison 2027",
+   "priorite": "haute",
+   "origine": "cr",
+   "engagements": [
+    {
+     "numero": 48,
+     "motif": "Piscine plus moderne et plus adaptée."
+    }
+   ]
+  },
+  {
+   "sujet": "Evènementiels à l’initiative de la ville : Ivry en Fêtes, 14 juillet, fêtes de quartiers….",
+   "thematique": "Evènementiels",
+   "titre": "Définir une méthode de décision d'annulation / report des évènements de la Ville selon le niveau de canicule",
+   "description": null,
+   "pilote_direction": "Cabinet, DG",
+   "echeance": "2027-03-31",
+   "echeance_texte": "Avant la saison 2027",
+   "priorite": "haute",
+   "origine": "cr",
+   "engagements": [
+    {
+     "numero": 47,
+     "motif": "Vie culturelle de la ville."
+    }
+   ]
+  },
+  {
+   "sujet": "Autres évènements à l’initiative d’associations, collectifs….",
+   "thematique": "Evènementiels",
+   "titre": "Intégrer dans les arrêtés d'occupation du domaine public un principe d'abrogation automatique en cas de force majeure (dont extrêmes climatiques)",
+   "description": null,
+   "pilote_direction": "Cabinet, DG, DDAC, DEP, DAJCP",
+   "echeance": "2027-03-31",
+   "echeance_texte": "Avant la saison 2027",
+   "priorite": "haute",
+   "origine": "cr",
+   "engagements": []
+  },
+  {
+   "sujet": "Autres évènements à l’initiative d’associations, collectifs….",
+   "thematique": "Evènementiels",
+   "titre": "Améliorer la communication en amont avec les associations et collectifs organisateurs",
+   "description": null,
+   "pilote_direction": "DDAC, DCOM",
+   "echeance": "2027-04-30",
+   "echeance_texte": "Avant la saison 2027",
+   "priorite": "normale",
+   "origine": "analyse",
+   "engagements": []
+  },
+  {
+   "sujet": "Ouverture des parcs fermés la nuit",
+   "thematique": "Dans l’espace public",
+   "titre": "Identifier d'autres parcs / squares à ouvrir la nuit et étendre l'ouverture dès la vigilance ORANGE",
+   "description": null,
+   "pilote_direction": "DDAC, DCOM",
+   "echeance": "2027-04-30",
+   "echeance_texte": "Avant la saison 2027",
+   "priorite": "normale",
+   "origine": "cr",
+   "engagements": [
+    {
+     "numero": 34,
+     "motif": "Espaces verts."
+    }
+   ]
+  },
+  {
+   "sujet": "Rafraichir les espaces publics",
+   "thematique": "Dans l’espace public",
+   "titre": "Vérifier avant mai le bon fonctionnement des brumisateurs, fontaines à eau et fontaines ornementales (Wallace, métro, Petits Bois)",
+   "description": null,
+   "pilote_direction": "DEP, DDAC, DBC, DSALE",
+   "echeance": "2027-04-30",
+   "echeance_texte": "Avant mai 2027",
+   "priorite": "haute",
+   "origine": "cr",
+   "engagements": [
+    {
+     "numero": 33,
+     "motif": "Végétalisation / rafraîchissement."
+    }
+   ]
+  },
+  {
+   "sujet": "Rafraichir les espaces publics",
+   "thematique": "Dans l’espace public",
+   "titre": "Doter chaque espace public et chaque école d'un système de brumisation et de fontaines à eau",
+   "description": null,
+   "pilote_direction": "DEP, DDAC, DBC, DSALE",
+   "echeance": "2027-06-30",
+   "echeance_texte": "2027",
+   "priorite": "normale",
+   "origine": "cr",
+   "engagements": [
+    {
+     "numero": 33,
+     "motif": "Végétalisation / rafraîchissement."
+    }
+   ]
+  },
+  {
+   "sujet": "Rafraichir les espaces publics",
+   "thematique": "Dans l’espace public",
+   "titre": "Acheter et stocker du matériel de secours pour les grands évènements (type Ivry en Fêtes)",
+   "description": null,
+   "pilote_direction": "DEP, DDAC",
+   "echeance": "2027-04-30",
+   "echeance_texte": "Avant la saison 2027",
+   "priorite": "normale",
+   "origine": "cr",
+   "engagements": []
+  },
+  {
+   "sujet": "Rafraichir les espaces publics",
+   "thematique": "Dans l’espace public",
+   "titre": "Réaliser avec PLCI / DEP la cartographie des espaces équipés / à équiper en brumisateurs et fontaines",
+   "description": null,
+   "pilote_direction": "DEP, DDAC",
+   "echeance": "2027-03-31",
+   "echeance_texte": "Travail en cours",
+   "priorite": "normale",
+   "origine": "cr",
+   "engagements": []
+  },
+  {
+   "sujet": "Pratique sportive extérieur",
+   "thematique": "Dans l’espace public",
+   "titre": "Définir le cadre de la pratique sportive extérieure en vigilance (limiter / interdire)",
+   "description": null,
+   "pilote_direction": "DSPORT",
+   "echeance": "2027-04-15",
+   "echeance_texte": "Avant la saison 2027",
+   "priorite": "normale",
+   "origine": "analyse",
+   "engagements": [
+    {
+     "numero": 47,
+     "motif": "Vie sportive de la ville."
+    }
+   ]
+  },
+  {
+   "sujet": "Sur l’espace public",
+   "thematique": "Personnes vulnérables",
+   "titre": "Définir le dispositif d'intervention des médiateurs auprès des personnes sans abri (eau, couvertures de survie) par niveau de vigilance",
+   "description": null,
+   "pilote_direction": null,
+   "echeance": "2027-04-15",
+   "echeance_texte": "Avant la saison 2027",
+   "priorite": "normale",
+   "origine": "analyse",
+   "engagements": [
+    {
+     "numero": 26,
+     "motif": "Grande précarité."
+    }
+   ]
+  },
+  {
+   "sujet": "Suivi par le CCAS",
+   "thematique": "Personnes vulnérables",
+   "titre": "Repenser le fichier des personnes vulnérables (contenu et extension) à la lumière de la circulaire préfectorale de juillet 2026",
+   "description": null,
+   "pilote_direction": "DG, DCCAS, DSANTE, DCOM",
+   "echeance": "2027-03-31",
+   "echeance_texte": "Avant la saison 2027",
+   "priorite": "haute",
+   "origine": "cr",
+   "engagements": [
+    {
+     "numero": 25,
+     "motif": "Accès aux soins."
+    },
+    {
+     "numero": 5,
+     "motif": "Seniors."
+    }
+   ]
+  },
+  {
+   "sujet": "Suivi par le CCAS",
+   "thematique": "Personnes vulnérables",
+   "titre": "Élargir le nombre d'agents mobilisables pour l'appel quotidien du registre (7 j / 7)",
+   "description": null,
+   "pilote_direction": "DCCAS, DRH",
+   "echeance": "2027-04-15",
+   "echeance_texte": "Avant la saison 2027",
+   "priorite": "normale",
+   "origine": "analyse",
+   "engagements": []
+  },
+  {
+   "sujet": "Centres d'accueil rafraîchis (circulaire préfectorale de juillet)",
+   "thematique": "Personnes vulnérables",
+   "titre": "Créer et équiper un ou plusieurs lieux d'accueil des personnes vulnérables avec personnel formé aux premiers secours",
+   "description": null,
+   "pilote_direction": "DG, DCCAS, DSANTE, DCOM",
+   "echeance": "2027-04-30",
+   "echeance_texte": "Avant la saison 2027",
+   "priorite": "haute",
+   "origine": "cr",
+   "engagements": [
+    {
+     "numero": 25,
+     "motif": "CMS et santé publique."
+    }
+   ]
+  },
+  {
+   "sujet": "Centres d'accueil rafraîchis (circulaire préfectorale de juillet)",
+   "thematique": "Personnes vulnérables",
+   "titre": "Étudier le recours à un prestataire type Sécurité Civile ou à des associations de Protection Civile",
+   "description": null,
+   "pilote_direction": "DG, DCCAS",
+   "echeance": "2027-02-28",
+   "echeance_texte": "Hiver 2026-27",
+   "priorite": "normale",
+   "origine": "cr",
+   "engagements": []
+  },
+  {
+   "sujet": "Adaptabilité de certains équipements publics pour accueillir des publics vulnérables (ou pas)",
+   "thematique": "Personnes vulnérables",
+   "titre": "Identifier les équipements publics pouvant servir de lieux rafraîchis et chiffrer les travaux d'adaptation",
+   "description": null,
+   "pilote_direction": "DBC, DCCAS",
+   "echeance": "2027-03-31",
+   "echeance_texte": "Avant la saison 2027",
+   "priorite": "haute",
+   "origine": "cr",
+   "engagements": []
+  },
+  {
+   "sujet": "Adaptabilité de certains équipements publics pour accueillir des publics vulnérables (ou pas)",
+   "thematique": "Personnes vulnérables",
+   "titre": "Étudier des solutions de repli : écoles d'ingénieurs, gestionnaires de bureaux climatisés, hôtel",
+   "description": null,
+   "pilote_direction": "DBC, DCCAS",
+   "echeance": "2027-03-31",
+   "echeance_texte": "Avant la saison 2027",
+   "priorite": "normale",
+   "origine": "cr",
+   "engagements": []
+  },
+  {
+   "sujet": "Adaptabilité de certains équipements publics pour accueillir des publics vulnérables (ou pas)",
+   "thematique": "Personnes vulnérables",
+   "titre": "Vérifier le bon fonctionnement des salles rafraîchies déclarées à la Préfecture (ex. Espace Robespierre) avant la saison",
+   "description": null,
+   "pilote_direction": "DBC",
+   "echeance": "2027-04-30",
+   "echeance_texte": "Avant mai 2027",
+   "priorite": "haute",
+   "origine": "cr",
+   "engagements": []
+  },
+  {
+   "sujet": "Piscines de rue",
+   "thematique": "Dans l’espace public",
+   "titre": "Compléter le thème « piscines de rue » (état des lieux, faisabilité, maintenance)",
+   "description": null,
+   "pilote_direction": "DEP, DSPORT",
+   "echeance": "2027-01-31",
+   "echeance_texte": "À compléter",
+   "priorite": "normale",
+   "origine": "analyse",
+   "engagements": []
+  },
+  {
+   "sujet": "Bouches à incendie ouvertes",
+   "thematique": "Dans l’espace public",
+   "titre": "Revoir le système anti-ouverture des bouches à incendie et le comptage quotidien",
+   "description": null,
+   "pilote_direction": "DEP",
+   "echeance": "2027-04-30",
+   "echeance_texte": "Avant la saison 2027",
+   "priorite": "normale",
+   "origine": "cr",
+   "engagements": []
+  }
+ ],
+ "reflexes": [
+  {
+   "moment": "preparation",
+   "ordre": 1,
+   "titre": "Contrôler les équipements de rafraîchissement avant mai",
+   "description": "Brumisateurs, fontaines à boire, fontaines ornementales, groupes froids et salles rafraîchies : vérifier le fonctionnement et réparer avant la première chaleur. Constats 2026 : brumisateurs en panne en mai-juin, salle rafraîchie de l'Espace Robespierre inopérante.",
+   "responsable": "DEP, DBC, DDAC, DSALE",
+   "delai": "Avant le 30 avril",
+   "origine": "cr",
+   "sujet": "Rafraichir les espaces publics",
+   "thematique": "Dans l’espace public"
+  },
+  {
+   "moment": "preparation",
+   "ordre": 2,
+   "titre": "Mettre à jour la chaîne d'alerte et d'astreinte",
+   "description": "Liste à jour des destinataires des alertes préfectorales (DG, DGST, Cabinet, cadre d'astreinte, gardien de la mairie) pour les nuits et week-ends.",
+   "responsable": "DG, DCOM",
+   "delai": "Avant le 30 avril",
+   "origine": "cr",
+   "sujet": "Système d’alerte – réception et diffusion",
+   "thematique": "Plan Communal de Sauvegarde"
+  },
+  {
+   "moment": "preparation",
+   "ordre": 3,
+   "titre": "Actualiser le registre des personnes vulnérables",
+   "description": "Fichier à jour et élargi selon la circulaire préfectorale de juillet 2026, avec agents formés à l'appel quotidien.",
+   "responsable": "DCCAS",
+   "delai": "Avant le 15 mai",
+   "origine": "cr",
+   "sujet": "Suivi par le CCAS",
+   "thematique": "Personnes vulnérables"
+  },
+  {
+   "moment": "preparation",
+   "ordre": 4,
+   "titre": "Recenser les ventilateurs, vêtements et stocks de matériel",
+   "description": "Chaque direction déclare ses besoins et ses stocks dormants ; commandes groupées avant la saison.",
+   "responsable": "Toutes les directions · DSF",
+   "delai": "Avant le 31 mars",
+   "origine": "cr",
+   "sujet": "Conditions d’exercices des missions des agents (2) : ventilateurs",
+   "thematique": "Conditions de travail des agents"
+  },
+  {
+   "moment": "preparation",
+   "ordre": 5,
+   "titre": "Ne planifier aucune fermeture pour entretien entre mai et septembre",
+   "description": "Piscine et autres équipements : s'assurer que les arrêts techniques n'interviennent pas pendant les périodes de canicule possibles.",
+   "responsable": "DSPORT, DBC",
+   "delai": "Avant le 30 avril",
+   "origine": "cr",
+   "sujet": "Piscine municipale : fermeture pour entretien en période de canicule",
+   "thematique": "Cas de la piscine municipale"
+  },
+  {
+   "moment": "preparation",
+   "ordre": 6,
+   "titre": "Prévoir la clause d'abrogation dans les arrêtés d'occupation du domaine public",
+   "description": "Principe d'abrogation automatique en cas de force majeure (extrêmes climatiques), à intégrer dans les arrêtés du maire.",
+   "responsable": "Cabinet, DDAC, DAJCP",
+   "delai": "Avant le 31 mars",
+   "origine": "cr",
+   "sujet": "Autres évènements à l’initiative d’associations, collectifs….",
+   "thematique": "Evènementiels"
+  },
+  {
+   "moment": "preparation",
+   "ordre": 7,
+   "titre": "Diffuser à tous les agents la note « canicule » mise à jour",
+   "description": "Note unique et collectivement amendée : horaires, télétravail avec permanence tournante, conduite à tenir, contacts.",
+   "responsable": "DRH, DCOM",
+   "delai": "Avant le 15 mai",
+   "origine": "analyse",
+   "sujet": "Évolution des horaires des agents",
+   "thematique": "Conditions de travail des agents"
+  },
+  {
+   "moment": "veille",
+   "ordre": 1,
+   "titre": "Vérifier les prévisions et prévenir son équipe",
+   "description": "Dès la vigilance jaune, chaque directeur·rice identifie ses services exposés (espace public, accueil du public, petite enfance, aide à domicile) et prévient ses équipes.",
+   "responsable": "Toutes les directions",
+   "delai": "Dès l'alerte jaune",
+   "origine": "analyse",
+   "sujet": null,
+   "thematique": null
+  },
+  {
+   "moment": "veille",
+   "ordre": 2,
+   "titre": "Anticiper selon le jour de la semaine",
+   "description": "Une vigilance qui tombe un vendredi ou avant un pont ne se gère pas comme un lundi : anticiper propreté, astreintes et permanences (cf. pont du 14 juillet).",
+   "responsable": "DG, DRH, DEP",
+   "delai": "J-2 avant le week-end / le pont",
+   "origine": "cr",
+   "sujet": "Automatisation des mesures selon le niveau et le jour de vigilance",
+   "thematique": "Conditions de travail des agents"
+  },
+  {
+   "moment": "orange",
+   "ordre": 1,
+   "titre": "Déclencher la cellule de crise PCS",
+   "description": "Dès l'alerte ORANGE : réunion de la cellule (DG, DRH, DCOM, DSI, DCCAS, DDU, DAC…), compte rendu diffusé à toutes les directions après chaque point d'étape.",
+   "responsable": "DG",
+   "delai": "Dans les 24 h",
+   "origine": "cr",
+   "sujet": "Cellule de crise",
+   "thematique": "Plan Communal de Sauvegarde"
+  },
+  {
+   "moment": "orange",
+   "ordre": 2,
+   "titre": "Diffuser l'alerte à toutes les directions",
+   "description": "Transmission systématique de l'alerte préfectorale aux directions et services, y compris gardien de la mairie en dehors des heures ouvrées.",
+   "responsable": "DG, DCOM",
+   "delai": "Immédiat",
+   "origine": "cr",
+   "sujet": "Système d’alerte – réception et diffusion",
+   "thematique": "Plan Communal de Sauvegarde"
+  },
+  {
+   "moment": "orange",
+   "ordre": 3,
+   "titre": "« Aller-vers » : appeler chaque jour les personnes vulnérables",
+   "description": "Appel 7 jours sur 7 des personnes inscrites au registre ; accompagnement des personnes vulnérables (dispositif CHALEX).",
+   "responsable": "DCCAS",
+   "delai": "Chaque jour",
+   "origine": "cr",
+   "sujet": "Suivi par le CCAS",
+   "thematique": "Personnes vulnérables"
+  },
+  {
+   "moment": "orange",
+   "ordre": 4,
+   "titre": "Transmettre le point de situation quotidien à la Préfecture 94 avant 15h",
+   "description": "Formulaire Plan Vague de Chaleur : nombre de décès, personnes vulnérables, lieux rafraîchis ouverts, bouches à incendie ouvertes. Chaque direction remonte ses données via le formulaire commun.",
+   "responsable": "DCCAS · toutes les directions",
+   "delai": "Chaque jour avant 15h",
+   "origine": "cr",
+   "sujet": "Suivi du Plan Vague de Chaleur et remontées d'informations",
+   "thematique": "Plan Communal de Sauvegarde"
+  },
+  {
+   "moment": "orange",
+   "ordre": 5,
+   "titre": "Appliquer les règles d'horaires et de télétravail décidées d'avance",
+   "description": "Pas de décision au coup par coup : application de la note (horaires décalés, télétravail avec permanence tournante), information de tous les agents.",
+   "responsable": "DRH · tous les encadrants",
+   "delai": "Dès l'alerte",
+   "origine": "cr",
+   "sujet": "Évolution des horaires des agents",
+   "thematique": "Conditions de travail des agents"
+  },
+  {
+   "moment": "orange",
+   "ordre": 6,
+   "titre": "Informer les habitants sur tous les canaux, y compris les publics éloignés",
+   "description": "Canaux numériques de la Ville, relais physiques (maisons de quartier, médiateurs) pour les personnes touchées par la fracture numérique.",
+   "responsable": "DCOM",
+   "delai": "Dès l'alerte",
+   "origine": "cr",
+   "sujet": "Alerte des habitants",
+   "thematique": "Plan Communal de Sauvegarde"
+  },
+  {
+   "moment": "orange",
+   "ordre": 7,
+   "titre": "Maintenir la propreté et l'entretien de l'espace public",
+   "description": "Aucune interruption de l'intervention des équipes sur l'espace public (pas de période de 3 jours sans passage).",
+   "responsable": "DEP",
+   "delai": "Chaque jour",
+   "origine": "cr",
+   "sujet": "Jours travaillés en fonction des ponts pour la propreté",
+   "thematique": "Conditions de travail des agents"
+  },
+  {
+   "moment": "orange",
+   "ordre": 8,
+   "titre": "Ouvrir les parcs et squares la nuit (extension proposée dès ORANGE)",
+   "description": "En 2026 les ouvertures des parcs des Alliés, Chevaleret et Monmousseau en vigilance ROUGE ont été très appréciées des familles : proposition de les anticiper dès ORANGE.",
+   "responsable": "DDAC, DCOM",
+   "delai": "Dès l'alerte ORANGE",
+   "origine": "analyse",
+   "sujet": "Ouverture des parcs fermés la nuit",
+   "thematique": "Dans l’espace public"
+  },
+  {
+   "moment": "orange",
+   "ordre": 9,
+   "titre": "Adapter les horaires d'ouverture des équipements et afficher les lieux rafraîchis",
+   "description": "Ouverture anticipée des crèches (dès 7h45), lieux rafraîchis par équipement, remontée à la cellule de crise des équipements ouverts / fermés.",
+   "responsable": "DBC, DSALE, DCCAS",
+   "delai": "Dès l'alerte",
+   "origine": "cr",
+   "sujet": "Horaires d'ouverture des équipements publics en période de canicule",
+   "thematique": "Plan Communal de Sauvegarde"
+  },
+  {
+   "moment": "rouge",
+   "ordre": 1,
+   "titre": "« Aller-vers renforcé » puis « sortir de »",
+   "description": "Vigilance orange/rouge : accompagnement renforcé. Vigilance rouge : extraction des plus vulnérables de leur environnement inadapté, vers un lieu d'accueil rafraîchi.",
+   "responsable": "DCCAS, DSANTE",
+   "delai": "Dès la vigilance rouge",
+   "origine": "cr",
+   "sujet": "Centres d'accueil rafraîchis (circulaire préfectorale de juillet)",
+   "thematique": "Personnes vulnérables"
+  },
+  {
+   "moment": "rouge",
+   "ordre": 2,
+   "titre": "Décider la fermeture / le maintien des écoles et crèches",
+   "description": "Critères et circuit de décision partagés avec l'Éducation nationale ; communication aux familles et mise en place d'accueils de repli. Précédent 2026 : fermeture des écoles du 24 au 26 juin, des crèches à 15h les 25 et 26 juin.",
+   "responsable": "Cabinet, DG, DSALE, DBC",
+   "delai": "Dès l'alerte rouge",
+   "origine": "cr",
+   "sujet": "Les équipements sensibles (1) : les écoles",
+   "thematique": "Adaptabilité des équipements publics sensibles à la canicule"
+  },
+  {
+   "moment": "rouge",
+   "ordre": 3,
+   "titre": "Appliquer la méthode d'annulation des évènements",
+   "description": "Décision d'annulation / report des évènements de la Ville (Ivry en Fêtes, 14 juillet, fêtes de quartier) et abrogation des arrêtés pour les évènements associatifs, avec information la veille.",
+   "responsable": "Cabinet, DG, DDAC, DEP, DAJCP",
+   "delai": "Dès l'alerte rouge",
+   "origine": "cr",
+   "sujet": "Evènementiels à l’initiative de la ville : Ivry en Fêtes, 14 juillet, fêtes de quartiers….",
+   "thematique": "Evènementiels"
+  },
+  {
+   "moment": "rouge",
+   "ordre": 4,
+   "titre": "Aller à la rencontre des personnes sans abri",
+   "description": "Médiateurs : distribution d'eau et de couvertures de survie ; coordination avec l'État sur la mise à l'abri.",
+   "responsable": "À définir (DDAC, DCCAS)",
+   "delai": "Chaque jour",
+   "origine": "cr",
+   "sujet": "Sur l’espace public",
+   "thematique": "Personnes vulnérables"
+  },
+  {
+   "moment": "rouge",
+   "ordre": 5,
+   "titre": "Encadrer la pratique sportive extérieure",
+   "description": "Limiter ou interdire la pratique sportive extérieure sur les équipements de la Ville ; informer clubs et associations.",
+   "responsable": "DSPORT",
+   "delai": "Dès l'alerte rouge",
+   "origine": "analyse",
+   "sujet": "Pratique sportive extérieur",
+   "thematique": "Dans l’espace public"
+  },
+  {
+   "moment": "apres",
+   "ordre": 1,
+   "titre": "Faire un point d'étape à chaud avec le CODIR",
+   "description": "Dans la semaine qui suit l'épisode : ce qui a fonctionné, ce qui a manqué, incidents d'équipements (frigos, brumisateurs), décisions à ajuster ; mise à jour de ce REX.",
+   "responsable": "DG · tous les directeurs",
+   "delai": "J+7",
+   "origine": "analyse",
+   "sujet": null,
+   "thematique": null
+  },
+  {
+   "moment": "apres",
+   "ordre": 2,
+   "titre": "Suivre la santé des agents dans les semaines suivantes",
+   "description": "Attention aux agents fatigués après l'épisode (cf. REX) ; point avec la médecine de prévention.",
+   "responsable": "DRH",
+   "delai": "J+15",
+   "origine": "cr",
+   "sujet": "Santé des agents pendant et après la canicule",
+   "thematique": "Conditions de travail des agents"
+  }
+ ],
+ "travaux": [
+  {
+   "saison": "ete",
+   "categorie": "Groupes scolaires — Brasseurs d'air et ventilateurs",
+   "equipement": "Maternelle Gabriel Péri",
+   "nature": "Fourniture et pose de 18 brasseurs d'air",
+   "date_realisation": "2026-04-01",
+   "date_texte": null,
+   "nb_brasseurs": 18,
+   "nb_ventilateurs": 0,
+   "observations": null
+  },
+  {
+   "saison": "ete",
+   "categorie": "Groupes scolaires — Brasseurs d'air et ventilateurs",
+   "equipement": "Maternelle Maximilien Robespierre",
+   "nature": "Fourniture et pose de 6 brasseurs d'air et 8 ventilateurs",
+   "date_realisation": "2026-04-01",
+   "date_texte": null,
+   "nb_brasseurs": 6,
+   "nb_ventilateurs": 8,
+   "observations": null
+  },
+  {
+   "saison": "ete",
+   "categorie": "Groupes scolaires — Brasseurs d'air et ventilateurs",
+   "equipement": "Elémentaire Albert Einstein",
+   "nature": "Fourniture et pose de 1 brasseur d'air et 14 ventilateurs",
+   "date_realisation": "2026-04-01",
+   "date_texte": null,
+   "nb_brasseurs": 1,
+   "nb_ventilateurs": 14,
+   "observations": null
+  },
+  {
+   "saison": "ete",
+   "categorie": "Groupes scolaires — Brasseurs d'air et ventilateurs",
+   "equipement": "Elémentaire Albert Einstein",
+   "nature": "Fourniture et pose de 12 brasseurs d'air et 4 ventilateurs",
+   "date_realisation": "2026-07-01",
+   "date_texte": null,
+   "nb_brasseurs": 12,
+   "nb_ventilateurs": 4,
+   "observations": null
+  },
+  {
+   "saison": "ete",
+   "categorie": "Groupes scolaires — Brasseurs d'air et ventilateurs",
+   "equipement": "Groupe Scolaire Dulcie September",
+   "nature": "Fourniture et pose de 22 brasseurs d'air et 30 ventilateurs",
+   "date_realisation": "2026-07-01",
+   "date_texte": null,
+   "nb_brasseurs": 22,
+   "nb_ventilateurs": 30,
+   "observations": null
+  },
+  {
+   "saison": "ete",
+   "categorie": "Groupes scolaires — Brasseurs d'air et ventilateurs",
+   "equipement": "Maternelle Henri Barbusse",
+   "nature": "Fourniture et pose de 2 brasseurs d'air et 36 ventilateurs",
+   "date_realisation": "2026-08-01",
+   "date_texte": null,
+   "nb_brasseurs": 2,
+   "nb_ventilateurs": 36,
+   "observations": null
+  },
+  {
+   "saison": "ete",
+   "categorie": "Groupes scolaires — Autres travaux",
+   "equipement": "Elémentaire Maurice Thorez",
+   "nature": "Réparation mécanisme stores et remplacement d'un moteur",
+   "date_realisation": "2026-04-01",
+   "date_texte": null,
+   "nb_brasseurs": 0,
+   "nb_ventilateurs": 0,
+   "observations": null
+  },
+  {
+   "saison": "ete",
+   "categorie": "Groupes scolaires — Autres travaux",
+   "equipement": "Maternelle Rosalind Franklin (1)",
+   "nature": "Remplacements stores",
+   "date_realisation": "2026-08-01",
+   "date_texte": null,
+   "nb_brasseurs": 0,
+   "nb_ventilateurs": 0,
+   "observations": null
+  },
+  {
+   "saison": "ete",
+   "categorie": "Groupes scolaires — Autres travaux",
+   "equipement": "Maternelle Rosalind Franklin (2)",
+   "nature": "Remplacements stores",
+   "date_realisation": "2026-11-01",
+   "date_texte": null,
+   "nb_brasseurs": 0,
+   "nb_ventilateurs": 0,
+   "observations": "Avancée de 2027 à 2026"
+  },
+  {
+   "saison": "ete",
+   "categorie": "Groupes scolaires — Autres travaux",
+   "equipement": "Rosalind Franklin",
+   "nature": "Réparation stores",
+   "date_realisation": "2026-09-01",
+   "date_texte": null,
+   "nb_brasseurs": 0,
+   "nb_ventilateurs": 0,
+   "observations": null
+  },
+  {
+   "saison": "ete",
+   "categorie": "Groupes scolaires — Autres travaux",
+   "equipement": "Groupe scolaire Guy Mocquet",
+   "nature": "Réparation stores + films solaires",
+   "date_realisation": "2026-09-01",
+   "date_texte": null,
+   "nb_brasseurs": 0,
+   "nb_ventilateurs": 0,
+   "observations": null
+  },
+  {
+   "saison": "ete",
+   "categorie": "Groupes scolaires — Autres travaux",
+   "equipement": "Groupe Scolaire Dulcie September",
+   "nature": "Implantation d'une brumisation",
+   "date_realisation": "2026-04-01",
+   "date_texte": null,
+   "nb_brasseurs": 0,
+   "nb_ventilateurs": 0,
+   "observations": null
+  },
+  {
+   "saison": "ete",
+   "categorie": "Groupes scolaires — Autres travaux",
+   "equipement": "Groupe scolaire Guy Mocquet",
+   "nature": "Implantation d'une brumisation",
+   "date_realisation": "2027-04-01",
+   "date_texte": null,
+   "nb_brasseurs": 0,
+   "nb_ventilateurs": 0,
+   "observations": null
+  },
+  {
+   "saison": "ete",
+   "categorie": "Groupes scolaires — Autres travaux",
+   "equipement": "Groupe scolaire Makarenko",
+   "nature": "Implantation d'une brumisation",
+   "date_realisation": "2027-04-01",
+   "date_texte": null,
+   "nb_brasseurs": 0,
+   "nb_ventilateurs": 0,
+   "observations": null
+  },
+  {
+   "saison": "ete",
+   "categorie": "Groupes scolaires — Autres travaux",
+   "equipement": "Groupes scolaires Anne Sylvestre, Langevin, Solomon, Rosa Parks",
+   "nature": "Remise en service des brumisateurs",
+   "date_realisation": null,
+   "date_texte": null,
+   "nb_brasseurs": 0,
+   "nb_ventilateurs": 0,
+   "observations": null
+  },
+  {
+   "saison": "ete",
+   "categorie": "Groupes scolaires — Autres travaux",
+   "equipement": "Toutes écoles",
+   "nature": "Pose stores et films",
+   "date_realisation": null,
+   "date_texte": null,
+   "nb_brasseurs": 0,
+   "nb_ventilateurs": 0,
+   "observations": null
+  },
+  {
+   "saison": "ete",
+   "categorie": "Autres équipements publics",
+   "equipement": "Complexe Sportif Venise Gosnat",
+   "nature": "Isolation thermique par l'extérieur des vestiaires",
+   "date_realisation": "2026-04-01",
+   "date_texte": null,
+   "nb_brasseurs": 0,
+   "nb_ventilateurs": 0,
+   "observations": null
+  },
+  {
+   "saison": "ete",
+   "categorie": "Autres équipements publics",
+   "equipement": "Cinéma luxy",
+   "nature": "Travaux d'étancheité toiture terrasse avec isolation",
+   "date_realisation": null,
+   "date_texte": "été 2026",
+   "nb_brasseurs": 0,
+   "nb_ventilateurs": 0,
+   "observations": null
+  },
+  {
+   "saison": "ete",
+   "categorie": "Autres équipements publics",
+   "equipement": "Piscine Robespierre",
+   "nature": "Travaux d'étancheité toiture avec isolation",
+   "date_realisation": null,
+   "date_texte": "Mai et Juin 2026",
+   "nb_brasseurs": 0,
+   "nb_ventilateurs": 0,
+   "observations": null
+  },
+  {
+   "saison": "ete",
+   "categorie": "Autres équipements publics",
+   "equipement": "Crèche Elisabeth",
+   "nature": "Réparation stores et volets",
+   "date_realisation": null,
+   "date_texte": "En attente",
+   "nb_brasseurs": 0,
+   "nb_ventilateurs": 0,
+   "observations": null
+  },
+  {
+   "saison": "ete",
+   "categorie": "Autres équipements publics",
+   "equipement": "CMS",
+   "nature": "Pose de store extérieur à l'accueil",
+   "date_realisation": "2026-04-01",
+   "date_texte": null,
+   "nb_brasseurs": 0,
+   "nb_ventilateurs": 0,
+   "observations": null
+  },
+  {
+   "saison": "ete",
+   "categorie": "Autres équipements publics",
+   "equipement": "Centre Jeanne Hachette PLCI",
+   "nature": "Pose de films solaires et stores",
+   "date_realisation": "2026-10-01",
+   "date_texte": null,
+   "nb_brasseurs": 0,
+   "nb_ventilateurs": 0,
+   "observations": null
+  },
+  {
+   "saison": "ete",
+   "categorie": "Autres équipements publics",
+   "equipement": "Centre Administratif Pablo Néruda",
+   "nature": "Pose d'un store extérieur",
+   "date_realisation": "2026-02-01",
+   "date_texte": null,
+   "nb_brasseurs": 0,
+   "nb_ventilateurs": 0,
+   "observations": null
+  },
+  {
+   "saison": "ete",
+   "categorie": "Autres équipements publics",
+   "equipement": "Centre Administratif Denise Millerioux",
+   "nature": "Pose de store banne",
+   "date_realisation": "2026-07-01",
+   "date_texte": null,
+   "nb_brasseurs": 0,
+   "nb_ventilateurs": 0,
+   "observations": null
+  },
+  {
+   "saison": "ete",
+   "categorie": "Autres équipements publics",
+   "equipement": "Espace Robespierre",
+   "nature": "Remplacement d'une batterie sur groupe froid",
+   "date_realisation": "2026-08-01",
+   "date_texte": null,
+   "nb_brasseurs": 0,
+   "nb_ventilateurs": 0,
+   "observations": null
+  },
+  {
+   "saison": "hiver",
+   "categorie": "Équipements publics",
+   "equipement": "Gymnase des épinettes",
+   "nature": "Remplacement de la production",
+   "date_realisation": "2026-09-01",
+   "date_texte": null,
+   "nb_brasseurs": 0,
+   "nb_ventilateurs": 0,
+   "observations": null
+  },
+  {
+   "saison": "hiver",
+   "categorie": "Équipements publics",
+   "equipement": "Crèche Elisabeth",
+   "nature": "Remplacement ballon ECS",
+   "date_realisation": "2026-09-01",
+   "date_texte": null,
+   "nb_brasseurs": 0,
+   "nb_ventilateurs": 0,
+   "observations": null
+  },
+  {
+   "saison": "hiver",
+   "categorie": "Équipements publics",
+   "equipement": "Maison de la citoyenneté JJ. Rousseau",
+   "nature": "Remplacement de la production",
+   "date_realisation": null,
+   "date_texte": "Septembre/octobre 2026",
+   "nb_brasseurs": 0,
+   "nb_ventilateurs": 0,
+   "observations": null
+  }
+ ]
+}

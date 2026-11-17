@@ -5,6 +5,30 @@ const ldapAuth = require('../../services/ldapAuth');
 const accessControl = require('../../services/accessControl');
 const { signToken } = require('../../middleware/auth');
 
+// Plafond de temps pour le contrôle d'accès avant de répondre à l'agent. Le
+// contrôle croise des référentiels distants lents (vue Oracle exposée via
+// postgres_fdw, résolution LDAP des groupes particuliers via le Hub DSI) : sans
+// plafond, une source lente fait dépasser le délai du reverse-proxy nginx et le
+// login se termine en 504 — l'agent voit « Request failed with status code 504 »
+// alors que le backend va très bien. On abandonne au bout de ce délai et on
+// laisse passer (fail-open, cf. checkAccessGroups) : mieux vaut autoriser un
+// agent dont l'appartenance n'a pas pu être vérifiée que le priver de l'accès
+// pour une panne technique. Les résultats étant mis en cache côté
+// accessControl, ce plafond ne se paie qu'à froid (démarrage du conteneur).
+const ACCESS_CHECK_TIMEOUT_MS = Number(process.env.ACCESS_CHECK_TIMEOUT_MS) || 8000;
+
+/** Rejette `promise` si elle n'est pas résolue dans `ms` ms. La promesse
+ * d'origine n'est pas annulée (aucun support de l'abandon dans les drivers
+ * utilisés) : elle est seulement oubliée, son résultat arrivant plus tard
+ * n'affectera plus personne — les charges en cours sont mémorisées en cache. */
+function withDeadline(promise, ms, message) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(message)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
 async function cacheAgent({ username, displayName, email, mobile, direction }) {
   await db
     .run(
@@ -21,17 +45,31 @@ async function cacheAgent({ username, displayName, email, mobile, direction }) {
     .catch((err) => console.warn('[auth] cache agent impossible :', err.message));
 }
 
+/** Mise à jour de `agents_cache` : information de confort (fiche agent, listes
+ * de correspondance), jamais nécessaire à l'authentification. Elle ne doit donc
+ * pas retarder la réponse au client — on l'envoie sans l'attendre, avec un
+ * plafond, pour qu'une base lente n'entraîne pas un timeout sur le login. */
+function cacheAgentInBackground(info) {
+  withDeadline(cacheAgent(info), 3000, 'délai dépassé')
+    .catch((err) => console.warn('[auth] cache agent non mis à jour :', err.message));
+}
+
 /** Restriction d'accès par groupe (DG/DGA, Directeurs, Resp. service,
  * groupes particuliers — cf. Admin → "Accès par groupe"). Appliquée sur
  * toute connexion agent, LDAP ou APM (le displayName suffit pour matcher un
  * niveau RH par nom ; employeeId/memberOfDns, disponibles seulement via le
  * LDAP direct, affinent le matching et sont seuls utilisables pour les
  * groupes particuliers). Renvoie un message d'erreur si refusé, sinon null.
- * Échec de la vérification elle-même (base RH/Hub injoignable...) :
- * n'exclut pas l'agent pour une raison technique qui ne le concerne pas. */
+ * Échec de la vérification elle-même (base RH/Hub injoignable, Oracle FDW qui
+ * ne répond pas, délai dépassé...) : n'exclut pas l'agent pour une raison
+ * technique qui ne le concerne pas. */
 async function checkAccessGroups({ employeeId, memberOfDns, username, displayName, email }) {
   try {
-    const authorized = await accessControl.isAgentAuthorized({ employeeId, memberOfDns, username, displayName, email });
+    const authorized = await withDeadline(
+      accessControl.isAgentAuthorized({ employeeId, memberOfDns, username, displayName, email }),
+      ACCESS_CHECK_TIMEOUT_MS,
+      `délai de ${ACCESS_CHECK_TIMEOUT_MS} ms dépassé`
+    );
     if (!authorized) return "Accès non autorisé — votre compte n'appartient à aucun groupe habilité";
     return null;
   } catch (err) {
@@ -64,7 +102,7 @@ async function loginAgentViaLdap(username, password) {
   if (accessError) return { ok: false, status: 403, error: accessError };
 
   const displayName = agent.displayName || username;
-  await cacheAgent({ username, displayName, email: agent.mail, mobile: agent.mobile, direction: agent.direction });
+  cacheAgentInBackground({ username, displayName, email: agent.mail, mobile: agent.mobile, direction: agent.direction });
 
   const user = { sub: username, role: 'agent', displayName, direction: agent.direction, email: agent.mail };
   return { ok: true, token: signToken(user), user };
@@ -96,7 +134,7 @@ async function loginAgentViaApm(username, password) {
   const accessError = await checkAccessGroups({ username, displayName, email });
   if (accessError) return { ok: false, status: 403, error: accessError };
 
-  await cacheAgent({ username, displayName, email, mobile, direction });
+  cacheAgentInBackground({ username, displayName, email, mobile, direction });
 
   const user = { sub: username, role: 'agent', displayName, direction, email };
   return { ok: true, token: signToken(user), user };

@@ -67,17 +67,26 @@ export default function RichTextEditor({ value, onChange, onBlur, onFocus, place
         return true
       },
     },
-    onUpdate: ({ editor }) => onChange(editor.getHTML()),
+    // Ne propage que les modifications réellement faites par l'utilisateur
+    // (éditeur en focus) — une resynchronisation programmatique depuis les
+    // props (cf. useEffect plus bas) se produit justement quand l'éditeur
+    // n'a PAS le focus, et ne doit jamais déclencher une écriture.
+    onUpdate: ({ editor }) => {
+      if (editor.isFocused) onChange(editor.getHTML())
+    },
     onBlur: () => onBlur?.(),
     onFocus: () => onFocus?.(),
   })
 
   // Resynchronise l'éditeur si la valeur change depuis l'extérieur (ex.
   // rechargement de la fiche, mise à jour live par un autre utilisateur)
-  // sans perdre le focus/curseur en cours d'édition.
+  // sans perdre le focus/curseur en cours d'édition. `emitUpdate: false` :
+  // sans ça, TipTap déclenche onUpdate (donc onChange, donc une écriture)
+  // à chaque resynchronisation programmatique — y compris au montage —
+  // alors qu'aucune modification n'a été faite par l'utilisateur.
   useEffect(() => {
     if (editor && value !== editor.getHTML() && !editor.isFocused) {
-      editor.commands.setContent(value || '')
+      editor.commands.setContent(value || '', { emitUpdate: false })
     }
   }, [value, editor])
 

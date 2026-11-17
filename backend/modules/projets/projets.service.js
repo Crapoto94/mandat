@@ -43,7 +43,7 @@ async function list({ userSub, isAdmin, engagementId }) {
   const params = [];
   if (!isAdmin) {
     params.push(userSub);
-    clauses.push(`EXISTS (SELECT 1 FROM projet_membres pm WHERE pm.projet_id = p.id AND pm.user_sub = $${params.length})`);
+    clauses.push(`EXISTS (SELECT 1 FROM assigned_roles ar WHERE ar.projet_id = p.id AND ar.agent_username = $${params.length})`);
   }
   if (engagementId) {
     params.push(engagementId);
@@ -54,7 +54,7 @@ async function list({ userSub, isAdmin, engagementId }) {
     `SELECT p.*, et.libelle AS etat_libelle, et.couleur AS etat_couleur,
             m.libelle AS meteo_libelle, m.emoji AS meteo_emoji, m.couleur AS meteo_couleur,
             e.numero AS engagement_numero, e.contenu AS engagement_contenu,
-            (SELECT COUNT(*)::int FROM projet_membres pm WHERE pm.projet_id = p.id) AS membre_count
+            (SELECT COUNT(DISTINCT ar.agent_username)::int FROM assigned_roles ar WHERE ar.projet_id = p.id) AS membre_count
      FROM projets p
      LEFT JOIN etats et ON et.code = p.etat_code
      LEFT JOIN meteos m ON m.code = p.meteo_code
@@ -72,8 +72,11 @@ async function listForEngagement(engagementId, { userSub, isAdmin }) {
   return list({ userSub, isAdmin, engagementId });
 }
 
+/** Est membre d'un projet quiconque y a au moins un rôle assigné (cf.
+ * assigned_roles, table partagée avec les engagements — module "Rôles
+ * assignés" commun). */
 async function isMember(projetId, userSub) {
-  const row = await db.get(`SELECT 1 FROM projet_membres WHERE projet_id = $1 AND user_sub = $2`, [projetId, userSub]);
+  const row = await db.get(`SELECT 1 FROM assigned_roles WHERE projet_id = $1 AND agent_username = $2`, [projetId, userSub]);
   return !!row;
 }
 
@@ -91,14 +94,19 @@ async function getById(id) {
   );
   if (!projet) return null;
 
-  const [membres, steps, comments, history] = await Promise.all([
-    db.all(`SELECT * FROM projet_membres WHERE projet_id = $1 ORDER BY added_at ASC`, [id]),
+  const [roles, steps, comments, history] = await Promise.all([
+    db.all(
+      `SELECT ar.*, r.libelle AS role_libelle FROM assigned_roles ar
+       JOIN roles r ON r.id = ar.role_id
+       WHERE ar.projet_id = $1 ORDER BY ar.created_at ASC`,
+      [id]
+    ),
     db.all(`SELECT * FROM projet_steps WHERE projet_id = $1 ORDER BY date_etape ASC NULLS LAST, created_at ASC`, [id]),
     db.all(`SELECT * FROM projet_comments WHERE projet_id = $1 ORDER BY created_at ASC`, [id]),
     db.all(`SELECT * FROM projet_history WHERE projet_id = $1 ORDER BY changed_at DESC`, [id]),
   ]);
 
-  return { ...projet, membres, steps, comments, history };
+  return { ...projet, roles, steps, comments, history };
 }
 
 async function create(patch, author) {
@@ -123,16 +131,22 @@ async function create(patch, author) {
     ]
   );
 
-  // Créateur = membre d'office, sinon il perdrait immédiatement l'accès à
-  // ce qu'il vient de créer (accès réservé aux membres).
-  if (author) {
-    await db
-      .run(
-        `INSERT INTO projet_membres (projet_id, user_sub, display_name, added_by) VALUES ($1, $2, $3, $2)
-         ON CONFLICT (projet_id, user_sub) DO NOTHING`,
-        [projet.id, patch.created_by_sub || author, author]
-      )
-      .catch(() => {});
+  // Créateur = propriétaire d'office (rôle "Propriétaire", niveau
+  // administration), sinon il perdrait immédiatement l'accès à ce qu'il
+  // vient de créer (accès réservé aux membres = agents ayant au moins un
+  // rôle assigné sur ce projet) — et ne pourrait plus y assigner d'autres
+  // agents, action réservée au niveau administration.
+  if (author && patch.created_by_sub) {
+    const ownerRole = await db.get(`SELECT id FROM roles WHERE libelle = 'Propriétaire'`);
+    if (ownerRole) {
+      await db
+        .run(
+          `INSERT INTO assigned_roles (projet_id, role_id, agent_username, agent_display_name, created_by)
+           VALUES ($1, $2, $3, $4, $4)`,
+          [projet.id, ownerRole.id, patch.created_by_sub, author]
+        )
+        .catch(() => {});
+    }
   }
 
   if (projet.engagement_id) await recomputeEngagementAggregate(projet.engagement_id);
@@ -185,10 +199,11 @@ async function remove(id) {
   if (!current) return { ok: false, status: 404, error: 'Projet introuvable' };
 
   // Nettoie les fichiers de la base documentaire sur disque avant que le
-  // ON DELETE CASCADE (projets → projet_documents) ne supprime les lignes
-  // qui en gardaient la trace.
-  const documentsService = require('./documents.service');
-  const storedNames = await documentsService.listAllStoredNames(id).catch(() => []);
+  // ON DELETE CASCADE (projets → doc_documents) ne supprime les lignes qui
+  // en gardaient la trace — module partagé avec les engagements, cf.
+  // modules/documents/.
+  const documentsService = require('../documents/documents.service');
+  const storedNames = await documentsService.listAllStoredNames({ projetId: id }).catch(() => []);
 
   await db.run(`DELETE FROM projets WHERE id = $1`, [id]);
   documentsService.deleteStoredFiles(storedNames);
@@ -197,21 +212,10 @@ async function remove(id) {
   return { ok: true };
 }
 
-async function addMember(projetId, { user_sub, display_name, direction, role }, addedBy) {
-  if (!user_sub || !display_name) throw Object.assign(new Error('user_sub et display_name requis'), { status: 400 });
-  return db.get(
-    `INSERT INTO projet_membres (projet_id, user_sub, display_name, direction, role, added_by)
-     VALUES ($1, $2, $3, $4, $5, $6)
-     ON CONFLICT (projet_id, user_sub) DO UPDATE SET display_name = EXCLUDED.display_name, direction = EXCLUDED.direction, role = EXCLUDED.role
-     RETURNING *`,
-    [projetId, user_sub, display_name, direction || null, role || null, addedBy || null]
-  );
-}
-
-async function removeMember(projetId, memberId) {
-  const result = await db.run(`DELETE FROM projet_membres WHERE id = $1 AND projet_id = $2`, [memberId, projetId]);
-  return result.changes > 0;
-}
+// L'ajout/retrait de membres passe désormais par le module "Rôles assignés"
+// partagé (cf. modules/roles/) — assigner un rôle à un agent le rend membre
+// du projet, lui en retirer le dernier rôle le retire de la liste des
+// membres. Plus de gestion de "membres" séparée ici.
 
 module.exports = {
   list,
@@ -221,7 +225,5 @@ module.exports = {
   create,
   update,
   remove,
-  addMember,
-  removeMember,
   recomputeEngagementAggregate,
 };

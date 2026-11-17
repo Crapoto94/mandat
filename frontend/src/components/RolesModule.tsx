@@ -1,15 +1,24 @@
 import { useEffect, useRef, useState } from 'react'
 import { api, apiErrorMessage } from '../lib/api'
-import type { AgentSearchResult, EngagementRole, RoleDef } from '../types'
+import { ownerBase } from '../lib/owner'
+import type { AgentSearchResult, AssignedRole, ModuleOwner, RoleDef } from '../types'
 import { Users, X, Search } from 'lucide-react'
 
 interface Props {
-  engagementId: number
-  roles: EngagementRole[]
+  owner: ModuleOwner
+  roles: AssignedRole[]
   onChange: () => void
+  /** Assigner/retirer un rôle est une action d'administration — masqué si absent. */
+  canAdminister?: boolean
 }
 
-export default function RolesSection({ engagementId, roles, onChange }: Props) {
+/**
+ * Rôles assignés — module identique pour un engagement ou un projet (même
+ * composant, même API sous /engagements/:id/roles ou /projets/:id/roles —
+ * cf. backend/modules/assignedRoles/).
+ */
+export default function RolesModule({ owner, roles, onChange, canAdminister = true }: Props) {
+  const base = ownerBase(owner)
   const [roleDefs, setRoleDefs] = useState<RoleDef[]>([])
   const [roleId, setRoleId] = useState<number | ''>('')
   const [query, setQuery] = useState('')
@@ -50,7 +59,7 @@ export default function RolesSection({ engagementId, roles, onChange }: Props) {
     setBusy(true)
     setError(null)
     try {
-      await api.post(`/engagements/${engagementId}/roles`, {
+      await api.post(`${base}/roles`, {
         role_id: roleId,
         agent_username: selected?.username || selected?.sAMAccountName || null,
         agent_display_name: selected?.displayName || selected?.name || query.trim(),
@@ -68,7 +77,7 @@ export default function RolesSection({ engagementId, roles, onChange }: Props) {
   }
 
   async function remove(id: number) {
-    await api.delete(`/engagements/${engagementId}/roles/${id}`)
+    await api.delete(`${base}/roles/${id}`)
     onChange()
   }
 
@@ -89,14 +98,22 @@ export default function RolesSection({ engagementId, roles, onChange }: Props) {
                 <span className="font-medium text-slate-800">{r.agent_display_name}</span>
                 {r.agent_direction && <span className="text-slate-400"> · {r.agent_direction}</span>}
               </span>
-              <button onClick={() => remove(r.id)} className="text-slate-400 hover:text-red-600" title="Retirer">
-                <X size={15} />
-              </button>
+              {canAdminister && (
+                <button onClick={() => remove(r.id)} className="text-slate-400 hover:text-red-600" title="Retirer">
+                  <X size={15} />
+                </button>
+              )}
             </li>
           ))}
         </ul>
       )}
+      {owner.kind === 'projet' && !roles.length && (
+        <p className="mb-4 text-xs text-slate-400">
+          Aucun rôle assigné — sans au moins un rôle assigné, plus personne ne serait membre de ce projet.
+        </p>
+      )}
 
+      {canAdminister && (
       <form onSubmit={submit} className="flex flex-wrap items-end gap-2">
         <div className="relative flex-1 min-w-[200px]">
           <label className="mb-1 block text-xs font-medium text-slate-500">Agent</label>
@@ -161,6 +178,7 @@ export default function RolesSection({ engagementId, roles, onChange }: Props) {
           Assigner
         </button>
       </form>
+      )}
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
     </div>
   )

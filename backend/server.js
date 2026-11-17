@@ -31,7 +31,13 @@ const alertsRoutes = require('./modules/engagements/alerts.routes');
 const alertsDigestJob = require('./jobs/alertsDigest');
 const feedbackRoutes = require('./modules/feedback/feedback.routes');
 const projetsRoutes = require('./modules/projets/projets.routes');
-const projetDocumentsRoutes = require('./modules/projets/documents.routes');
+// Modules "widgets" partagés à l'identique entre projets et engagements —
+// chacun monté deux fois ci-dessous, une fois par type de fiche
+// (middleware tagOwnerKind), cf. modules/documents/access.js.
+const sharedDocumentsRoutes = require('./modules/documents/documents.routes');
+const assignedRolesRoutes = require('./modules/assignedRoles/assignedRoles.routes');
+const moduleLayoutRoutes = require('./modules/layout/layout.routes');
+const rexRoutes = require('./modules/rex/rex.routes');
 
 const app = express();
 const PORT = process.env.PORT || 5151;
@@ -62,7 +68,7 @@ app.get('/api/status', async (req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/engagements', engagementsRoutes);
-app.use('/api/engagements', engagementTimelineRoutes); // /:id/roles, /:id/steps
+app.use('/api/engagements', engagementTimelineRoutes); // /:id/steps
 app.use('/api/engagements', locksRoutes); // /:id/locks (édition collaborative)
 app.use('/api', commentsRoutes); // expose /api/engagements/:id/comments
 app.use('/api/roles', rolesRoutes);
@@ -80,7 +86,23 @@ app.use('/api', attachmentsRoutes); // /api/engagements/:id/attachments, /api/at
 app.use('/api/alerts', alertsRoutes); // /api/alerts/mine, POST|DELETE /api/alerts/:id
 app.use('/api/feedback', feedbackRoutes); // demandes/bugs — soumission libre, liste réservée admin
 app.use('/api/projets', projetsRoutes); // accès réservé aux membres (+ admin)
-app.use('/api/projets', projetDocumentsRoutes); // base documentaire (dossiers, fichiers, zip, métadonnées)
+app.use('/api/rex', rexRoutes); // REX Canicule : retour d'expérience collaboratif du CODIR
+
+// Modules "widgets" partagés à l'identique entre projets et engagements
+// (base documentaire, rôles assignés, disposition des modules) — même
+// routeur monté deux fois, le middleware ne fait que taguer le type de
+// fiche pour que le routeur choisisse la bonne colonne/le bon contrôle
+// d'accès (cf. modules/documents/access.js).
+const tagOwnerKind = (kind) => (req, res, next) => {
+  req.ownerKind = kind;
+  next();
+};
+app.use('/api/projets', tagOwnerKind('projet'), sharedDocumentsRoutes);
+app.use('/api/engagements', tagOwnerKind('engagement'), sharedDocumentsRoutes);
+app.use('/api/projets', tagOwnerKind('projet'), assignedRolesRoutes);
+app.use('/api/engagements', tagOwnerKind('engagement'), assignedRolesRoutes);
+app.use('/api/projets', tagOwnerKind('projet'), moduleLayoutRoutes);
+app.use('/api/engagements', tagOwnerKind('engagement'), moduleLayoutRoutes);
 
 app.use((req, res) => res.status(404).json({ error: 'Route inconnue' }));
 

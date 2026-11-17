@@ -14,12 +14,18 @@ function validateSchemaName(name) {
 }
 
 // Tous les identifiants proviennent du .env — aucune valeur en dur ici.
+// Plafond d'attente pour obtenir une connexion du pool (5 s par défaut côté pg :
+// c'est-à-dire l'attente indéfinie) : sans lui, une base saturée ou injoignable
+// laisse la requête pendre jusqu'au délai du reverse-proxy, qui répond alors
+// 504 au client sans que le backend n'ait rien à se reprocher. Un timeout ici
+// transforme ce blocage en erreur explicite, remontée dans les logs.
 const pool = new Pool({
   user: process.env.POSTGRES_USER,
   host: process.env.POSTGRES_HOST,
   database: process.env.POSTGRES_DB || 'ivry_admin',
   password: process.env.POSTGRES_PASSWORD,
   port: process.env.POSTGRES_PORT || 5432,
+  connectionTimeoutMillis: Number(process.env.POSTGRES_CONNECT_TIMEOUT_MS) || 5000,
 });
 
 // Impose le schéma dédié sur chaque nouvelle connexion du pool : toutes les

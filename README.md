@@ -31,6 +31,43 @@ API centrale APM pour l'authentification AD / mail / SMS.
   pour préparer la restitution en plénière — page dédiée `/plenaire`.
 - **Historique** de toutes les modifications (qui a changé quoi, et quand).
 
+## REX Canicule 2026
+
+Espace de travail collaboratif du CODIR pour le retour d'expérience de la canicule
+(menu **REX Canicule**, route `/rex-canicule`), construit à partir des documents du
+dossier [`Canicule/`](./Canicule) (compte rendu du 14 octobre 2026 et tableau des
+travaux de confort été/hiver). Il suit la même logique que les engagements du mandat :
+
+- **Retours d'expérience** : les 3 parties du document → thématiques → sujets
+  (constat, ce qui a fonctionné, à améliorer, mesures 2027, pilotage, décision),
+  avec statut (à discuter → à arbitrer en CODIR → validé → en œuvre → réalisé),
+  discussion, historique et **position de chaque direction** (d'accord / sous réserve
+  / pas d'accord, avec un mot obligatoire en cas de réserve).
+- **Plan d'actions** : actions à réaliser avant la saison (1er mai 2027, modifiable via
+  `REX_DATE_CIBLE`), avec pilote, échéance, « Je prends », et **rattachement aux
+  engagements du mandat**. La fiche d'un engagement affiche en retour le REX qui le
+  concerne. Les actions et rattachements déduits de l'analyse des documents sont
+  marqués « à confirmer » tant qu'un agent ne les a pas confirmés ou modifiés.
+- **Réflexes communs** : ce que toutes les directions font à chaque moment (avant la
+  saison, veille, vigilance orange, vigilance rouge, après l'épisode), validés
+  direction par direction ; une « vue fiche » imprimable.
+- **Travaux** de confort d'été / d'hiver (brasseurs d'air, stores, brumisation…).
+- **Synthèse** : compte à rebours, niveau de préparation, ce qui attend la direction
+  de l'agent (pastille dans le menu), sujets à arbitrer, ce qu'il reste à compléter,
+  participation des directions du CODIR, activité récente.
+
+Mise en place (après `npm run migrate`, qui applique `026_rex_canicule.sql`) :
+
+```bash
+cd backend
+npm run seed-rex            # charge backend/seed/rex-canicule.json (rejouable, sans doublon)
+npm run seed-rex -- --dry-run
+```
+
+Les engagements du mandat doivent déjà être importés (`npm run import`) pour que les
+liens vers le mandat soient créés. Tout agent connecté peut contribuer ; la suppression
+est réservée à l'auteur et aux admins, et chaque modification est tracée.
+
 ## Authentification
 
 Deux mécanismes, cf. [`middleware/auth.js`](./backend/middleware/auth.js) :
@@ -149,7 +186,15 @@ docker compose up -d --build backend frontend   # sans `db` si POSTGRES_HOST (ba
 > server {
 >     listen 443 ssl;
 >     server_name mandat.ivry.local;
->     location /api/ { proxy_pass http://<hôte-docker>:5151; proxy_set_header Host $host; }
+>     location /api/ {
+>         proxy_pass http://<hôte-docker>:5151;
+>         proxy_set_header Host $host;
+>         # Le backend plafonne lui-même le contrôle d'accès à la connexion
+>         # (ACCESS_CHECK_TIMEOUT_MS, 8 s) : garder ce délai lui laisse la
+>         # marge, sinon le 504 est renvoyé au navigateur alors que le
+>         # backend, lui, va très bien.
+>         proxy_read_timeout 120s;
+>     }
 >     location /     { proxy_pass http://<hôte-docker>:5150; proxy_set_header Host $host; }
 > }
 > ```

@@ -66,6 +66,9 @@ export interface Engagement {
   projetsLies?: Projet[]
   projets_count?: number
   projets_apercu?: { id: number; nom: string; description: string | null }[]
+  /** Niveau d'accès effectif de l'utilisateur courant sur cette fiche —
+   * cf. services/permissions.js. */
+  myAccessLevel?: NiveauAcces
 }
 
 export interface FieldProposal {
@@ -110,15 +113,22 @@ export interface TrashedAttachment extends Attachment {
   engagement_contenu: string
 }
 
+export type NiveauAcces = 'consultation' | 'modification' | 'administration'
+
 export interface RoleDef {
   id: number
   libelle: string
   ordre: number
+  niveau_acces: NiveauAcces
 }
 
-export interface EngagementRole {
+/** Assignation d'un rôle du catalogue à un agent — module partagé entre
+ * projets et engagements (table assigned_roles) : exactement un des deux
+ * id de rattachement est renseigné. */
+export interface AssignedRole {
   id: number
-  engagement_id: number
+  engagement_id: number | null
+  projet_id: number | null
   role_id: number
   role_libelle: string
   agent_username: string | null
@@ -126,6 +136,19 @@ export interface EngagementRole {
   agent_direction: string | null
   created_by: string | null
   created_at: string
+}
+
+/** @deprecated alias de AssignedRole, conservé pour ne pas tout renommer d'un coup. */
+export type EngagementRole = AssignedRole
+
+/** Type de "propriétaire" possible pour un module partagé (documents,
+ * rôles assignés, disposition des widgets). */
+export type ModuleOwner = { kind: 'engagement'; id: number } | { kind: 'projet'; id: number }
+
+export interface ModuleLayoutEntry {
+  module_key: string
+  enabled: boolean
+  position: number
 }
 
 export interface EngagementStep {
@@ -280,15 +303,19 @@ export interface Projet {
   created_at: string
   updated_at: string
   membre_count?: number
-  membres?: ProjetMembre[]
+  roles?: AssignedRole[]
   steps?: ProjetStep[]
   comments?: ProjetComment[]
   history?: ProjetHistoryEntry[]
+  /** Niveau d'accès effectif de l'utilisateur courant sur cette fiche —
+   * cf. services/permissions.js. */
+  myAccessLevel?: NiveauAcces
 }
 
 export interface ProjetFolder {
   id: number
-  projet_id: number
+  projet_id: number | null
+  engagement_id: number | null
   parent_id: number | null
   nom: string
   created_by: string | null
@@ -297,7 +324,8 @@ export interface ProjetFolder {
 
 export interface ProjetDocument {
   id: number
-  projet_id: number
+  projet_id: number | null
+  engagement_id: number | null
   folder_id: number | null
   stored_name: string
   original_name: string
@@ -321,6 +349,10 @@ export interface ProjetDocumentVersion {
   size_bytes: number | null
   uploaded_by: string | null
   created_at: string
+}
+
+export interface TrashedProjetDocument extends ProjetDocument {
+  projet_nom: string
 }
 
 export interface ProjetMetadataField {

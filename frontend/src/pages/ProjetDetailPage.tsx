@@ -2,36 +2,47 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import { api, apiErrorMessage } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
-import type { AgentSearchResult, Etat, Meteo, Projet, ProjetComment, ProjetMembre, ProjetStep } from '../types'
+import { useDialogs } from '../hooks/useDialogs'
+import { useModuleLayout } from '../hooks/useModuleLayout'
+import type { Etat, Meteo, ModuleOwner, Projet, ProjetComment, ProjetStep } from '../types'
 import EtatBadge from '../components/EtatBadge'
 import MeteoPicker from '../components/MeteoPicker'
 import ToggleSwitch from '../components/ToggleSwitch'
 import RichTextEditor from '../components/RichTextEditor'
-import ProjetDocuments from '../components/ProjetDocuments'
+import DocumentsModule from '../components/DocumentsModule'
+import RolesModule from '../components/RolesModule'
+import ModuleFrame from '../components/ModuleFrame'
+import ModuleSettingsModal from '../components/ModuleSettingsModal'
+import { atLeast } from '../lib/access'
 import {
   ArrowLeft,
   Users,
-  UserPlus,
   X,
   Trash2,
   Send,
   Pencil,
+  Folder,
   GitCommitHorizontal,
   MessageSquare,
+  Settings,
   Infinity as InfinityIcon,
 } from 'lucide-react'
 
+const DEFAULT_MODULE_ORDER = ['roles', 'documents', 'steps', 'comments']
+const MODULE_META: Record<string, { title: string; icon: React.ComponentType<{ size?: number; className?: string }> }> = {
+  roles: { title: 'Rôles assignés', icon: Users },
+  documents: { title: 'Documents', icon: Folder },
+  steps: { title: 'Étapes', icon: GitCommitHorizontal },
+  comments: { title: 'Échanges', icon: MessageSquare },
+}
+
 export default function ProjetDetailPage() {
   const { id } = useParams()
-  const { user } = useAuth()
   const [projet, setProjet] = useState<Projet | null>(null)
   const [etats, setEtats] = useState<Etat[]>([])
   const [meteos, setMeteos] = useState<Meteo[]>([])
   const [notFound, setNotFound] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [commentBody, setCommentBody] = useState('')
-  const [stepDate, setStepDate] = useState('')
-  const [stepDesc, setStepDesc] = useState('')
 
   function load() {
     api
@@ -59,36 +70,6 @@ export default function ProjetDetailPage() {
     }
   }
 
-  async function submitComment(e: FormEvent) {
-    e.preventDefault()
-    if (!commentBody.trim()) return
-    try {
-      await api.post(`/projets/${id}/comments`, { body: commentBody })
-      setCommentBody('')
-      load()
-    } catch (err) {
-      setError(apiErrorMessage(err, "Impossible d'ajouter le commentaire"))
-    }
-  }
-
-  async function submitStep(e: FormEvent) {
-    e.preventDefault()
-    if (!stepDesc.trim()) return
-    try {
-      await api.post(`/projets/${id}/steps`, { date_etape: stepDate || null, description: stepDesc.trim() })
-      setStepDate('')
-      setStepDesc('')
-      load()
-    } catch (err) {
-      setError(apiErrorMessage(err, "Impossible d'ajouter l'étape"))
-    }
-  }
-
-  async function removeStep(stepId: number) {
-    await api.delete(`/projets/${id}/steps/${stepId}`)
-    load()
-  }
-
   if (notFound) {
     return (
       <div className="space-y-4">
@@ -104,66 +85,68 @@ export default function ProjetDetailPage() {
 
   if (!projet) return <p className="p-8 text-center text-slate-500">Chargement…</p>
 
-  return (
-    <div className="space-y-6">
-      {projet.engagement_id ? (
-        <Link
-          to={`/engagements/${projet.engagement_id}`}
-          className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-ville-blue"
-        >
-          <ArrowLeft size={15} /> Retour à l'engagement
-        </Link>
-      ) : (
-        <Link to="/projets" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-ville-blue">
-          <ArrowLeft size={15} /> Retour aux projets
-        </Link>
-      )}
+  return <ProjetBody projet={projet} etats={etats} meteos={meteos} error={error} load={load} patch={patch} />
+}
 
-      {error && <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+function ProjetBody({
+  projet,
+  etats,
+  meteos,
+  error,
+  load,
+  patch,
+}: {
+  projet: Projet
+  etats: Etat[]
+  meteos: Meteo[]
+  error: string | null
+  load: () => void
+  patch: (body: Record<string, unknown>) => Promise<void>
+}) {
+  const { user } = useAuth()
+  const [commentBody, setCommentBody] = useState('')
+  const [moduleSettingsOpen, setModuleSettingsOpen] = useState(false)
+  const [stepDate, setStepDate] = useState('')
+  const [stepDesc, setStepDesc] = useState('')
+  const owner: ModuleOwner = { kind: 'projet', id: projet.id }
+  const { layout, toggle, reorder } = useModuleLayout(owner, DEFAULT_MODULE_ORDER)
+  const canEdit = atLeast(projet.myAccessLevel, 'modification')
+  const canAdminister = atLeast(projet.myAccessLevel, 'administration')
 
-      <HeaderCard projet={projet} onSaved={load} />
+  async function submitComment(e: FormEvent) {
+    e.preventDefault()
+    if (!commentBody.trim()) return
+    try {
+      await api.post(`/projets/${projet.id}/comments`, { body: commentBody })
+      setCommentBody('')
+      load()
+    } catch {
+      // le message d'erreur global de la fiche suffit
+    }
+  }
 
-      {projet.engagement_id && (
-        <p className="text-sm text-slate-500">
-          Lié à l'engagement{' '}
-          <Link to={`/engagements/${projet.engagement_id}`} className="font-medium text-ville-blue hover:underline">
-            n°{projet.engagement_numero} — {projet.engagement_contenu}
-          </Link>
-        </p>
-      )}
+  async function submitStep(e: FormEvent) {
+    e.preventDefault()
+    if (!stepDesc.trim()) return
+    try {
+      await api.post(`/projets/${projet.id}/steps`, { date_etape: stepDate || null, description: stepDesc.trim() })
+      setStepDate('')
+      setStepDesc('')
+      load()
+    } catch {
+      // idem
+    }
+  }
 
-      <div className="rounded-xl border border-slate-200 bg-white p-5">
-        <h2 className="mb-4 text-sm font-semibold text-slate-800">Point d'avancement</h2>
-        <div className="flex flex-wrap items-end gap-6">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">État d'avancement</label>
-            <select
-              value={projet.etat_code}
-              onChange={(e) => patch({ etat_code: e.target.value })}
-              className="w-full max-w-xs rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-ville-blue focus:outline-none"
-            >
-              {etats.map((e) => (
-                <option key={e.code} value={e.code}>
-                  {e.libelle}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">Météo</label>
-            <MeteoPicker meteos={meteos} value={projet.meteo_code} onChange={(code) => patch({ meteo_code: code })} />
-          </div>
-        </div>
-        <div className="mt-4">
-          <label className="mb-1 block text-xs font-medium text-slate-500">Description — point atteint</label>
-          <RichTextEditor value={projet.description || ''} onChange={(html) => patch({ description: html })} />
-        </div>
-      </div>
+  async function removeStep(stepId: number) {
+    await api.delete(`/projets/${projet.id}/steps/${stepId}`)
+    load()
+  }
 
-      <MembresSection projet={projet} onChange={load} />
-
-      <ProjetDocuments projetId={projet.id} />
-
+  const moduleContent: Record<string, React.ReactNode> = {
+    roles: <RolesModule owner={owner} roles={projet.roles || []} onChange={load} canAdminister={canAdminister} />,
+    documents: <DocumentsModule owner={owner} canEdit={canEdit} canAdminister={canAdminister} />,
+    steps: (
       <div className="rounded-xl border border-slate-200 bg-white p-5">
         <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800">
           <GitCommitHorizontal size={16} /> Étapes
@@ -182,15 +165,18 @@ export default function ProjetDetailPage() {
                     </p>
                     <p className="text-sm text-slate-800">{s.description}</p>
                   </div>
-                  <button onClick={() => removeStep(s.id)} className="shrink-0 text-slate-400 hover:text-red-600">
-                    <X size={14} />
-                  </button>
+                  {canEdit && (
+                    <button onClick={() => removeStep(s.id)} className="shrink-0 text-slate-400 hover:text-red-600">
+                      <X size={14} />
+                    </button>
+                  )}
                 </div>
               </li>
             ))}
           </ol>
         )}
         {!projet.steps?.length && <p className="mb-4 text-sm text-slate-400">Aucune étape renseignée.</p>}
+        {canEdit && (
         <form onSubmit={submitStep} className="flex flex-wrap items-end gap-2 border-t border-slate-100 pt-4">
           <div>
             <label className="mb-1 block text-xs font-medium text-slate-500">Date (optionnelle)</label>
@@ -217,49 +203,170 @@ export default function ProjetDetailPage() {
             Ajouter
           </button>
         </form>
+        )}
       </div>
-
+    ),
+    comments: (
       <div className="rounded-xl border border-slate-200 bg-white p-5">
         <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800">
           <MessageSquare size={16} /> Échanges ({projet.comments?.length || 0})
         </h2>
         <div className="mb-4 space-y-3">
           {projet.comments?.map((c: ProjetComment) => (
-            <ProjetCommentItem key={c.id} comment={c} projetId={projet.id} canEdit={!!c.author_sub && c.author_sub === user?.sub} onChanged={load} />
+            <ProjetCommentItem key={c.id} comment={c} projetId={projet.id} canEdit={!!c.author_sub && c.author_sub === user?.sub && canEdit} onChanged={load} />
           ))}
           {!projet.comments?.length && <p className="text-sm text-slate-400">Aucun échange pour l'instant.</p>}
         </div>
-        <form onSubmit={submitComment} className="flex items-start gap-2">
-          <textarea
-            value={commentBody}
-            onChange={(e) => setCommentBody(e.target.value)}
-            placeholder={`Écrire un commentaire en tant que ${user?.displayName}...`}
-            rows={2}
-            className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-ville-blue focus:outline-none"
-          />
-          <button type="submit" className="rounded-md bg-ville-blue p-2.5 text-white hover:opacity-90">
-            <Send size={16} />
-          </button>
-        </form>
+        {canEdit ? (
+          <form onSubmit={submitComment} className="flex items-start gap-2">
+            <textarea
+              value={commentBody}
+              onChange={(e) => setCommentBody(e.target.value)}
+              placeholder={`Écrire un commentaire en tant que ${user?.displayName}...`}
+              rows={2}
+              className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-ville-blue focus:outline-none"
+            />
+            <button type="submit" className="rounded-md bg-ville-blue p-2.5 text-white hover:opacity-90">
+              <Send size={16} />
+            </button>
+          </form>
+        ) : (
+          <p className="text-xs text-slate-400">Accès en consultation seule.</p>
+        )}
       </div>
+    ),
+  }
+
+  return (
+    <div className="space-y-6">
+      {projet.engagement_id ? (
+        <Link
+          to={`/engagements/${projet.engagement_id}`}
+          className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-ville-blue"
+        >
+          <ArrowLeft size={15} /> Retour à l'engagement
+        </Link>
+      ) : (
+        <Link to="/projets" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-ville-blue">
+          <ArrowLeft size={15} /> Retour aux projets
+        </Link>
+      )}
+
+      {error && <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+
+      <HeaderCard projet={projet} onSaved={load} canEdit={canEdit} canAdminister={canAdminister} />
+
+      {projet.engagement_id && (
+        <p className="text-sm text-slate-500">
+          Lié à l'engagement{' '}
+          <Link to={`/engagements/${projet.engagement_id}`} className="font-medium text-ville-blue hover:underline">
+            n°{projet.engagement_numero} — {projet.engagement_contenu}
+          </Link>
+        </p>
+      )}
+
+      <div className="rounded-xl border border-slate-200 bg-white p-5">
+        <h2 className="mb-4 text-sm font-semibold text-slate-800">Point d'avancement</h2>
+        <div className="flex flex-wrap items-end gap-6">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-500">État d'avancement</label>
+            <select
+              value={projet.etat_code}
+              onChange={(e) => patch({ etat_code: e.target.value })}
+              disabled={!canEdit}
+              className="w-full max-w-xs rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-ville-blue focus:outline-none disabled:bg-slate-50 disabled:text-slate-400"
+            >
+              {etats.map((e) => (
+                <option key={e.code} value={e.code}>
+                  {e.libelle}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-500">Météo</label>
+            <MeteoPicker meteos={meteos} value={projet.meteo_code} onChange={(code) => patch({ meteo_code: code })} disabled={!canEdit} />
+          </div>
+        </div>
+        <div className="mt-4">
+          <label className="mb-1 block text-xs font-medium text-slate-500">Description — point atteint</label>
+          <RichTextEditor value={projet.description || ''} onChange={(html) => patch({ description: html })} readOnly={!canEdit} />
+        </div>
+        {!canEdit && <p className="mt-3 text-xs text-slate-400">Accès en consultation seule.</p>}
+      </div>
+
+      <div className="flex justify-end">
+        <button
+          onClick={() => setModuleSettingsOpen(true)}
+          className="flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-ville-blue"
+        >
+          <Settings size={13} /> Modules de la fiche
+        </button>
+      </div>
+
+      {layout.map((entry) => {
+        const meta = MODULE_META[entry.module_key]
+        if (!meta) return null
+        return (
+          <ModuleFrame
+            key={entry.module_key}
+            moduleKey={entry.module_key}
+            title={meta.title}
+            icon={meta.icon}
+            enabled={entry.enabled}
+            onToggle={() => toggle(entry.module_key)}
+            onReorder={reorder}
+          >
+            {moduleContent[entry.module_key]}
+          </ModuleFrame>
+        )
+      })}
+
+      {moduleSettingsOpen && (
+        <ModuleSettingsModal
+          layout={layout}
+          moduleMeta={MODULE_META}
+          toggle={toggle}
+          reorder={reorder}
+          onClose={() => setModuleSettingsOpen(false)}
+        />
+      )}
     </div>
   )
 }
 
-function HeaderCard({ projet, onSaved }: { projet: Projet; onSaved: () => void }) {
-  const { user } = useAuth()
+function HeaderCard({
+  projet,
+  onSaved,
+  canEdit,
+  canAdminister,
+}: {
+  projet: Projet
+  onSaved: () => void
+  canEdit: boolean
+  canAdminister: boolean
+}) {
   const navigate = useNavigate()
   const [editing, setEditing] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const { confirmAsync, dialog } = useDialogs()
 
   async function removeProjet() {
-    if (!confirm(`Supprimer définitivement le projet "${projet.nom}" ? Cette action est irréversible.`)) return
+    const ok = await confirmAsync({
+      title: 'Supprimer le projet',
+      message: `Supprimer définitivement le projet "${projet.nom}" ? Cette action est irréversible.`,
+      confirmLabel: 'Supprimer',
+      danger: true,
+    })
+    if (!ok) return
     setDeleting(true)
+    setDeleteError(null)
     try {
       await api.delete(`/projets/${projet.id}`)
       navigate(projet.engagement_id ? `/engagements/${projet.engagement_id}` : '/projets')
     } catch (err) {
-      alert(apiErrorMessage(err, 'Suppression impossible'))
+      setDeleteError(apiErrorMessage(err, 'Suppression impossible'))
       setDeleting(false)
     }
   }
@@ -303,6 +410,7 @@ function HeaderCard({ projet, onSaved }: { projet: Projet; onSaved: () => void }
 
   if (!editing) {
     return (
+      <>
       <div className="rounded-xl border border-slate-200 bg-white p-6">
         <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -311,14 +419,16 @@ function HeaderCard({ projet, onSaved }: { projet: Projet; onSaved: () => void }
           </div>
           <div className="flex items-center gap-2">
             <EtatBadge libelle={projet.etat_libelle} couleur={projet.etat_couleur} />
-            <button onClick={startEditing} className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-ville-blue">
-              <Pencil size={15} />
-            </button>
-            {user?.role === 'admin' && (
+            {canEdit && (
+              <button onClick={startEditing} className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-ville-blue">
+                <Pencil size={15} />
+              </button>
+            )}
+            {canAdminister && (
               <button
                 onClick={removeProjet}
                 disabled={deleting}
-                title="Supprimer le projet (admin)"
+                title="Supprimer le projet"
                 className="rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
               >
                 <Trash2 size={15} />
@@ -326,6 +436,7 @@ function HeaderCard({ projet, onSaved }: { projet: Projet; onSaved: () => void }
             )}
           </div>
         </div>
+        {deleteError && <p className="mb-3 text-xs text-red-600">{deleteError}</p>}
         <div className="grid grid-cols-1 gap-4 border-t border-slate-100 pt-4 text-sm sm:grid-cols-3">
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Pilotage</p>
@@ -341,11 +452,13 @@ function HeaderCard({ projet, onSaved }: { projet: Projet; onSaved: () => void }
               <p className="mt-0.5 text-slate-700">{projet.echeance || '—'}</p>
             )}
             <div className="mt-1.5">
-              <ToggleSwitch checked={projet.continu} onChange={toggleContinu} label="Projet continu" />
+              <ToggleSwitch checked={projet.continu} disabled={!canEdit} onChange={toggleContinu} label="Projet continu" />
             </div>
           </div>
         </div>
       </div>
+      {dialog}
+      </>
     )
   }
 
@@ -401,108 +514,6 @@ function HeaderCard({ projet, onSaved }: { projet: Projet; onSaved: () => void }
         {saving ? 'Enregistrement…' : 'Enregistrer'}
       </button>
     </form>
-  )
-}
-
-function MembresSection({ projet, onChange }: { projet: Projet; onChange: () => void }) {
-  const [query, setQuery] = useState('')
-  const [suggestions, setSuggestions] = useState<AgentSearchResult[]>([])
-  const [selected, setSelected] = useState<AgentSearchResult | null>(null)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    setSelected(null)
-    if (query.trim().length < 2) {
-      setSuggestions([])
-      return
-    }
-    const t = setTimeout(() => {
-      api
-        .get('/agents/search', { params: { q: query.trim() } })
-        .then((res) => setSuggestions(res.data.results || []))
-        .catch(() => setSuggestions([]))
-    }, 300)
-    return () => clearTimeout(t)
-  }, [query])
-
-  async function addMember(e: FormEvent) {
-    e.preventDefault()
-    if (!query.trim()) return
-    setError(null)
-    try {
-      await api.post(`/projets/${projet.id}/membres`, {
-        user_sub: selected?.username || selected?.sAMAccountName || query.trim(),
-        display_name: selected?.displayName || selected?.name || query.trim(),
-        direction: selected?.direction || selected?.service || null,
-      })
-      setQuery('')
-      setSuggestions([])
-      onChange()
-    } catch (err) {
-      setError(apiErrorMessage(err, "Impossible d'ajouter ce membre"))
-    }
-  }
-
-  async function removeMember(memberId: number) {
-    if (!confirm('Retirer ce membre du projet ?')) return
-    await api.delete(`/projets/${projet.id}/membres/${memberId}`)
-    onChange()
-  }
-
-  return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5">
-      <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800">
-        <Users size={16} /> Membres ({projet.membres?.length || 0})
-      </h2>
-      <ul className="mb-4 space-y-1.5">
-        {projet.membres?.map((m: ProjetMembre) => (
-          <li key={m.id} className="flex items-center justify-between rounded-md bg-slate-50 px-3 py-1.5 text-sm">
-            <span>
-              {m.display_name || m.user_sub} {m.direction && <span className="text-slate-400">· {m.direction}</span>}
-            </span>
-            <button onClick={() => removeMember(m.id)} className="text-slate-400 hover:text-red-600" title="Retirer">
-              <Trash2 size={14} />
-            </button>
-          </li>
-        ))}
-      </ul>
-      <form onSubmit={addMember} className="relative flex items-center gap-2">
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Rechercher un agent à ajouter..."
-          className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-ville-blue focus:outline-none"
-        />
-        <button
-          type="submit"
-          disabled={!query.trim()}
-          className="flex items-center gap-1.5 rounded-md bg-ville-blue px-3 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60"
-        >
-          <UserPlus size={14} /> Ajouter
-        </button>
-        {!!suggestions.length && (
-          <ul className="absolute left-0 top-full z-10 mt-1 w-full max-w-sm rounded-md border border-slate-200 bg-white shadow-lg">
-            {suggestions.map((s, i) => (
-              <li key={i}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelected(s)
-                    setQuery(s.displayName || s.name || '')
-                    setSuggestions([])
-                  }}
-                  className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
-                >
-                  {s.displayName || s.name}{' '}
-                  <span className="text-xs text-slate-400">{s.direction || s.service}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </form>
-      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
-    </div>
   )
 }
 

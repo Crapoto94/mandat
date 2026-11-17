@@ -135,7 +135,7 @@ async function list({ direction, userSub, isAdmin, ...filters } = {}) {
       : await db.all(
           `SELECT p.id, p.nom, p.description, p.engagement_id FROM projets p
            WHERE p.engagement_id = ANY($1)
-             AND EXISTS (SELECT 1 FROM projet_membres pm WHERE pm.projet_id = p.id AND pm.user_sub = $2)`,
+             AND EXISTS (SELECT 1 FROM assigned_roles ar WHERE ar.projet_id = p.id AND ar.agent_username = $2)`,
           [ids, userSub || null]
         );
     const byEngagement = new Map();
@@ -303,9 +303,9 @@ async function getById(id) {
       [id]
     ),
     db.all(
-      `SELECT er.*, r.libelle AS role_libelle FROM engagement_roles er
-       JOIN roles r ON r.id = er.role_id
-       WHERE er.engagement_id = $1 ORDER BY er.created_at ASC`,
+      `SELECT ar.*, r.libelle AS role_libelle FROM assigned_roles ar
+       JOIN roles r ON r.id = ar.role_id
+       WHERE ar.engagement_id = $1 ORDER BY ar.created_at ASC`,
       [id]
     ),
     db.all(

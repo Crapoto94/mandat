@@ -10,6 +10,7 @@ import EngagementDetailPage from './pages/EngagementDetailPage'
 import ProjetsPage from './pages/ProjetsPage'
 import ProjetDetailPage from './pages/ProjetDetailPage'
 import CoordinationPage from './pages/CoordinationPage'
+import RexCaniculePage from './pages/RexCaniculePage'
 import PleniairePage from './pages/PleniairePage'
 import TimelinePage from './pages/TimelinePage'
 import AdminPage from './pages/AdminPage'
@@ -30,6 +31,7 @@ export default function App() {
               <Route path="/projets" element={<ProjetsPage />} />
               <Route path="/projets/:id" element={<ProjetDetailPage />} />
               <Route path="/coordination" element={<CoordinationPage />} />
+              <Route path="/rex-canicule" element={<RexCaniculePage />} />
               <Route path="/timeline" element={<TimelinePage />} />
               <Route path="/plenaire" element={<PleniairePage />} />
               <Route path="/nouveautes" element={<WhatsNewPage />} />

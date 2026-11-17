@@ -9,6 +9,19 @@
 // sans attendre la configuration LDAP. Les groupes particuliers (AD),
 // eux, nécessitent memberOf — donc le LDAP direct — et sont ignorés sinon.
 const { db } = require('../db/pg_db');
+const { createTtlCache } = require('../lib/ttlCache');
+
+// Les référentiels de groupes sont coûteux à résoudre et étaient rejoués à
+// chaque appel : `listNiveauMembers` fait un scan complet de
+// `oracle.rh_v_extract_dsi` (vue Oracle exposée en PostgreSQL via FDW), et
+// `getCustomGroupMembers` une résolution LDAP batchée côté Hub DSI dont le
+// timeout est de 20 s. Empilés en boucle séquentielle sur le chemin de
+// connexion (et, pour `isDgOuDirecteur`, sur celui de *chaque* requête), ils
+// faisaient dépasser le délai du reverse-proxy nginx en prod — d'où les 504 au
+// login. Ces référentiels bougent rarement : on les mémorise quelques minutes,
+// et l'admin qui affiche la liste des membres force le rafraîchissement.
+const NIVEAU_MEMBERS_TTL_MS = Number(process.env.ACCESS_CACHE_TTL_MS) || 60 * 1000;
+const CUSTOM_GROUP_MEMBERS_TTL_MS = Number(process.env.ACCESS_GROUP_CACHE_TTL_MS) || 5 * 60 * 1000;
 
 function stripDiacritics(str) {
   return String(str || '').normalize('NFD').replace(/[̀-ͯ]/g, '');
@@ -54,6 +67,17 @@ const NIVEAU_DEFS = [
     condition: `"POSTE_L" LIKE 'RESPONSABLE DU SERVICE%'`,
   },
 ];
+
+const niveauMembersCache = createTtlCache({ ttlMs: NIVEAU_MEMBERS_TTL_MS, maxEntries: NIVEAU_DEFS.length });
+const customGroupMembersCache = createTtlCache({ ttlMs: CUSTOM_GROUP_MEMBERS_TTL_MS, maxEntries: 64 });
+
+/** Membres d'un niveau RH, mis en cache (cf. commentaire des TTL plus haut).
+ *  `fresh: true` court-circuite le cache — réservé à l'affichage admin de la
+ *  liste des membres, qui doit refléter l'état courant du référentiel. */
+function niveauMembers(code, { fresh = false } = {}) {
+  if (fresh) return listNiveauMembers(code);
+  return niveauMembersCache.get(code, () => listNiveauMembers(code));
+}
 
 async function listNiveauMembers(code) {
   const def = NIVEAU_DEFS.find((d) => d.code === code);
@@ -143,12 +167,22 @@ async function getCustomGroupMembers(grp) {
   }));
 }
 
+/** Membres d'un groupe particulier, mis en cache (cf. commentaire des TTL
+ *  plus haut) : c'est le poste le plus lourd du contrôle d'accès (résolution
+ *  LDAP batchée, jusqu'à 20 s de timeout côté Hub DSI) et il était rejoué à
+ *  chaque tentative de connexion. `fresh: true` court-circuite le cache pour
+ *  l'affichage admin de la liste des membres. */
+function customGroupMembers(grp, { fresh = false } = {}) {
+  if (fresh) return getCustomGroupMembers(grp);
+  return customGroupMembersCache.get(String(grp.id), () => getCustomGroupMembers(grp));
+}
+
 async function getGroupMembers(kind, refCode) {
   if (kind === 'niveau') return listNiveauMembers(refCode);
   if (kind === 'custom_group') {
     const grp = await db.get(`SELECT id, ad_group_dn, ad_group_cn, name FROM hub.custom_groups WHERE id = $1`, [refCode]);
     if (!grp) return [];
-    return getCustomGroupMembers(grp);
+    return customGroupMembers(grp, { fresh: true });
   }
   return [];
 }
@@ -160,7 +194,7 @@ async function matchesNiveauByName(code, displayName) {
   if (!displayName) return false;
   const norm = normalizeName(displayName);
   if (!norm) return false;
-  const members = await listNiveauMembers(code);
+  const members = await niveauMembers(code);
   return members.some((m) => {
     const nom = normalizeName(m.nom);
     const prenom = normalizeName(m.prenom);
@@ -178,7 +212,7 @@ async function matchesNiveauByName(code, displayName) {
 async function matchesCustomGroup(grp, { memberOfDns, username, displayName, email }) {
   if (Array.isArray(memberOfDns) && grp.ad_group_dn && memberOfDns.includes(grp.ad_group_dn)) return true;
 
-  const members = await getCustomGroupMembers(grp).catch((err) => {
+  const members = await customGroupMembers(grp).catch((err) => {
     console.warn('[accessControl] membres du groupe', grp.name, 'indisponibles :', err.message);
     return [];
   });
@@ -209,28 +243,42 @@ async function isAgentAuthorized({ employeeId, memberOfDns, username, displayNam
   const enabled = await db.all(`SELECT kind, ref_code FROM access_groups WHERE enabled = true`);
   if (!enabled.length) return false;
 
-  for (const g of enabled) {
-    if (g.kind === 'niveau') {
-      const def = NIVEAU_DEFS.find((d) => d.code === g.ref_code);
-      if (!def) continue;
-      if (employeeId) {
-        const row = await db
-          .get(
-            `SELECT 1 FROM oracle.rh_v_extract_dsi WHERE "MATRICULE" = $1 AND ${ACTIVE_FILTER} AND (${def.condition}) LIMIT 1`,
-            [employeeId]
-          )
-          .catch(() => null);
-        if (row) return true;
+  // Les groupes activés sont évalués EN PARALLÈLE : la durée totale est celle
+  // du groupe le plus lent, pas la somme de tous. En séquentiel, trois niveaux
+  // RH (scan de la vue Oracle via FDW) plus deux groupes particuliers (résolution
+  // LDAP, timeout 20 s) dépassent largement le délai du reverse-proxy nginx.
+  const verdicts = await Promise.all(
+    enabled.map(async (g) => {
+      try {
+        if (g.kind === 'niveau') {
+          const def = NIVEAU_DEFS.find((d) => d.code === g.ref_code);
+          if (!def) return false;
+          if (employeeId) {
+            const row = await db
+              .get(
+                `SELECT 1 FROM oracle.rh_v_extract_dsi WHERE "MATRICULE" = $1 AND ${ACTIVE_FILTER} AND (${def.condition}) LIMIT 1`,
+                [employeeId]
+              )
+              .catch(() => null);
+            if (row) return true;
+          }
+          return await matchesNiveauByName(def.code, displayName);
+        }
+        if (g.kind === 'custom_group') {
+          const grp = await db
+            .get(`SELECT id, ad_group_dn, ad_group_cn, name FROM hub.custom_groups WHERE id = $1`, [g.ref_code])
+            .catch(() => null);
+          if (!grp) return false;
+          return await matchesCustomGroup(grp, { memberOfDns, username, displayName, email });
+        }
+        return false;
+      } catch (err) {
+        console.warn(`[accessControl] groupe ${g.kind}:${g.ref_code} non évaluable :`, err.message);
+        return false;
       }
-      if (await matchesNiveauByName(def.code, displayName).catch(() => false)) return true;
-    } else if (g.kind === 'custom_group') {
-      const grp = await db
-        .get(`SELECT id, ad_group_dn, ad_group_cn, name FROM hub.custom_groups WHERE id = $1`, [g.ref_code])
-        .catch(() => null);
-      if (grp && (await matchesCustomGroup(grp, { memberOfDns, username, displayName, email }).catch(() => false))) return true;
-    }
-  }
-  return false;
+    })
+  );
+  return verdicts.some(Boolean);
 }
 
 /** Un DG/DGA ou Directeur a par défaut des droits d'édition sur les

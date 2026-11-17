@@ -9,7 +9,18 @@ const XLSX = require('xlsx');
 const AdmZip = require('adm-zip');
 
 async function previewDocx(buffer) {
-  const result = await mammoth.convertToHtml({ buffer });
+  const result = await mammoth.convertToHtml(
+    { buffer },
+    {
+      // Par défaut mammoth ignore les images embarquées (mise en page
+      // incomplète) : on les réinjecte en data URI, pas de fichier annexe à
+      // servir pour un aperçu en lecture seule.
+      convertImage: mammoth.images.imgElement(async (image) => {
+        const base64 = await image.read('base64');
+        return { src: `data:${image.contentType};base64,${base64}` };
+      }),
+    }
+  );
   return { html: result.value, warnings: result.messages.map((m) => m.message) };
 }
 

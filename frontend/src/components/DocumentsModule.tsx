@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { api, apiErrorMessage, projetDocumentUrl, projetDocumentVersionUrl, projetMsgAttachmentUrl } from '../lib/api'
-import type { ProjetDocument, ProjetDocumentVersion, ProjetFolder, ProjetMetadataField } from '../types'
+import { resolveCidImages } from '../lib/msgBody'
+import { useDialogs } from '../hooks/useDialogs'
+import { ownerBase } from '../lib/owner'
+import type { ModuleOwner, ProjetDocument, ProjetDocumentVersion, ProjetFolder, ProjetMetadataField } from '../types'
+import MsgAttachmentPreviewModal from './MsgAttachmentPreviewModal'
 import {
   Folder,
   FolderPlus,
@@ -18,6 +22,9 @@ import {
   Mail,
   Paperclip,
   History,
+  Filter,
+  CheckSquare,
+  Square,
 } from 'lucide-react'
 
 function formatSize(bytes: number | null) {
@@ -50,12 +57,15 @@ function previewKind(mimeType: string | null, name: string): PreviewKind {
 }
 
 /**
- * Base documentaire d'un projet — pensée pour se comporter le plus possible
- * comme un lecteur réseau : dossiers/sous-dossiers, dépôt de fichiers ou
- * d'un zip (recrée l'arborescence), renommage, métadonnées libres définies
- * par projet (paramétrage).
+ * Base documentaire — module identique pour un projet ou un engagement
+ * (même composant, même API sous /projets/:id/... ou /engagements/:id/...
+ * — cf. backend/modules/documents/) : dossiers/sous-dossiers, dépôt de
+ * fichiers ou d'un zip (recrée l'arborescence), renommage, métadonnées
+ * libres définies par fiche (paramétrage). Pensée pour se comporter le
+ * plus possible comme un lecteur réseau.
  */
-export default function ProjetDocuments({ projetId }: { projetId: number }) {
+export default function DocumentsModule({ owner, canEdit = true, canAdminister = true }: { owner: ModuleOwner; canEdit?: boolean; canAdminister?: boolean }) {
+  const base = ownerBase(owner)
   const [folders, setFolders] = useState<ProjetFolder[]>([])
   const [documents, setDocuments] = useState<ProjetDocument[]>([])
   const [fields, setFields] = useState<ProjetMetadataField[]>([])
@@ -68,28 +78,46 @@ export default function ProjetDocuments({ projetId }: { projetId: number }) {
   const [previewDoc, setPreviewDoc] = useState<ProjetDocument | null>(null)
   const [historyDoc, setHistoryDoc] = useState<ProjetDocument | null>(null)
   const [dragOver, setDragOver] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  const [filters, setFilters] = useState<Record<string, string>>({})
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const [bulkMetaField, setBulkMetaField] = useState('')
+  const [bulkMetaValue, setBulkMetaValue] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const { confirmAsync, promptAsync, dialog } = useDialogs()
 
   function loadFolders() {
-    api.get(`/projets/${projetId}/folders`).then((res) => setFolders(res.data))
+    api.get(`${base}/folders`).then((res) => setFolders(res.data))
   }
   function loadDocuments() {
     api
-      .get(`/projets/${projetId}/documents`, { params: currentFolderId ? { folder_id: currentFolderId } : {} })
+      .get(`${base}/documents`, { params: currentFolderId ? { folder_id: currentFolderId } : {} })
       .then((res) => setDocuments(res.data))
       .catch((err) => setError(apiErrorMessage(err, 'Documents indisponibles')))
   }
   function loadFields() {
-    api.get(`/projets/${projetId}/metadata-fields`).then((res) => setFields(res.data))
+    api.get(`${base}/metadata-fields`).then((res) => setFields(res.data))
   }
 
   useEffect(() => {
     loadFolders()
     loadFields()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projetId])
+  }, [owner.kind, owner.id])
 
-  useEffect(loadDocuments, [projetId, currentFolderId])
+  useEffect(loadDocuments, [owner.kind, owner.id, currentFolderId])
+  useEffect(() => setSelectedIds(new Set()), [currentFolderId])
+
+  const filterableFields = fields.filter((f) => documents.some((d) => d.metadata?.[f.cle]))
+  const filteredDocuments = documents.filter((doc) =>
+    filterableFields.every((f) => {
+      const want = filters[f.cle]
+      if (!want) return true
+      const have = doc.metadata?.[f.cle] || ''
+      return f.type === 'liste' ? have === want : have.toLowerCase().includes(want.toLowerCase())
+    })
+  )
+  const activeFilterCount = Object.values(filters).filter(Boolean).length
 
   const childFolders = folders.filter((f) => f.parent_id === currentFolderId)
   const breadcrumb: ProjetFolder[] = []
@@ -107,7 +135,7 @@ export default function ProjetDocuments({ projetId }: { projetId: number }) {
     e.preventDefault()
     if (!newFolderName.trim()) return
     try {
-      await api.post(`/projets/${projetId}/folders`, { nom: newFolderName.trim(), parent_id: currentFolderId })
+      await api.post(`${base}/folders`, { nom: newFolderName.trim(), parent_id: currentFolderId })
       setNewFolderName('')
       setCreatingFolder(false)
       loadFolders()
@@ -117,9 +145,15 @@ export default function ProjetDocuments({ projetId }: { projetId: number }) {
   }
 
   async function removeFolder(folderId: number) {
-    if (!confirm('Supprimer ce dossier et tout son contenu ? Cette action est irréversible.')) return
+    const ok = await confirmAsync({
+      title: 'Supprimer le dossier',
+      message: 'Supprimer ce dossier et tout son contenu ? Cette action est irréversible.',
+      confirmLabel: 'Supprimer',
+      danger: true,
+    })
+    if (!ok) return
     try {
-      await api.delete(`/projets/${projetId}/folders/${folderId}`)
+      await api.delete(`${base}/folders/${folderId}`)
       loadFolders()
       loadDocuments()
     } catch (err) {
@@ -141,13 +175,13 @@ export default function ProjetDocuments({ projetId }: { projetId: number }) {
         const form = new FormData()
         form.append('file', files[0])
         if (currentFolderId) form.append('folder_id', String(currentFolderId))
-        await api.post(`/projets/${projetId}/documents/zip`, form, { headers: { 'Content-Type': 'multipart/form-data' } })
+        await api.post(`${base}/documents/zip`, form, { headers: { 'Content-Type': 'multipart/form-data' } })
       } else {
         const form = new FormData()
         for (const f of files) form.append('files', f)
         if (currentFolderId) form.append('folder_id', String(currentFolderId))
         if (relativePaths) form.append('paths', JSON.stringify(relativePaths))
-        await api.post(`/projets/${projetId}/documents`, form, { headers: { 'Content-Type': 'multipart/form-data' } })
+        await api.post(`${base}/documents`, form, { headers: { 'Content-Type': 'multipart/form-data' } })
       }
       loadFolders()
       loadDocuments()
@@ -201,10 +235,10 @@ export default function ProjetDocuments({ projetId }: { projetId: number }) {
   }
 
   async function renameDocument(doc: ProjetDocument) {
-    const name = prompt('Nouveau nom :', doc.display_name)
+    const name = await promptAsync({ title: 'Renommer', message: `Nouveau nom pour « ${doc.display_name} » :`, defaultValue: doc.display_name })
     if (!name || !name.trim() || name === doc.display_name) return
     try {
-      await api.patch(`/projets/${projetId}/documents/${doc.id}`, { display_name: name.trim() })
+      await api.patch(`${base}/documents/${doc.id}`, { display_name: name.trim() })
       loadDocuments()
     } catch (err) {
       setError(apiErrorMessage(err, 'Renommage impossible'))
@@ -212,9 +246,10 @@ export default function ProjetDocuments({ projetId }: { projetId: number }) {
   }
 
   async function removeDocument(doc: ProjetDocument) {
-    if (!confirm(`Supprimer "${doc.display_name}" ?`)) return
+    const ok = await confirmAsync({ title: 'Supprimer le document', message: `Supprimer "${doc.display_name}" ?`, confirmLabel: 'Supprimer', danger: true })
+    if (!ok) return
     try {
-      await api.delete(`/projets/${projetId}/documents/${doc.id}`)
+      await api.delete(`${base}/documents/${doc.id}`)
       loadDocuments()
     } catch (err) {
       setError(apiErrorMessage(err, 'Suppression impossible'))
@@ -224,48 +259,120 @@ export default function ProjetDocuments({ projetId }: { projetId: number }) {
   async function setMetadataValue(doc: ProjetDocument, cle: string, valeur: string) {
     const metadata = { ...doc.metadata, [cle]: valeur }
     try {
-      await api.patch(`/projets/${projetId}/documents/${doc.id}`, { metadata })
+      await api.patch(`${base}/documents/${doc.id}`, { metadata })
       loadDocuments()
     } catch (err) {
       setError(apiErrorMessage(err, 'Métadonnée non enregistrée'))
     }
   }
 
+  function toggleSelected(id: number) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function toggleSelectAll() {
+    setSelectedIds((prev) => (prev.size === filteredDocuments.length ? new Set() : new Set(filteredDocuments.map((d) => d.id))))
+  }
+
+  /** Suppression groupée — les documents sélectionnés sont supprimés un par
+   * un (suppression douce, comme à l'unité) ; en cas d'échec partiel, le
+   * message d'erreur porte sur ceux qui ont échoué. */
+  async function bulkDelete() {
+    const ok = await confirmAsync({
+      title: 'Supprimer les documents sélectionnés',
+      message: `Supprimer ${selectedIds.size} document(s) ? Cette action est réversible depuis la corbeille (admin).`,
+      confirmLabel: 'Supprimer',
+      danger: true,
+    })
+    if (!ok) return
+    const ids = Array.from(selectedIds)
+    const results = await Promise.allSettled(ids.map((id) => api.delete(`${base}/documents/${id}`)))
+    const failed = results.filter((r) => r.status === 'rejected').length
+    if (failed) setError(`${failed} document(s) n'ont pas pu être supprimés`)
+    setSelectedIds(new Set())
+    loadDocuments()
+  }
+
+  /** Applique une même métadonnée (clé + valeur) à tous les documents
+   * sélectionnés — fusionnée avec les métadonnées déjà présentes sur
+   * chacun, jamais un écrasement complet. */
+  async function bulkApplyMetadata() {
+    if (!bulkMetaField || !bulkMetaValue.trim()) return
+    const ids = Array.from(selectedIds)
+    const results = await Promise.allSettled(
+      ids.map((id) => {
+        const doc = documents.find((d) => d.id === id)
+        const metadata = { ...(doc?.metadata || {}), [bulkMetaField]: bulkMetaValue.trim() }
+        return api.patch(`${base}/documents/${id}`, { metadata })
+      })
+    )
+    const failed = results.filter((r) => r.status === 'rejected').length
+    if (failed) setError(`${failed} document(s) n'ont pas pu être mis à jour`)
+    setBulkMetaValue('')
+    loadDocuments()
+  }
+
   return (
     <div
       className={`rounded-xl border p-5 transition-colors ${dragOver ? 'border-ville-blue bg-ville-blue/5' : 'border-slate-200 bg-white'}`}
       onDragOver={(e) => {
+        if (!canEdit) return
         e.preventDefault()
         setDragOver(true)
       }}
       onDragLeave={() => setDragOver(false)}
-      onDrop={handleDrop}
+      onDrop={canEdit ? handleDrop : (e) => e.preventDefault()}
     >
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-800">
           <Folder size={16} /> Documents
         </h2>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setCreatingFolder(true)}
-            className="flex items-center gap-1.5 rounded-md border border-slate-300 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
-          >
-            <FolderPlus size={13} /> Nouveau dossier
-          </button>
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-            className="flex items-center gap-1.5 rounded-md bg-ville-blue px-2.5 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:opacity-60"
-          >
-            <Upload size={13} /> {uploading ? 'Dépôt…' : 'Ajouter des fichiers'}
-          </button>
-          <button
-            onClick={() => setSettingsOpen(true)}
-            title="Champs de métadonnées"
-            className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-ville-blue"
-          >
-            <Settings size={15} />
-          </button>
+          {canEdit && (
+            <button
+              onClick={() => setCreatingFolder(true)}
+              className="flex items-center gap-1.5 rounded-md border border-slate-300 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+            >
+              <FolderPlus size={13} /> Nouveau dossier
+            </button>
+          )}
+          {canEdit && (
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="flex items-center gap-1.5 rounded-md bg-ville-blue px-2.5 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:opacity-60"
+            >
+              <Upload size={13} /> {uploading ? 'Dépôt…' : 'Ajouter des fichiers'}
+            </button>
+          )}
+          {!!filterableFields.length && (
+            <button
+              onClick={() => setFiltersOpen((v) => !v)}
+              title="Filtrer par métadonnée"
+              className={`relative rounded-md p-1.5 hover:bg-slate-100 hover:text-ville-blue ${filtersOpen || activeFilterCount ? 'text-ville-blue' : 'text-slate-400'}`}
+            >
+              <Filter size={15} />
+              {!!activeFilterCount && (
+                <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-ville-blue text-[9px] font-bold text-white">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+          )}
+          {canAdminister && (
+            <button
+              onClick={() => setSettingsOpen(true)}
+              title="Champs de métadonnées"
+              className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-ville-blue"
+            >
+              <Settings size={15} />
+            </button>
+          )}
           <input
             ref={fileInputRef}
             type="file"
@@ -276,9 +383,13 @@ export default function ProjetDocuments({ projetId }: { projetId: number }) {
         </div>
       </div>
 
-      <p className="mb-3 text-xs text-slate-400">
-        Glissez-déposez des fichiers ici (ou un .zip seul : son contenu recrée les dossiers automatiquement).
-      </p>
+      {canEdit ? (
+        <p className="mb-3 text-xs text-slate-400">
+          Glissez-déposez des fichiers ici (ou un .zip seul : son contenu recrée les dossiers automatiquement).
+        </p>
+      ) : (
+        <p className="mb-3 text-xs text-slate-400">Accès en consultation seule.</p>
+      )}
 
       {/* Fil d'Ariane */}
       <div className="mb-3 flex flex-wrap items-center gap-1 text-sm">
@@ -300,6 +411,87 @@ export default function ProjetDocuments({ projetId }: { projetId: number }) {
           </span>
         ))}
       </div>
+
+      {filtersOpen && !!filterableFields.length && (
+        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md bg-slate-50 p-2.5">
+          {filterableFields.map((f) => (
+            <div key={f.id} className="flex items-center gap-1">
+              <span className="text-xs text-slate-500">{f.libelle} :</span>
+              {f.type === 'liste' ? (
+                <select
+                  value={filters[f.cle] || ''}
+                  onChange={(e) => setFilters((prev) => ({ ...prev, [f.cle]: e.target.value }))}
+                  className="rounded border border-slate-300 px-1.5 py-1 text-xs"
+                >
+                  <option value="">Tous</option>
+                  {Array.from(new Set(documents.map((d) => d.metadata?.[f.cle]).filter(Boolean))).map((v) => (
+                    <option key={v} value={v}>
+                      {v}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  value={filters[f.cle] || ''}
+                  onChange={(e) => setFilters((prev) => ({ ...prev, [f.cle]: e.target.value }))}
+                  placeholder="contient…"
+                  className="w-28 rounded border border-slate-300 px-1.5 py-1 text-xs"
+                />
+              )}
+            </div>
+          ))}
+          {!!activeFilterCount && (
+            <button onClick={() => setFilters({})} className="text-xs text-slate-400 hover:text-slate-600">
+              Réinitialiser
+            </button>
+          )}
+        </div>
+      )}
+
+      {!!selectedIds.size && (
+        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-ville-blue/30 bg-ville-blue/5 p-2.5">
+          <span className="text-xs font-medium text-ville-blue">{selectedIds.size} sélectionné(s)</span>
+          {!!fields.length && (
+            <>
+              <select
+                value={bulkMetaField}
+                onChange={(e) => setBulkMetaField(e.target.value)}
+                className="rounded border border-slate-300 px-1.5 py-1 text-xs"
+              >
+                <option value="">Appliquer une métadonnée…</option>
+                {fields.map((f) => (
+                  <option key={f.id} value={f.cle}>
+                    {f.libelle}
+                  </option>
+                ))}
+              </select>
+              {bulkMetaField && (
+                <>
+                  <input
+                    value={bulkMetaValue}
+                    onChange={(e) => setBulkMetaValue(e.target.value)}
+                    placeholder="Valeur"
+                    className="w-28 rounded border border-slate-300 px-1.5 py-1 text-xs"
+                  />
+                  <button
+                    onClick={bulkApplyMetadata}
+                    disabled={!bulkMetaValue.trim()}
+                    className="rounded-md bg-ville-blue px-2.5 py-1 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50"
+                  >
+                    Appliquer à {selectedIds.size}
+                  </button>
+                </>
+              )}
+            </>
+          )}
+          <button onClick={bulkDelete} className="ml-auto flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-50">
+            <Trash2 size={13} /> Supprimer la sélection
+          </button>
+          <button onClick={() => setSelectedIds(new Set())} className="text-xs text-slate-400 hover:text-slate-600">
+            Annuler
+          </button>
+        </div>
+      )}
 
       {creatingFolder && (
         <form onSubmit={createFolder} className="mb-3 flex items-center gap-2">
@@ -325,6 +517,10 @@ export default function ProjetDocuments({ projetId }: { projetId: number }) {
         <p className="rounded-md border border-dashed border-slate-200 p-6 text-center text-sm text-slate-400">
           Dossier vide — déposez des fichiers ici.
         </p>
+      ) : !childFolders.length && !filteredDocuments.length ? (
+        <p className="rounded-md border border-dashed border-slate-200 p-6 text-center text-sm text-slate-400">
+          Aucun document ne correspond aux filtres.
+        </p>
       ) : (
         <ul className="divide-y divide-slate-100 rounded-md border border-slate-100">
           {childFolders.map((f) => (
@@ -333,13 +529,28 @@ export default function ProjetDocuments({ projetId }: { projetId: number }) {
                 <Folder size={16} className="shrink-0 text-amber-500" />
                 <span className="truncate font-medium text-slate-800">{f.nom}</span>
               </button>
-              <button onClick={() => removeFolder(f.id)} className="shrink-0 text-slate-400 hover:text-red-600" title="Supprimer le dossier">
-                <Trash2 size={14} />
-              </button>
+              {canEdit && (
+                <button onClick={() => removeFolder(f.id)} className="shrink-0 text-slate-400 hover:text-red-600" title="Supprimer le dossier">
+                  <Trash2 size={14} />
+                </button>
+              )}
             </li>
           ))}
-          {documents.map((doc) => (
+          {canEdit && !!filteredDocuments.length && (
+            <li className="flex items-center gap-2 bg-slate-50/60 px-3 py-1">
+              <button onClick={toggleSelectAll} className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-ville-blue">
+                {selectedIds.size === filteredDocuments.length ? <CheckSquare size={14} /> : <Square size={14} />}
+                Tout sélectionner
+              </button>
+            </li>
+          )}
+          {filteredDocuments.map((doc) => (
             <li key={`d${doc.id}`} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 hover:bg-slate-50">
+              {canEdit && (
+                <button onClick={() => toggleSelected(doc.id)} className="shrink-0 text-slate-300 hover:text-ville-blue" title="Sélectionner">
+                  {selectedIds.has(doc.id) ? <CheckSquare size={15} className="text-ville-blue" /> : <Square size={15} />}
+                </button>
+              )}
               <button
                 onClick={() => setPreviewDoc(doc)}
                 className="flex min-w-0 flex-1 items-center gap-2 text-left text-sm"
@@ -396,12 +607,16 @@ export default function ProjetDocuments({ projetId }: { projetId: number }) {
                 >
                   <Download size={14} />
                 </a>
-                <button onClick={() => renameDocument(doc)} className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-ville-blue" title="Renommer">
-                  <Pencil size={14} />
-                </button>
-                <button onClick={() => removeDocument(doc)} className="rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600" title="Supprimer">
-                  <Trash2 size={14} />
-                </button>
+                {canEdit && (
+                  <button onClick={() => renameDocument(doc)} className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-ville-blue" title="Renommer">
+                    <Pencil size={14} />
+                  </button>
+                )}
+                {canEdit && (
+                  <button onClick={() => removeDocument(doc)} className="rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600" title="Supprimer">
+                    <Trash2 size={14} />
+                  </button>
+                )}
               </div>
             </li>
           ))}
@@ -411,8 +626,9 @@ export default function ProjetDocuments({ projetId }: { projetId: number }) {
       {previewDoc && <DocPreviewModal doc={previewDoc} onClose={() => setPreviewDoc(null)} />}
       {historyDoc && <VersionHistoryModal doc={historyDoc} onClose={() => setHistoryDoc(null)} />}
       {settingsOpen && (
-        <MetadataSettingsModal projetId={projetId} fields={fields} onClose={() => setSettingsOpen(false)} onChange={loadFields} />
+        <MetadataSettingsModal owner={owner} fields={fields} onClose={() => setSettingsOpen(false)} onChange={loadFields} />
       )}
+      {dialog}
     </div>
   )
 }
@@ -497,7 +713,8 @@ interface MsgPreview {
   date: string | null
   bodyText: string
   bodyHtml: string
-  attachments: { index: number; fileName: string; contentLength: number }[]
+  attachments: { index: number; fileName: string; contentLength: number; mimeType: string | null }[]
+  inlineImages: { contentId: string; index: number }[]
 }
 interface XlsxPreview {
   sheets: { name: string; html: string }[]
@@ -517,6 +734,7 @@ function DocPreviewModal({ doc, onClose }: { doc: ProjetDocument; onClose: () =>
   const [xlsx, setXlsx] = useState<XlsxPreview | null>(null)
   const [pptx, setPptx] = useState<PptxPreview | null>(null)
   const [activeSheet, setActiveSheet] = useState(0)
+  const [previewAttachment, setPreviewAttachment] = useState<{ index: number; fileName: string; mimeType: string | null } | null>(null)
 
   useEffect(() => {
     if (kind === 'msg') {
@@ -538,8 +756,18 @@ function DocPreviewModal({ doc, onClose }: { doc: ProjetDocument; onClose: () =>
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-3 border-b border-slate-200 px-4 py-3">
-          <File size={18} className="shrink-0 text-ville-blue" />
-          <p className="min-w-0 flex-1 truncate text-sm font-medium text-slate-800">{doc.display_name}</p>
+          {kind === 'msg' ? <Mail size={18} className="shrink-0 text-ville-blue" /> : <File size={18} className="shrink-0 text-ville-blue" />}
+          <p className="min-w-0 flex-1 truncate text-sm font-medium text-slate-800">
+            {kind === 'msg' && msg ? (
+              <>
+                <span className="text-ville-blue">{msg.from || 'Expéditeur inconnu'}</span>
+                <span className="text-slate-400"> — </span>
+                {msg.subject}
+              </>
+            ) : (
+              doc.display_name
+            )}
+          </p>
           <a
             href={projetDocumentUrl(doc.id, true)}
             className="flex shrink-0 items-center gap-1.5 rounded-md bg-ville-blue px-2.5 py-1.5 text-xs font-medium text-white hover:opacity-90"
@@ -587,19 +815,26 @@ function DocPreviewModal({ doc, onClose }: { doc: ProjetDocument; onClose: () =>
               {!!msg.attachments.length && (
                 <div className="flex flex-wrap gap-2 border-b border-slate-200 bg-slate-50 px-5 py-2.5">
                   {msg.attachments.map((a) => (
-                    <a
+                    <button
                       key={a.index}
-                      href={projetMsgAttachmentUrl(doc.id, a.index)}
+                      onClick={() => setPreviewAttachment(a)}
                       className="flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-100"
                     >
-                      <Paperclip size={12} /> {a.fileName} <span className="text-slate-400">({formatSize(a.contentLength)})</span>
-                    </a>
+                      <Paperclip size={12} /> {a.fileName}{' '}
+                      <span className="rounded bg-slate-100 px-1 text-[9px] font-medium uppercase text-slate-500">{fileTypeLabel(a.fileName)}</span>
+                      <span className="text-slate-400">({formatSize(a.contentLength)})</span>
+                    </button>
                   ))}
                 </div>
               )}
               <div className="flex-1 overflow-hidden">
                 {msg.bodyHtml ? (
-                  <iframe srcDoc={msg.bodyHtml} sandbox="" title={msg.subject} className="h-full w-full border-0" />
+                  <iframe
+                    srcDoc={resolveCidImages(msg.bodyHtml, msg.inlineImages, (idx) => projetMsgAttachmentUrl(doc.id, idx))}
+                    sandbox=""
+                    title={msg.subject}
+                    className="h-full w-full border-0"
+                  />
                 ) : (
                   <div className="h-full overflow-y-auto whitespace-pre-wrap p-5 text-sm text-slate-800">{msg.bodyText}</div>
                 )}
@@ -660,6 +895,16 @@ function DocPreviewModal({ doc, onClose }: { doc: ProjetDocument; onClose: () =>
           )}
         </div>
       </div>
+      {previewAttachment && (
+        <MsgAttachmentPreviewModal
+          fileName={previewAttachment.fileName}
+          mimeType={previewAttachment.mimeType}
+          rawUrl={projetMsgAttachmentUrl(doc.id, previewAttachment.index)}
+          downloadUrl={projetMsgAttachmentUrl(doc.id, previewAttachment.index, true)}
+          previewEndpoint={`/projets/documents/${doc.id}/preview/msg/attachments/${previewAttachment.index}/preview`}
+          onClose={() => setPreviewAttachment(null)}
+        />
+      )}
     </div>
   )
 }
@@ -669,11 +914,12 @@ function VersionHistoryModal({ doc, onClose }: { doc: ProjetDocument; onClose: (
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    const base = doc.engagement_id ? `/engagements/${doc.engagement_id}` : `/projets/${doc.projet_id}`
     api
-      .get(`/projets/${doc.projet_id}/documents/${doc.id}/versions`)
+      .get(`${base}/documents/${doc.id}/versions`)
       .then((res) => setVersions(res.data))
       .catch((err) => setError(apiErrorMessage(err, 'Historique indisponible')))
-  }, [doc.id, doc.projet_id])
+  }, [doc.id, doc.projet_id, doc.engagement_id])
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-5" onClick={onClose}>
@@ -712,16 +958,17 @@ function VersionHistoryModal({ doc, onClose }: { doc: ProjetDocument; onClose: (
 }
 
 function MetadataSettingsModal({
-  projetId,
+  owner,
   fields,
   onClose,
   onChange,
 }: {
-  projetId: number
+  owner: ModuleOwner
   fields: ProjetMetadataField[]
   onClose: () => void
   onChange: () => void
 }) {
+  const base = ownerBase(owner)
   const [libelle, setLibelle] = useState('')
   const [type, setType] = useState<'texte' | 'date' | 'liste'>('texte')
   const [optionsText, setOptionsText] = useState('')
@@ -743,7 +990,7 @@ function MetadataSettingsModal({
     e.preventDefault()
     if (!libelle.trim()) return
     try {
-      await api.post(`/projets/${projetId}/metadata-fields`, {
+      await api.post(`${base}/metadata-fields`, {
         cle: slugify(libelle) || `champ_${Date.now()}`,
         libelle: libelle.trim(),
         type,
@@ -759,7 +1006,7 @@ function MetadataSettingsModal({
   }
 
   async function remove(id: number) {
-    await api.delete(`/projets/${projetId}/metadata-fields/${id}`)
+    await api.delete(`${base}/metadata-fields/${id}`)
     onChange()
   }
 

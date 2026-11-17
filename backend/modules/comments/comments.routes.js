@@ -1,6 +1,7 @@
 const express = require('express');
 const { db } = require('../../db/pg_db');
 const { requireAuth } = require('../../middleware/auth');
+const { effectiveLevel, atLeast } = require('../../services/permissions');
 
 const router = express.Router();
 
@@ -18,6 +19,9 @@ router.post('/engagements/:id/comments', requireAuth, async (req, res) => {
 
   const engagement = await db.get(`SELECT id FROM engagements WHERE id = $1`, [req.params.id]);
   if (!engagement) return res.status(404).json({ error: 'Engagement introuvable' });
+
+  const level = await effectiveLevel({ user: req.user, owner: { engagementId: Number(req.params.id) } });
+  if (!atLeast(level, 'modification')) return res.status(403).json({ error: 'Droits insuffisants pour commenter cet engagement' });
 
   const comment = await db.get(
     `INSERT INTO comments (engagement_id, author_name, author_direction, author_sub, body)
@@ -41,6 +45,8 @@ router.patch('/comments/:id', requireAuth, async (req, res) => {
   if (!isOwner && req.user.role !== 'admin') {
     return res.status(403).json({ error: "Seul l'auteur peut modifier ce commentaire" });
   }
+  const level = await effectiveLevel({ user: req.user, owner: { engagementId: existing.engagement_id } });
+  if (!atLeast(level, 'modification')) return res.status(403).json({ error: 'Droits insuffisants pour modifier ce commentaire' });
 
   const comment = await db.get(
     `UPDATE comments SET body = $1, edited_at = now() WHERE id = $2 RETURNING *`,
