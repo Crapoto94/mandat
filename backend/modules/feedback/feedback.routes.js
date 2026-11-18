@@ -33,6 +33,25 @@ async function notifyAdmins(row) {
   }
 }
 
+// Export lu par le DSI Hub (transport HTTP, bases séparées) : en-tête X-API-Key = BACKLOG_EXPORT_KEY. Désactivé (404) tant que la clé n'est pas renseignée.
+function cleExportOk(req, res) {
+  const attendu = process.env.BACKLOG_EXPORT_KEY || '';
+  if (!attendu) { res.status(404).json({ error: 'Route inconnue' }); return false; }
+  const a = Buffer.from(String(req.headers['x-api-key'] || '')); const b = Buffer.from(attendu);
+  if (a.length !== b.length || !require('crypto').timingSafeEqual(a, b)) { res.status(401).json({ error: 'Clé invalide' }); return false; }
+  return true;
+}
+
+// GET /api/feedback/export — clé d'export, pas de session (lu par le DSI Hub) ; format du contrat commun (bug | evolution ; demandee | realisee).
+router.get('/export', async (req, res) => {
+  if (!cleExportOk(req, res)) return;
+  const rows = await db.all(`SELECT id, type, titre, description, page_url, submitted_by, submitted_by_name, statut, created_at, treated_at FROM feedback ORDER BY created_at DESC LIMIT 5000`);
+  res.json({ items: rows.map((r) => ({
+    id: String(r.id), type: r.type === 'bug' ? 'bug' : 'evolution', titre: r.titre, description: r.description, statut: r.statut === 'traite' ? 'realisee' : 'demandee', statut_brut: r.statut,
+    motif: null, demandeur: r.submitted_by_name || r.submitted_by || null, extra: r.page_url || null, created_at: r.created_at, traite_par: null, traite_le: r.treated_at || null,
+  })) });
+});
+
 router.post('/', requireAuth, async (req, res) => {
   const { type, titre, description, page_url } = req.body || {};
   if (!titre || !titre.trim()) return res.status(400).json({ error: 'Titre requis' });
